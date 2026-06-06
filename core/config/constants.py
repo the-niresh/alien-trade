@@ -106,11 +106,30 @@ BINANCE_INTERVAL_MAP: dict[str, str] = {
 }
 
 # ── TWAK (Trust Wallet Agent Kit) ─────────────────────────────────────────────
-# Exact base URL confirmed from TWAK portal/docs — update when received.
-# Override at runtime via TWAK_API_BASE env var.
+# Base URL confirmed. Override at runtime via TWAK_API_BASE env var.
 
 TWAK_API_BASE_DEFAULT = "https://tws.trustwallet.com"
-# Exact paths below need confirmation from TWAK docs or hackathon Builder Telegram.
-# The server requires auth headers to respond — unauthenticated discovery returns 404.
-TWAK_SIGN_PATH   = "/api/v1/sign"      # confirm
-TWAK_WALLET_PATH = "/api/v1/wallet"    # confirm
+
+# Amber aggregator — swap routing (source: developer.trustwallet.com)
+TWAK_AMBER_ROUTE_PATH   = "/amber-api/v1/route"
+TWAK_AMBER_STEP_PATH    = "/amber-api/v1/route/step"
+TWAK_AMBER_DOMAINS_PATH = "/amber-api/v1/domains"
+
+# Market data
+TWAK_PRICES_PATH   = "/v2/market/tickers"
+TWAK_LISTINGS_PATH = "/v1/assets/listings"
+
+# Amber domain key for BSC (NOT "smartchain" — must be "bsc")
+TWAK_BSC_DOMAIN = "bsc"
+
+# EVM native token placeholder used by Amber API
+TWAK_NATIVE_ADDR = "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE"
+
+# TWAK asset IDs (SLIP-44 format: c{coinId} or c{coinId}_t{contract})
+TWAK_ASSET_IDS: dict[str, str] = {
+    "BNB":  "c714",
+    "BTC":  "c0",
+    "ETH":  "c60",
+    "USDT": "c714_t0x55d398326f99059fF775485246999027B3197955",   # USDT on BSC
+    "USDC": "c714_t0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d",   # USDC on BSC
+}

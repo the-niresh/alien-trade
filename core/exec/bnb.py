@@ -151,8 +151,8 @@ class BNBExec:
         sim: Optional[SwapSimResult] = None,
     ) -> dict:
         """
-        Build an unsigned EVM tx dict ready for TWAKSigner.sign_transaction().
-        Caller should run simulate_swap() first and pass the result in as `sim`.
+        Build unsigned EVM tx from PancakeSwap V3 calldata (direct path / testnet fallback).
+        Prefer build_unsigned_tx_from_twak() for mainnet — better routing via TWAK Amber API.
         """
         calldata = sim.calldata if sim else _encode_exact_input_single(params)
         gas_estimate = sim.gas_estimate if sim else 200_000
@@ -165,6 +165,31 @@ class BNBExec:
             "value": "0x0",
             "data": "0x" + calldata.hex(),
             "gas": hex(int(gas_estimate * 1.2)),   # +20% headroom
+            "gasPrice": hex(gas_price),
+            "nonce": hex(nonce),
+            "chainId": self.chain_id,
+        }
+
+    def build_unsigned_tx_from_twak(
+        self,
+        evm_tx: dict,
+        from_address: str,
+    ) -> dict:
+        """
+        Build unsigned EVM tx from a TWAK Amber step transaction.
+        evm_tx: the evmTx dict from TWAKClient.get_step_transaction().
+        Adds nonce, gasPrice, chainId from chain state.
+        """
+        gas_price = self._get_gas_price()
+        nonce = self._get_nonce(from_address)
+        gas_limit = int(evm_tx.get("gasLimit", 200_000))
+
+        return {
+            "from": from_address,
+            "to": evm_tx["to"],
+            "value": hex(int(evm_tx.get("value", 0))),
+            "data": evm_tx.get("data", "0x"),
+            "gas": hex(int(gas_limit * 1.2)),
             "gasPrice": hex(gas_price),
             "nonce": hex(nonce),
             "chainId": self.chain_id,

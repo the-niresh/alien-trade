@@ -1,47 +1,69 @@
 """
-Trust Wallet Agent Kit (TWAK) signing client.
-All transaction signing goes through TWAK — zero raw private keys in code or logs.
-Auth: HMAC-SHA256 with TW_ACCESS_ID + TW_HMAC_SECRET.
+Trust Wallet Agent Kit (TWAK) client.
+REST API at tws.trustwallet.com — HMAC-SHA256 authenticated.
+
+Signing format (confirmed from developer.trustwallet.com/developer/agent-sdk/authentication):
+  plaintext = "METHOD;PATH;SORTED_QUERY;ACCESS_ID;NONCE;DATE"
+  signature = base64(hmac_sha256(hmac_secret, plaintext))
+  Authorization: HMAC-SHA256 Signature={base64_signature}
+
+Covers: token prices (POST /v2/market/tickers),
+        Amber swap routes (POST /amber-api/v1/route),
+        Amber step transactions (POST /amber-api/v1/route/step).
+
+Transaction signing uses eth-account with PRIVATE_KEY (Phase 5: switch to
+twak serve for managed-key signing without raw key exposure).
 """
 from __future__ import annotations
 
+import base64
 import hashlib
 import hmac
-import json
 import os
-import time
-from dataclasses import dataclass
+import uuid
+from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
 import httpx
 from dotenv import load_dotenv
+from tenacity import retry, stop_after_attempt, wait_exponential
 
-from config.constants import TWAK_API_BASE_DEFAULT, TWAK_SIGN_PATH, TWAK_WALLET_PATH
+from config.constants import (
+    TWAK_API_BASE_DEFAULT,
+    TWAK_AMBER_ROUTE_PATH,
+    TWAK_AMBER_STEP_PATH,
+    TWAK_PRICES_PATH,
+)
 
 load_dotenv(Path(__file__).parent.parent.parent / ".env.local")
 
 
-@dataclass
-class SignedTx:
-    raw_hex: str          # 0x-prefixed signed transaction ready for broadcast
-    tx_hash: str          # expected tx hash (may differ after broadcast due to mempool)
-    wallet_address: str   # signer address from TWAK wallet
-
+# ── Response dataclasses ──────────────────────────────────────────────────────
 
 @dataclass
-class TWAKWalletInfo:
-    address: str
-    chain_id: int
-    balance_wei: int
+class SwapRoute:
+    route_id: str
+    steps: list[dict]
+    expiration: str
+    warnings: list[str] = field(default_factory=list)
 
 
-class TWAKSigner:
+@dataclass
+class StepTransaction:
+    step_id: str
+    evm_tx: dict                    # {to, value, data, gasLimit}
+    approve: Optional[dict] = None  # ERC-20 approval tx (send first if present)
+    revoke: Optional[dict] = None   # revoke previous unlimited approval if present
+
+
+# ── Client ────────────────────────────────────────────────────────────────────
+
+class TWAKClient:
     """
-    Wraps TWAK API for:
-    - Fetching the managed wallet address
-    - Signing arbitrary EVM transactions
-    - Optionally submitting via TWAK (or broadcast separately via BNBExec)
+    TWAK REST API client.
+    Market data + Amber aggregator swap routing.
     """
 
     def __init__(
@@ -51,100 +73,148 @@ class TWAKSigner:
         api_base: Optional[str] = None,
     ):
         self.access_id = access_id or os.environ.get("TW_ACCESS_ID", "")
-        self._secret = (hmac_secret or os.environ.get("TW_HMAC_SECRET", "")).encode()
-        # env var TWAK_API_BASE lets operators override without touching code
+        self._secret = hmac_secret or os.environ.get("TW_HMAC_SECRET", "")
         resolved = api_base or os.environ.get("TWAK_API_BASE", TWAK_API_BASE_DEFAULT)
         self._base = resolved.rstrip("/")
-        self._http = httpx.Client(timeout=15.0)
+        self._http = httpx.Client(timeout=20.0)
 
     def close(self) -> None:
         self._http.close()
 
-    def __enter__(self) -> "TWAKSigner":
+    def __enter__(self) -> "TWAKClient":
         return self
 
     def __exit__(self, *_) -> None:
         self.close()
 
-    # ── Public API ───────────────────────────────────────────────────────────
+    # ── Market data ──────────────────────────────────────────────────────────
 
-    def get_wallet(self, chain_id: int = 97) -> TWAKWalletInfo:
-        """Return the TWAK-managed wallet info for the given chain."""
-        resp = self._signed_request("GET", f"/wallet?chain_id={chain_id}")
-        return TWAKWalletInfo(
-            address=resp["address"],
-            chain_id=resp["chain_id"],
-            balance_wei=int(resp.get("balance_wei", 0)),
-        )
-
-    def sign_transaction(self, unsigned_tx: dict) -> SignedTx:
+    @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=1, max=5))
+    def get_prices(self, asset_ids: list[str], currency: str = "USD") -> list[dict]:
         """
-        Send an unsigned EVM tx dict to TWAK for signing.
-        unsigned_tx keys: to, data, value (hex), gas (hex), gasPrice (hex),
-                          nonce (hex), chainId.
-        Returns SignedTx with raw_hex ready for eth_sendRawTransaction.
+        Current prices for SLIP-44 asset IDs (e.g. 'c714' for BNB, 'c60' for ETH).
+        Aggregated from CMC + CoinGecko.
         """
-        payload = {"transaction": unsigned_tx}
-        resp = self._signed_request("POST", "/sign", body=payload)
-        return SignedTx(
-            raw_hex=resp["raw_transaction"],
-            tx_hash=resp["hash"],
-            wallet_address=resp["from"],
-        )
-
-    def sign_and_submit(self, unsigned_tx: dict) -> str:
-        """Sign + broadcast via TWAK in one call. Returns tx hash."""
-        payload = {"transaction": unsigned_tx, "submit": True}
-        resp = self._signed_request("POST", "/sign", body=payload)
-        return resp["hash"]
-
-    # ── HMAC signing ────────────────────────────────────────────────────────
-
-    def _signed_request(self, method: str, path: str, body: Optional[dict] = None) -> dict:
-        ts = str(int(time.time() * 1000))
-        body_bytes = json.dumps(body, separators=(",", ":")).encode() if body else b""
-        body_hash = hashlib.sha256(body_bytes).hexdigest()
-
-        # Canonical string: METHOD\nPATH\nTIMESTAMP\nBODY_HASH
-        canonical = f"{method}\n{path}\n{ts}\n{body_hash}"
-        sig = hmac.new(self._secret, canonical.encode(), hashlib.sha256).hexdigest()
-
-        headers = {
-            "Authorization": f"{self.access_id}:{sig}:{ts}",
-            "Content-Type": "application/json",
-            "X-Timestamp": ts,
-        }
-        url = f"{self._base}{path}"
-
-        if method == "GET":
-            r = self._http.get(url, headers=headers)
-        else:
-            r = self._http.post(url, headers=headers, content=body_bytes)
-
+        body = {"currency": currency, "assets": asset_ids}
+        headers = _build_signed_headers("POST", TWAK_PRICES_PATH, "", self.access_id, self._secret)
+        r = self._http.post(f"{self._base}{TWAK_PRICES_PATH}", json=body, headers=headers)
         r.raise_for_status()
-        return r.json()
+        return r.json().get("tickers", [])
+
+    # ── Amber swap routing ────────────────────────────────────────────────────
+
+    @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10))
+    def get_swap_route(
+        self,
+        from_asset: str,
+        to_asset: str,
+        amount_wei: str,
+        from_address: str,
+        from_domain: str = "bsc",
+        to_domain: str = "bsc",
+        slippage: str = "1",
+    ) -> SwapRoute:
+        """
+        Best swap route via Amber aggregator (1inch, KyberSwap, 0x, etc.).
+        from_asset/to_asset: token contract address or 0xEeee... for native BNB.
+        amount_wei: amount in smallest unit as string.
+        Returns the top route sorted by output amount.
+        """
+        body = {
+            "fromAsset": from_asset,
+            "toAsset": to_asset,
+            "amount": amount_wei,
+            "fromAddress": from_address,
+            "fromDomain": from_domain,
+            "toDomain": to_domain,
+            "slippage": slippage,
+            "sortBy": "outcome",
+            "contractCall": False,
+        }
+        headers = _build_signed_headers("POST", TWAK_AMBER_ROUTE_PATH, "", self.access_id, self._secret)
+        r = self._http.post(f"{self._base}{TWAK_AMBER_ROUTE_PATH}", json=body, headers=headers)
+        r.raise_for_status()
+        routes = r.json().get("routes", [])
+        if not routes:
+            raise ValueError("No swap routes returned from TWAK Amber API")
+        best = routes[0]
+        return SwapRoute(
+            route_id=best["id"],
+            steps=best.get("steps", []),
+            expiration=best.get("expirationDate", ""),
+            warnings=best.get("warnings", []),
+        )
+
+    @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10))
+    def get_step_transaction(self, step_id: str) -> StepTransaction:
+        """
+        Executable EVM transaction for a single route step.
+        Returns evm_tx {to, value, data, gasLimit} ready to sign and broadcast.
+        If approve is set, send the approval tx first and wait for confirmation.
+        """
+        body = {"stepId": step_id}
+        headers = _build_signed_headers("POST", TWAK_AMBER_STEP_PATH, "", self.access_id, self._secret)
+        r = self._http.post(f"{self._base}{TWAK_AMBER_STEP_PATH}", json=body, headers=headers)
+        r.raise_for_status()
+        data = r.json()
+        tx = data.get("transaction", {})
+        return StepTransaction(
+            step_id=step_id,
+            evm_tx=tx.get("evmTx", {}),
+            approve=data.get("approve"),
+            revoke=data.get("revokeApproval"),
+        )
 
 
-# ── Standalone signing utility ────────────────────────────────────────────────
+# ── Backward compat alias (tests + bnb.py still import TWAKSigner) ───────────
+TWAKSigner = TWAKClient
+
+
+# ── Auth header utilities ─────────────────────────────────────────────────────
 
 def build_auth_headers(
     method: str,
     path: str,
     access_id: str,
     secret: str,
-    body: Optional[dict] = None,
+    query_params: Optional[dict] = None,
+    nonce: Optional[str] = None,
+    date: Optional[str] = None,
 ) -> dict[str, str]:
     """
-    Pure function — build TWAK HMAC auth headers without an HTTP client.
-    Useful for testing and for ad-hoc requests.
+    Build TWAK HMAC-SHA256 auth headers.
+    Inject nonce and date for deterministic testing.
+    query_params replaces the old 'body' arg — body is not part of the signature.
     """
-    ts = str(int(time.time() * 1000))
-    body_bytes = json.dumps(body, separators=(",", ":")).encode() if body else b""
-    body_hash = hashlib.sha256(body_bytes).hexdigest()
-    canonical = f"{method}\n{path}\n{ts}\n{body_hash}"
-    sig = hmac.new(secret.encode(), canonical.encode(), hashlib.sha256).hexdigest()
+    sorted_query = _sort_query(query_params)
+    return _build_signed_headers(method, path, sorted_query, access_id, secret, nonce, date)
+
+
+def _sort_query(params: Optional[dict]) -> str:
+    if not params:
+        return ""
+    return "&".join(f"{k}={v}" for k, v in sorted(params.items()))
+
+
+def _build_signed_headers(
+    method: str,
+    path: str,
+    sorted_query: str,
+    access_id: str,
+    secret: str,
+    nonce: Optional[str] = None,
+    date: Optional[str] = None,
+) -> dict[str, str]:
+    _nonce = nonce or str(uuid.uuid4())
+    _date = date or datetime.now(timezone.utc).strftime("%a, %d %b %Y %H:%M:%S GMT")
+    plaintext = ";".join([method.upper(), path, sorted_query, access_id, _nonce, _date])
+    sig = base64.b64encode(
+        hmac.new(secret.encode(), plaintext.encode(), hashlib.sha256).digest()
+    ).decode()
     return {
-        "Authorization": f"{access_id}:{sig}:{ts}",
+        "X-TW-CREDENTIAL": access_id,
+        "X-TW-NONCE": _nonce,
+        "X-TW-DATE": _date,
+        "Authorization": f"HMAC-SHA256 Signature={sig}",
         "Content-Type": "application/json",
-        "X-Timestamp": ts,
     }

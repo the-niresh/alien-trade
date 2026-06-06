@@ -36,6 +36,24 @@
       "sourceType": "github",
       "skillPath": "skills/convex-setup-auth/SKILL.md",
       "computedHash": "b1a940758751c5b2fdc6ced105b19927a1655f0c1d4bd2fd5536dc3264202c00"
+    },
+    "trust-wallet-api": {
+      "source": "trustwallet/tw-agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/api/SKILL.md",
+      "computedHash": "2a0942c3bd7f2f1132abc97d763547da102b4888e21df23f92ba3290f452244f"
+    },
+    "trust-wallet-cli": {
+      "source": "trustwallet/tw-agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/wallet/SKILL.md",
+      "computedHash": "bcb40d730843e740144c10e258fe6dfe787fb2915020d5d7a74d8488cb8c31c1"
+    },
+    "trust-wallet-sdk": {
+      "source": "trustwallet/tw-agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/sdk/SKILL.md",
+      "computedHash": "03080f5ca27e5b7427cbf8fa790fe9daeaecbfb6e69fd52eea51acbbb9ff8624"
     }
   }
 }

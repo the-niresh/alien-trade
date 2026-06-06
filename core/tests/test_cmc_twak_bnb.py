@@ -108,44 +108,81 @@ class TestCMCClient:
         print(f"\n  BNB OHLCV: {df.shape[0]} bars, latest close ${df['close'][-1]:.2f}")
 
 
-# ── TWAK Signer ──────────────────────────────────────────────────────────────
+# ── TWAK Client ──────────────────────────────────────────────────────────────
 
 class TestTWAKSigner:
     def test_imports_cleanly(self):
-        from exec.twak import TWAKSigner, SignedTx, build_auth_headers
-        assert TWAKSigner is not None
+        from exec.twak import TWAKClient, TWAKSigner, build_auth_headers
+        assert TWAKClient is not None
+        assert TWAKSigner is TWAKClient  # backward compat alias
 
     def test_hmac_headers_deterministic(self):
         """
-        Given fixed inputs the HMAC signature must be deterministic.
-        (Same inputs → same signature — verifies the signing logic is consistent.)
+        Inject fixed nonce + date → same inputs must produce same signature.
+        Canonical: METHOD;PATH;SORTED_QUERY;ACCESS_ID;NONCE;DATE
+        Authorization: HMAC-SHA256 Signature=<base64>
         """
-        import time
-        from unittest.mock import patch
         from exec.twak import build_auth_headers
 
-        fixed_ts = 1_700_000_000_000
-        with patch("time.time", return_value=fixed_ts / 1000):
-            h1 = build_auth_headers("POST", "/sign", "acc123", "secret", {"foo": "bar"})
-            h2 = build_auth_headers("POST", "/sign", "acc123", "secret", {"foo": "bar"})
+        fixed_nonce = "a1b2c3d4-0000-0000-0000-000000000000"
+        fixed_date = "Thu, 27 Feb 2026 12:00:00 GMT"
+
+        h1 = build_auth_headers(
+            "POST", "/amber-api/v1/route", "acc123", "secret",
+            nonce=fixed_nonce, date=fixed_date,
+        )
+        h2 = build_auth_headers(
+            "POST", "/amber-api/v1/route", "acc123", "secret",
+            nonce=fixed_nonce, date=fixed_date,
+        )
 
         assert h1["Authorization"] == h2["Authorization"], "HMAC is not deterministic"
-        auth_parts = h1["Authorization"].split(":")
-        assert auth_parts[0] == "acc123", "Authorization must start with access_id"
-        assert len(auth_parts) == 3, "Authorization format: access_id:sig:ts"
+        assert h1["Authorization"].startswith("HMAC-SHA256 Signature=")
+        assert h1["X-TW-CREDENTIAL"] == "acc123"
+        assert h1["X-TW-NONCE"] == fixed_nonce
+        assert h1["X-TW-DATE"] == fixed_date
 
-    def test_different_bodies_different_sigs(self):
-        from unittest.mock import patch
+    def test_different_paths_different_sigs(self):
+        """Different paths must produce different signatures."""
         from exec.twak import build_auth_headers
 
-        fixed_ts = 1_700_000_000_000
-        with patch("time.time", return_value=fixed_ts / 1000):
-            h1 = build_auth_headers("POST", "/sign", "acc", "secret", {"a": 1})
-            h2 = build_auth_headers("POST", "/sign", "acc", "secret", {"a": 2})
+        fixed_nonce = "aaaa-bbbb-cccc-dddd-eeee00000000"
+        fixed_date  = "Thu, 27 Feb 2026 12:00:00 GMT"
 
-        sig1 = h1["Authorization"].split(":")[1]
-        sig2 = h2["Authorization"].split(":")[1]
-        assert sig1 != sig2, "Different bodies must produce different signatures"
+        h1 = build_auth_headers(
+            "POST", "/amber-api/v1/route", "acc", "secret",
+            nonce=fixed_nonce, date=fixed_date,
+        )
+        h2 = build_auth_headers(
+            "POST", "/amber-api/v1/route/step", "acc", "secret",
+            nonce=fixed_nonce, date=fixed_date,
+        )
+
+        sig1 = h1["Authorization"].split("Signature=")[1]
+        sig2 = h2["Authorization"].split("Signature=")[1]
+        assert sig1 != sig2, "Different paths must produce different signatures"
+
+    def test_different_query_params_different_sigs(self):
+        """Different query params must produce different signatures."""
+        from exec.twak import build_auth_headers
+
+        fixed_nonce = "ffff-0000-1111-2222-333344445555"
+        fixed_date  = "Thu, 27 Feb 2026 12:00:00 GMT"
+
+        h1 = build_auth_headers(
+            "GET", "/v1/assets/listings", "acc", "secret",
+            query_params={"category_id": "bnb-ecosystem"},
+            nonce=fixed_nonce, date=fixed_date,
+        )
+        h2 = build_auth_headers(
+            "GET", "/v1/assets/listings", "acc", "secret",
+            query_params={"category_id": "trending"},
+            nonce=fixed_nonce, date=fixed_date,
+        )
+
+        sig1 = h1["Authorization"].split("Signature=")[1]
+        sig2 = h2["Authorization"].split("Signature=")[1]
+        assert sig1 != sig2, "Different query params must produce different signatures"
 
     def test_credentials_loaded_from_env(self):
         from dotenv import load_dotenv
@@ -207,7 +244,7 @@ class TestBNBExec:
         from dotenv import load_dotenv
         load_dotenv(Path(__file__).parent.parent.parent / ".env.local")
         from exec.bnb import BNBExec, SwapParams, TOKENS_TESTNET
-        from exec.twak import TWAKSigner
+        from exec.twak import TWAKClient
 
         dummy_wallet = "0x0000000000000000000000000000000000000001"
 

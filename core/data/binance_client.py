@@ -16,25 +16,12 @@ import polars as pl
 from tenacity import retry, stop_after_attempt, wait_exponential
 
 from backtest.engine import Bar
+from config.constants import BINANCE_BASE_URL, BINANCE_SYMBOL_PAIRS, BINANCE_INTERVAL_MAP
 
-BINANCE_BASE = "https://api.binance.com"
-CACHE_DIR = Path(__file__).parent / "parquet"
-
-SYMBOL_PAIRS: dict[str, str] = {
-    "BNB":  "BNBUSDT",
-    "WBNB": "BNBUSDT",
-    "BTC":  "BTCUSDT",
-    "BTCB": "BTCUSDT",
-    "ETH":  "ETHUSDT",
-}
-
-# Binance kline interval strings
-INTERVAL_MAP = {
-    "daily": "1d",
-    "4h":    "4h",
-    "1h":    "1h",
-    "15m":   "15m",
-}
+BINANCE_BASE  = BINANCE_BASE_URL
+CACHE_DIR     = Path(__file__).parent / "parquet"
+SYMBOL_PAIRS  = BINANCE_SYMBOL_PAIRS
+INTERVAL_MAP  = BINANCE_INTERVAL_MAP
 
 
 class BinanceClient:

@@ -17,19 +17,13 @@ from dotenv import load_dotenv
 from tenacity import retry, stop_after_attempt, wait_exponential
 
 from backtest.engine import Bar
+from config.constants import CMC_BASE_URL, CMC_SYMBOL_IDS
 
 load_dotenv(Path(__file__).parent.parent.parent / ".env.local")
 
-CMC_BASE = "https://pro-api.coinmarketcap.com"
+CMC_BASE = CMC_BASE_URL
 CACHE_DIR = Path(__file__).parent / "parquet"
-
-# Universe: CMC integer IDs for target tokens
-SYMBOL_IDS: dict[str, int] = {
-    "BNB": 1839,
-    "BTC": 1,
-    "ETH": 1027,
-    "USDT": 825,
-}
+SYMBOL_IDS = CMC_SYMBOL_IDS
 
 
 class CMCClient:

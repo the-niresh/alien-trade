@@ -1,7 +1,7 @@
 """
 BNB AI Agent SDK execution wrapper.
 Pattern: simulate-before-send → sign (TWAK) → broadcast → confirm → ledger.
-BNB_SDK_API_KEY: optional SDK auth; falls back to direct JSON-RPC when absent.
+All addresses, chain IDs, selectors come from core/config/constants.py.
 """
 from __future__ import annotations
 
@@ -15,40 +15,27 @@ import httpx
 from dotenv import load_dotenv
 from eth_abi import encode as abi_encode
 
+from config.constants import (
+    BSC_MAINNET_CHAIN_ID,
+    BSC_TESTNET_CHAIN_ID,
+    BSC_MAINNET_RPC,
+    BSC_TESTNET_RPC,
+    PANCAKE_ROUTER,
+    PANCAKE_DEFAULT_FEE,
+    PANCAKE_EXACT_INPUT_SINGLE_SEL,
+    TOKENS,
+)
+
 load_dotenv(Path(__file__).parent.parent.parent / ".env.local")
 
-# ── Chain config ──────────────────────────────────────────────────────────────
+# env overrides (operator can point at a custom RPC without changing code)
+_TESTNET_RPC = os.environ.get("BNB_TESTNET_RPC_URL", BSC_TESTNET_RPC)
+_MAINNET_RPC = os.environ.get("BNB_RPC_URL", BSC_MAINNET_RPC)
 
-TESTNET_RPC = os.environ.get("BNB_TESTNET_RPC_URL", "https://data-seed-prebsc-1-s1.binance.org:8545/")
-MAINNET_RPC = os.environ.get("BNB_RPC_URL", "https://bsc-dataseed.binance.org/")
-TESTNET_CHAIN_ID = int(os.environ.get("BNB_TESTNET_CHAIN_ID", 97))
-MAINNET_CHAIN_ID = int(os.environ.get("BNB_CHAIN_ID", 56))
-
-# PancakeSwap V3 SmartRouter — BSC testnet
-PANCAKE_ROUTER_TESTNET = "0x1b81D678ffb9C0263b24A97847620C99d213eB14"
-PANCAKE_ROUTER_MAINNET = "0x13f4EA83D0bd40E75C8222255bc855a974568Dd4"
-
-# Token addresses — BSC testnet
-TOKENS_TESTNET: dict[str, str] = {
-    "WBNB": "0xae13d989daC2f0dEbFf460aC112a837C89BAa7cd",
-    "USDT": "0x337610d27c682E347C9cD60BD4b3b107C9d34dDE",
-    "USDC": "0x64544969ed7EBf5f083679233325356EbE738930",
-}
-
-TOKENS_MAINNET: dict[str, str] = {
-    "WBNB": "0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c",
-    "USDT": "0x55d398326f99059fF775485246999027B3197955",
-    "USDC": "0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d",
-    "BTCB": "0x7130d2A12B9BCbFAe4f2634d864A1Ee1Ce3Ead9c",
-    "ETH": "0x2170Ed0880ac9A755fd29B2688956BD959F933F8",
-}
-
-# PancakeSwap V3 fee tiers (0.01%, 0.05%, 0.25%, 1%)
-FEE_TIERS = {100, 500, 2500, 10000}
-DEFAULT_FEE = 2500  # 0.25% — most liquid for BNB pairs
-
-# exactInputSingle selector: keccak256("exactInputSingle((address,address,uint24,address,uint256,uint256,uint160))")
-EXACT_INPUT_SINGLE_SEL = bytes.fromhex("414bf389")
+TOKENS_TESTNET = TOKENS["bsc-testnet"]
+TOKENS_MAINNET = TOKENS["bsc-mainnet"]
+EXACT_INPUT_SINGLE_SEL = PANCAKE_EXACT_INPUT_SINGLE_SEL
+DEFAULT_FEE = PANCAKE_DEFAULT_FEE
 
 
 @dataclass
@@ -94,9 +81,9 @@ class BNBExec:
 
     def __init__(self, testnet: bool = True):
         self.testnet = testnet
-        self.rpc_url = TESTNET_RPC if testnet else MAINNET_RPC
-        self.chain_id = TESTNET_CHAIN_ID if testnet else MAINNET_CHAIN_ID
-        self.router = PANCAKE_ROUTER_TESTNET if testnet else PANCAKE_ROUTER_MAINNET
+        self.rpc_url = _TESTNET_RPC if testnet else _MAINNET_RPC
+        self.chain_id = BSC_TESTNET_CHAIN_ID if testnet else BSC_MAINNET_CHAIN_ID
+        self.router = PANCAKE_ROUTER["bsc-testnet"] if testnet else PANCAKE_ROUTER["bsc-mainnet"]
         self.tokens = TOKENS_TESTNET if testnet else TOKENS_MAINNET
         self._http = httpx.Client(timeout=20.0)
 

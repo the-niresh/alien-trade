@@ -17,10 +17,9 @@ from typing import Optional
 import httpx
 from dotenv import load_dotenv
 
-load_dotenv(Path(__file__).parent.parent.parent / ".env.local")
+from config.constants import TWAK_API_BASE_DEFAULT, TWAK_SIGN_PATH, TWAK_WALLET_PATH
 
-# TWAK API base — confirmed endpoint once TWAK portal provides it
-TWAK_API_BASE = "https://api.trustwallet.com/agent-kit/v1"
+load_dotenv(Path(__file__).parent.parent.parent / ".env.local")
 
 
 @dataclass
@@ -49,11 +48,13 @@ class TWAKSigner:
         self,
         access_id: Optional[str] = None,
         hmac_secret: Optional[str] = None,
-        api_base: str = TWAK_API_BASE,
+        api_base: Optional[str] = None,
     ):
         self.access_id = access_id or os.environ.get("TW_ACCESS_ID", "")
         self._secret = (hmac_secret or os.environ.get("TW_HMAC_SECRET", "")).encode()
-        self._base = api_base.rstrip("/")
+        # env var TWAK_API_BASE lets operators override without touching code
+        resolved = api_base or os.environ.get("TWAK_API_BASE", TWAK_API_BASE_DEFAULT)
+        self._base = resolved.rstrip("/")
         self._http = httpx.Client(timeout=15.0)
 
     def close(self) -> None:

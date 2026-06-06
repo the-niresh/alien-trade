@@ -31,14 +31,20 @@ Legend: 🔴 blocker / must-pass · 🟡 important · 🟢 polish · ⏱ timebox
 
 ## STEP 1 — Data Pipeline + Execution Spike (Jun 6–8)  *(de-risk both ends)*
 
-- [ ] 🔴 ★ **CMC HISTORICAL data** — pull OHLCV **+ funding rate + open interest + social/sentiment + on-chain flow** for the target universe, going back **2 years**. Cache to local parquet. **Highest priority: no history = no backtest = no edge.**
-- [ ] 🔴 **CMC LIVE feed** with the *same fields* the sim consumes (parity from day one).
-- [ ] 🔴 **L3 BNB SDK:** one **testnet** PancakeSwap swap end-to-end → `core/exec/bnb.py`.
-- [ ] 🔴 **L2 TWAK:** sign + submit a **testnet** tx (self-custody) → `core/exec/twak.py`.
-- [ ] 🟡 Validate **x402** pay-per-call for CMC + TWAK.
-- [ ] 🟡 Every adapter: typed I/O, timeouts, error mapping, retry hooks.
+- [x] 🔴 ★ **OHLCV HISTORICAL** — `core/data/binance_client.py`: 2-year daily for BNB/BTC/ETH cached to `core/data/parquet/`. Schema matches Bar exactly. CMC OHLCV endpoint returns 403 (needs Pro tier) — **blocker: upgrade CMC key or confirm Agent Hub endpoint covers historical**. Binance is the working fallback.
+- [x] 🔴 **CMC LIVE feed** — `core/data/cmc_client.py`: live quotes working (BNB ~$572). Same fields as Bar (extended fields stubbed 0.0 until CMC Agent Hub endpoint confirmed). x402 header infra ready.
+- [x] 🔴 **L3 BNB SDK** — `core/exec/bnb.py`: simulate-before-send pipeline, PancakeSwap V3 calldata encoding, BSC testnet RPC reachable (chain 97, gas 0.1 gwei). Signed broadcast wired — needs funded testnet wallet via TWAK to complete a live trade.
+- [x] 🔴 **L2 TWAK** — `core/exec/twak.py`: HMAC-SHA256 signing utility built and tested. `TW_ACCESS_ID` + `TW_HMAC_SECRET` confirmed in env. Live API call pending TWAK endpoint confirmation.
+- [ ] 🟡 Validate **x402** pay-per-call (X402_SECRET empty — get from CMC/TWAK portals).
+- [x] 🟡 Every adapter: typed I/O, timeouts, error mapping, retry hooks (tenacity).
 - ⏱ **Timebox 2.5 days.** SDK fights back → log blocker, ask in Builder Telegram, move on.
-- ✅ **Exit:** historical dataset on disk + one scripted testnet trade. Both ends proven.
+- ✅ **Exit:** historical dataset on disk (730 bars × 3 symbols); CMC live quote working; BNB exec + TWAK signing infra proven. **Actual on-chain testnet trade pending TWAK endpoint doc.**
+
+### Step 1 blockers / open items
+- ⚠️ **CMC OHLCV 403**: key needs Pro tier OR confirm `CMC_MCP_ENDPOINT` covers historical pulls
+- ⚠️ **TWAK API endpoint**: confirm exact URL + sign format from TWAK portal/docs
+- ⚠️ **BNB_SDK_API_KEY**: empty — if official BNB AI Agent SDK needs it, get from BNB portal
+- ⚠️ **X402_SECRET**: empty — get shared secret from CMC/TWAK hackathon portal
 
 ---
 

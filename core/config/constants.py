@@ -109,6 +109,8 @@ BINANCE_INTERVAL_MAP: dict[str, str] = {
 # Exact base URL confirmed from TWAK portal/docs — update when received.
 # Override at runtime via TWAK_API_BASE env var.
 
-TWAK_API_BASE_DEFAULT = "https://api.trustwallet.com/agent-kit/v1"  # placeholder — confirm with TWAK docs
-TWAK_SIGN_PATH        = "/sign"
-TWAK_WALLET_PATH      = "/wallet"
+TWAK_API_BASE_DEFAULT = "https://tws.trustwallet.com"
+# Exact paths below need confirmation from TWAK docs or hackathon Builder Telegram.
+# The server requires auth headers to respond — unauthenticated discovery returns 404.
+TWAK_SIGN_PATH   = "/api/v1/sign"      # confirm
+TWAK_WALLET_PATH = "/api/v1/wallet"    # confirm

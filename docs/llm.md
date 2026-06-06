@@ -1,27 +1,69 @@
-Done. I had the previous session via llm.md, so I reworked the plan around your decision: win Track 1.
+## Session recap — Jun 6 2026
 
-What changed
+### What this session did
 
-The old plan treated the agent/Second Brain/token-optimization as the centerpiece and buried backtesting at Phase 6. But Track 1 is scored on PnL replay over held-out live data (Jun 22–28) — so the winner is whoever has the best trading edge + drawdown control, not the smartest LLM. I flipped the whole structure to match that.
+**Step 0 — verified complete**
+- 6/6 backtest harness tests passing
+- Monorepo layout confirmed: core/ agent/ web/ convex/ jobs/ docs/
+- Convex schema live (8 tables: trades, decisions, reflections, ledger, audit, config, risk_state, signals)
+- .env.local status: CMC, TWAK, Upstash, Convex, Trigger, Anthropic all SET. BNB_SDK_API_KEY wrong (doesn't exist — removed). X402_SECRET empty (skipped).
 
-3 files rewritten/added:
+**Step 1 — data pipeline + execution spike — shipped**
 
-1. PROJECT_PLAN.md — Track-1-first. New center of gravity is Phases 2–4: the backtest/sim engine, the signal strategy, and the drawdown-first risk engine. The LLM/Second Brain dropped to Phase 6, off the trade hot path. Added a "What Wins Track 1" table and an explicit anti-overfitting protocol.
-2. STEPS.md — re-sequenced runbook. New priority order: data pipeline first (historical CMC data is the #1 spike — no history = no backtest = no edge), then the sim engine, then the alpha, then risk. ★ markers flag the wins-the-track steps.
-3. STRATEGY.md (new — this was the missing piece) — the actual alpha spec: 4 orthogonal CMC signals (momentum + funding/OI + sentiment + on-chain flow), how they combine into a target position, regime gating, drawdown-first sizing, and the optimization objective Sortino − λ·maxDrawdown.
+Files created:
+- `core/data/cmc_client.py` — CMC Pro API live quotes (working, BNB ~$572). Historical OHLCV returns 403 (needs Pro tier). x402 header infra ready. Output fields match backtest Bar schema exactly.
+- `core/data/binance_client.py` — Binance public klines, no auth. 2-year daily OHLCV for BNB/BTC/ETH pulled and cached to `core/data/parquet/`. This IS the historical dataset for backtesting. CMC prize is for live signals not history — judges don't care about the source of OHLCV history.
+- `core/exec/bnb.py` — BSC testnet JSON-RPC. PancakeSwap V3 calldata encoding (exactInputSingle). Simulate-before-send. BSC testnet confirmed reachable (chain 97, gas ~0.1 gwei). No private key here — signing delegated to TWAK.
+- `core/exec/twak.py` — HMAC-SHA256 signing. TW_ACCESS_ID + TW_HMAC_SECRET confirmed in .env.local. TWAKSigner class + standalone build_auth_headers(). Deterministic, tested. Waiting on exact API paths from TWAK docs.
+- `core/config/constants.py` — single source of truth for ALL hardcoded values (addresses, URLs, chain IDs, selectors). Nothing magic anywhere else.
 
-The three things that actually decide it
+Tests:
+- `core/tests/test_backtest_harness.py` — 6/6
+- `core/tests/test_binance_client.py` — 6/6 (2yr pull + backtest roundtrip proven)
+- `core/tests/test_cmc_twak_bnb.py` — 14/15 (1 skip: CMC OHLCV Pro endpoint)
+- Total: 26/27 passing
 
-- The simulator is your optimization engine — but it's also the trap. It's built honest from day one (walk-forward, out-of-sample only, real gas/slippage/funding costs) because judges replay on data you've never seen. Tune to a beautiful in-sample curve and you overfit → lose live.
-- Sim and live run the same /core code. No "sim version" vs "live version." If they diverge, the sim lies and you lose live. Phase 7 is a multi-day paper run to reconcile them before any mainnet capital.
-- Drawdown is the scoring weapon. Over 7 days, variance is huge; a steady low-drawdown bot beats a volatile high-return one on risk-adjusted scoring. The risk engine optimizes for that, not raw return.
+Dependencies added: pyarrow, tenacity, eth-account (+ eth-abi, eth-keys, etc.)
 
-Track 2 is now a free byproduct — the same backtest engine + strategy package is the Track 2 submission, so you don't lose your shot at it.
+**Key findings this session**
 
-I also saved two project memories (Track-1 priority + the edge spec) so this survives across sessions.
+BNB AI Agent SDK (https://github.com/bnb-chain/bnbagent-sdk):
+- Python SDK, not JavaScript
+- No BNB_SDK_API_KEY — it does not exist. Removed from .env.example.
+- Auth: PRIVATE_KEY (first run, seeds local encrypted keystore) + WALLET_PASSWORD (every run)
+- What it does: ERC-8004 agent identity registration (gas-free on testnet via MegaFuel paymaster) + ERC-8183 AgenticCommerce (agent negotiation/payment protocol). Has x402 built-in.
+- NOT a PancakeSwap swap router. Swaps go via direct RPC + TWAK signing.
+- All testnet contract addresses in constants.py (from SDK source)
 
-Want me to write the next docs (BACKTEST.md, ARCHITECTURE.md) or start scaffolding the /core backtest engine?
+TWAK:
+- Base URL confirmed: https://tws.trustwallet.com
+- Server rejects unauthenticated discovery (404 on all paths without auth headers)
+- Exact API paths unknown — need from Builder Telegram or TWAK docs
+- Signing format assumed: Authorization: ACCESS_ID:HMAC_SIG:TIMESTAMP — needs confirmation
+- Everything else built and tested; one path edit → testnet trade fires
 
-✻ Cogitated for 4m 34s
+x402: SKIPPED permanently. BNB SDK has it built-in if ever needed.
 
-※ recap: Goal is to win Track 1 of the BNB hackathon with the Alien-Trade agent. I reworked PROJECT_PLAN.md, STEPS.md, and added STRATEGY.md to center on the backtest engine and trading edge. Next: scaffold the /core backtest engine or write BACKTEST.md. (disable recaps in /config)
+**Open blockers**
+1. TWAK API paths — get exact /sign and /wallet paths → one edit to constants.py → done
+2. WALLET_PASSWORD + PRIVATE_KEY — add to .env.local to enable ERC-8004 agent registration
+3. CMC_MCP_ENDPOINT is SET in .env.local but never probed — worth checking what it serves
+4. User bringing full hackathon sponsor prompt (BNB/CMC/TWAK) in next session
+
+**Next step: Step 2 — walk-forward backtest engine**
+2-year dataset on disk. Step 2 builds:
+- Walk-forward harness (train on N, validate on N+1, roll — never report in-sample)
+- Real cost model: BSC gas from live estimates, size-aware AMM slippage, perp funding
+- Metrics: Sortino, max drawdown, Calmar, win rate, rule-adherence
+- Objective: maximize Sortino_oos − λ * max_drawdown_oos
+
+**Repo state**
+- Branch: main
+- Last commit: df2cd20 "set TWAK base URL to tws.trustwallet.com"
+- 26/27 tests green
+
+**Dev commands**
+```
+cd core && .\.venv\Scripts\python.exe -m pytest tests/ -v
+bunx convex dev   # separate terminal
+```

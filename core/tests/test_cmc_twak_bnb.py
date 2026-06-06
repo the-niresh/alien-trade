@@ -1,7 +1,6 @@
 """
-Step 1 smoke tests.
-These hit real external APIs — tagged as integration tests.
-Run: cd core && python -m pytest tests/test_step1_smoke.py -v
+Integration tests for CMC live feed, TWAK signing, and BNB testnet execution.
+Hit real external APIs — run against live services.
 """
 from __future__ import annotations
 

@@ -1,7 +1,6 @@
 """
-Step 1 — data pull verification.
-Pulls 2 years of OHLCV for the full universe from Binance (free, no auth).
-Run once; results are cached to core/data/parquet/*.parquet.
+Binance klines client — unit + integration tests.
+Pulls 2 years of OHLCV for BNB/BTC/ETH. Results cache to core/data/parquet/.
 """
 from __future__ import annotations
 

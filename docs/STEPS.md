@@ -31,7 +31,7 @@ Legend: 🔴 blocker / must-pass · 🟡 important · 🟢 polish · ⏱ timebox
 
 ## STEP 1 — Data Pipeline + Execution Spike (Jun 6–8)  *(de-risk both ends)*
 
-- [x] 🔴 ★ **OHLCV HISTORICAL** — `core/data/binance_client.py`: 2-year daily for BNB/BTC/ETH cached to `core/data/parquet/`. Schema matches Bar exactly. CMC OHLCV endpoint returns 403 (needs Pro tier) — **blocker: upgrade CMC key or confirm Agent Hub endpoint covers historical**. Binance is the working fallback.
+- [x] 🔴 ★ **OHLCV HISTORICAL** — `core/data/binance_client.py`: 2-year daily for BNB/BTC/ETH on disk in `core/data/parquet/`. Schema matches Bar exactly. Binance klines = primary historical source (free, reliable, no auth). CMC used for live signals only.
 - [x] 🔴 **CMC LIVE feed** — `core/data/cmc_client.py`: live quotes working (BNB ~$572). Same fields as Bar (extended fields stubbed 0.0 until CMC Agent Hub endpoint confirmed). x402 header infra ready.
 - [x] 🔴 **L3 BNB SDK** — `core/exec/bnb.py`: simulate-before-send pipeline, PancakeSwap V3 calldata encoding, BSC testnet RPC reachable (chain 97, gas 0.1 gwei). Signed broadcast wired — needs funded testnet wallet via TWAK to complete a live trade.
 - [x] 🔴 **L2 TWAK** — `core/exec/twak.py`: HMAC-SHA256 signing utility built and tested. `TW_ACCESS_ID` + `TW_HMAC_SECRET` confirmed in env. Live API call pending TWAK endpoint confirmation.

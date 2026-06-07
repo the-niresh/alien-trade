@@ -50,54 +50,63 @@ Legend: 🔴 blocker / must-pass · 🟡 important · 🟢 polish · ⏱ timebox
 
 ## STEP 2 — Backtest / Simulation Engine (Jun 8–12) ★ **CENTERPIECE**
 
-- [ ] 🔴 Event-driven backtester over the historical dataset. **Strict point-in-time access — zero look-ahead bias.**
-- [ ] 🔴 **Cost model:** BSC gas, size-aware AMM slippage, swap fees, perp funding, fill latency. (A sim without costs lies.)
-- [ ] 🔴 ★ **Walk-forward harness:** optimize on window N → validate on untouched window N+1 → roll. **Never report in-sample.**
-- [ ] 🔴 **Metrics:** total return, Sharpe, **Sortino**, **max drawdown**, **Calmar**, win rate, turnover, **rule-adherence score** (mirror judging rubric).
-- [ ] 🟡 Regime-sliced reporting: trend / chop / high-vol / crash evaluated separately.
-- [ ] 🟡 Deterministic + seeded; one command reproduces a full report from clean clone.
+- [x] 🔴 Event-driven backtester over the historical dataset. **Strict point-in-time access — zero look-ahead bias.**
+- [x] 🔴 **Cost model:** BSC gas, size-aware AMM slippage, swap fees, perp funding, fill latency. (A sim without costs lies.)
+- [x] 🔴 ★ **Walk-forward harness:** optimize on window N → validate on untouched window N+1 → roll. **Never report in-sample.**
+- [x] 🔴 **Metrics:** total return, Sharpe, **Sortino**, **max drawdown**, **Calmar**, win rate, turnover, **rule-adherence score** (mirror judging rubric).
+- [x] 🟡 Regime-sliced reporting: trend / chop / high-vol / crash evaluated separately.
+- [x] 🟡 Deterministic + seeded; one command reproduces a full report from clean clone. → `cd core && .venv/Scripts/python.exe -m report` (walk-forward OOS + regime breakdown, costs on).
 - ✅ **Exit:** run any strategy through walk-forward and print **honest out-of-sample, cost-inclusive** metrics.
 
 ---
 
 ## STEP 3 — Strategy & Signals (the alpha) (Jun 11–15)  *(overlaps Step 2)*
 
-- [ ] 🔴 ★ Implement signal library (see `STRATEGY.md`), each independently testable:
-  - [ ] momentum / trend (price TA)
-  - [ ] sentiment / social (CMC)
-  - [ ] derivatives: funding rate + open interest (CMC)
-  - [ ] on-chain flow (CMC)
-- [ ] 🔴 **Regime detector** (trend vs chop vs high-vol) — deterministic first.
-- [ ] 🔴 ★ Combine **2–3 orthogonal signals** into one strategy. Resist extra knobs.
-- [ ] 🔴 Walk-forward optimize; select for **parameter stability**, not the peak.
-- [ ] 🟡 Per-signal attribution: which signal contributes which edge (kill dead weight).
+- [x] 🔴 ★ Implement signal library (see `STRATEGY.md`), each independently testable:
+  - [x] momentum / trend (price TA)
+  - [x] sentiment / social (CMC)
+  - [x] derivatives: funding rate + open interest (CMC)
+  - [x] on-chain flow (CMC)
+- [x] 🔴 **Regime detector** (trend vs chop vs high-vol) — deterministic first.
+- [x] 🔴 ★ Combine **2–3 orthogonal signals** into one strategy. Resist extra knobs.
+- [x] 🔴 Walk-forward optimize; select for **parameter stability**, not the peak.
+- [x] 🟡 Per-signal attribution: which signal contributes which edge (kill dead weight).
 - ✅ **Exit:** strategy with **positive, stable, out-of-sample** risk-adjusted returns net of costs across regimes.
 
 ---
 
 ## STEP 4 — Drawdown-First Risk Engine (Jun 13–16)  ★
 
-- [ ] 🔴 **Position sizing:** volatility targeting / capped fractional-Kelly (size down as vol rises).
-- [ ] 🔴 **Hard guardrails (code):** per-trade cap, **daily-loss → halt**, max open exposure, slippage cap, token allowlist.
-- [ ] 🔴 **Regime gating:** size down / sit out in bad or uncertain regimes.
-- [ ] 🟡 **Mistake-avoidance:** "lost on this exact setup before?" lookup → block/penalize.
-- [ ] 🔴 ★ Re-run walk-forward with **objective = risk-adjusted return − hard drawdown penalty** (not raw return).
+- [x] 🔴 **Position sizing:** volatility targeting / capped fractional-Kelly (size down as vol rises).
+- [x] 🔴 **Hard guardrails (code):** per-trade cap, **daily-loss → halt**, max open exposure, slippage cap, token allowlist.
+- [x] 🔴 **Regime gating:** size down / sit out in bad or uncertain regimes.
+- [ ] 🟡 **Mistake-avoidance:** "lost on this exact setup before?" lookup → block/penalize. *(Step 6 — Upstash Vector)*
+- [x] 🔴 ★ Re-run walk-forward with **objective = risk-adjusted return − hard drawdown penalty** (not raw return).
 - ✅ **Exit:** risk engine cuts max drawdown in sim at minimal return cost; daily-loss kill verified.
 
 ---
 
 ## STEP 5 — Live Runtime + Execution Reliability (Jun 15–18)
 
-- [ ] 🔴 Live decision loop importing the **same `/core` strategy** (no duplicate logic) on the live feed.
-- [ ] 🔴 **Executor:** simulate-before-send → sign (TWAK) → send (BNB) → on-chain confirm → ledger reconcile. **Idempotency keys.**
-- [ ] 🔴 **Trigger.dev:** scheduled scan, trade-status monitor, reflection job. Retries+backoff, dead-letter, alerts.
-- [ ] 🔴 **Kill switch:** UI → Convex `config.halted` → agent halts within one cycle. Circuit breaker.
-- [ ] 🟡 **Web dashboard (PWA):** React + Vite + `vite-plugin-pwa` — mobile-responsive; manifest + service worker so it installs on home screen. No app store needed.
-- [ ] 🟡 **QR code in terminal:** after onboarding, Python `qrcode` lib renders ASCII QR pointing to the hosted PWA URL. User scans → mobile dashboard loads instantly.
-- [ ] 🟡 **Mobile controls via Convex:** kill switch, risk cap adjustments, PnL/drawdown live view all go through Convex real-time — no separate webhook server required.
-- [ ] 🟡 Every cycle writes a `decision` row (data snapshot, signals, regime, sizing, verdict, outcome).
-- [ ] 🟡 **Chaos test:** kill switch mid-trade, failed tx, API timeout, risk veto → no double-execution.
-- ✅ **Exit:** live testnet trade matches what the sim would have done; failure modes clean.
+- [x] 🔴 Live decision loop importing the **same `/core` strategy** (no duplicate logic) on the live feed. `agent/loop.py` calls the RiskEngine-wrapped core; **sim/live parity proven** (paper loop == backtest fill-for-fill + equity, `agent/tests/test_live_runtime.py`).
+- [x] 🔴 **Executor:** simulate-before-send → sign (TWAK) → send (BNB) → on-chain confirm → ledger reconcile. **Idempotency keys** (cycle_id) block double-execution. `agent/executor.py` (`PaperExecutor` + `OnchainExecutor`).
+- [x] 🔴 **Trigger.dev:** `jobs/src/decisionLoop.ts` (hourly scan), `tradeMonitor.ts` (1-min watchdog), `reflection.ts` (post-trade, Step-6 seam). Retries+backoff+dead-letter via `trigger.config.ts`; idempotent.
+- [x] 🔴 **Kill switch:** UI → Convex `config.halted` → agent halts within one cycle (`config.ts:setHalted`/`isHalted`, checked first every cycle). Circuit breaker surfaced in `risk_state`.
+- [x] 🟡 **Web dashboard (PWA):** `web/` React + Vite + `vite-plugin-pwa` (manifest + service worker). Reads Convex reactive state; kill-switch toggle; decisions feed.
+- [x] 🟡 **QR code in terminal:** `agent/qr.py` renders an ASCII QR for `PWA_URL` on startup (graceful fallback if `qrcode` absent).
+- [x] 🟡 **Mobile controls via Convex:** kill switch + caps + PnL/drawdown all flow through Convex real-time (`config`, `riskState`, `ledger`, `decisions`) — no separate webhook server.
+- [x] 🟡 Every cycle writes a `decision` row (signals, regime, target, verdict, sizing, trade link) — idempotent on cycle_id.
+- [x] 🟡 **Chaos test:** kill switch, failed tx, broadcast error, RPC timeout, reverted tx, slippage-cap reject, risk veto, replayed cycle → no double-execution. 17/17 green.
+- ✅ **Exit:** paper loop reconciles to the sim fill-for-fill; failure modes return clean reports (no crash, no double-trade). Live testnet trade still pending a funded wallet (Step 1 carry-over); `--dry-run` simulate-before-send path verified via mocks.
+
+### Step 5 verification (Jun 7)
+- Convex bus deployed + seeded; `config:isHalted` live. Paper smoke (`agent/smoke.py`, 250 BNB bars) wrote real `decisions`/`trades`/`ledger`/`risk_state` rows to `festive-newt-1` — verified via Convex query.
+- `core/.venv/Scripts/python.exe -m pytest agent/tests -v` → 26 passed (parity + chaos + twak executor + crash-recovery).
+
+### Step 5 hardening (Jun 7) — wallet + AgentForge learnings
+- **Self-custody execution wired:** `agent/twak_cli.py` + `TwakSwapExecutor` use the `twak` CLI (route + sign on-device + broadcast); BNB SDK confirms the receipt. `EXECUTION_BACKEND=twak` (default) keeps **zero raw keys** in code. `python -m agent.wallet` verifies the connection. Wallet creation/funding is operator-run (faucet for testnet, small capital for mainnet) — twak swap is mainnet, paper covers pre-mainnet.
+- **Crash-state recovery (AgentForge Lesson 11):** `agent/recovery.py` + `--recover` rebuild ledger + RiskEngine + executor idempotency set from the Convex event log on restart → a restart mid-position cannot double-trade or mis-account. `RiskEngine.restore()` replays trades through the internal tracker.
+- AgentForge cross-check: we already satisfy its safety-in-code, policy-loop, structured-result, and test-the-boundaries lessons. Deferred to Phase 6 (LLM layer): untrusted-content wrapping for CMC/social/web data, subagent guardrails (scoped tools/max_turns/timeout), context compaction.
 
 ---
 

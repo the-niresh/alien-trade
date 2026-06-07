@@ -105,6 +105,32 @@ class BinanceClient:
                 break
         return all_klines
 
+    def fetch_recent_bars(
+        self,
+        symbol: str,
+        interval: str = "1h",
+        limit: int = 200,
+    ) -> list[Bar]:
+        """
+        Live feed: pull the most recent `limit` completed klines for `symbol`.
+        Reuses the same Binance source + schema as the historical pull, so the
+        bars the live agent sees are identical in shape to what the sim trained
+        on. Drops the still-forming last candle (point-in-time, no look-ahead).
+        """
+        if symbol not in SYMBOL_PAIRS:
+            raise ValueError(f"No Binance pair for {symbol!r}. Add it to SYMBOL_PAIRS.")
+        pair = SYMBOL_PAIRS[symbol]
+        binance_interval = INTERVAL_MAP.get(interval, interval)
+        r = self._http.get(
+            "/api/v3/klines",
+            params={"symbol": pair, "interval": binance_interval, "limit": min(limit + 1, 1000)},
+        )
+        r.raise_for_status()
+        klines = r.json()
+        if klines:
+            klines = klines[:-1]  # drop the in-progress candle
+        return self.bars_from_df(_parse_klines(klines))
+
     def bars_from_df(self, df: pl.DataFrame) -> list[Bar]:
         """Convert cached OHLCV DataFrame → list[Bar] for the backtest engine."""
         return [

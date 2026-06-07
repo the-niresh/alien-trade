@@ -8,13 +8,27 @@
  * @module
  */
 
+import type * as audit from "../audit.js";
+import type * as config from "../config.js";
+import type * as decisions from "../decisions.js";
+import type * as ledger from "../ledger.js";
+import type * as riskState from "../riskState.js";
+import type * as trades from "../trades.js";
+
 import type {
   ApiFromModules,
   FilterApi,
   FunctionReference,
 } from "convex/server";
 
-declare const fullApi: ApiFromModules<{}>;
+declare const fullApi: ApiFromModules<{
+  audit: typeof audit;
+  config: typeof config;
+  decisions: typeof decisions;
+  ledger: typeof ledger;
+  riskState: typeof riskState;
+  trades: typeof trades;
+}>;
 
 /**
  * A utility for referencing Convex functions in your app's public API.

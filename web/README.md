@@ -1,14 +1,24 @@
-# web — Dashboard PWA
+# web — Dashboard PWA ✅ (Step 5 scaffold)
 
-React + Vite + shadcn/ui + Tailwind. Installable on mobile via QR code — no app store needed.
+React + Vite + `vite-plugin-pwa` (manifest + service worker → installs on a phone
+home screen via the terminal QR, no app store). Convex is the real-time bridge.
 
-## Features
+## Built
 
-- Live PnL + drawdown chart (Convex real-time)
-- Signal + regime view per cycle
-- Kill switch toggle → writes `config.halted` to Convex
-- Risk cap adjustments
-- Co-pilot chat (grounded in Second Brain)
+- Live PnL, drawdown, open exposure, circuit-breaker cards (Convex reactive `useQuery`)
+- Kill switch toggle → `config:setHalted` mutation (halts agent within one cycle)
+- Recent decisions feed (regime + verdict + size per cycle)
+
+## Planned (later phases)
+
+- PnL/drawdown time-series chart, signal attribution view
+- Risk cap editor, Co-pilot chat (grounded in Second Brain — Step 6)
+- shadcn/ui + Tailwind polish pass
+
+## Setup
+
+Set `VITE_CONVEX_URL` (see `.env.example`). The dashboard imports the generated
+Convex API from `../convex/_generated/api`.
 
 ## Mobile access
 

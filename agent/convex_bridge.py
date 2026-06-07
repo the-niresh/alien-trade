@@ -148,6 +148,13 @@ class ConvexBridge:
     def append_ledger(self, **kw) -> Optional[str]:
         return self._call("mutation", "ledger:append", kw)
 
+    def record_reflection(self, **kw) -> Optional[str]:
+        """Hermes post-trade reflection row (idempotent on trade_id+cycle_id)."""
+        return self._call("mutation", "reflections:record", kw)
+
+    def recent_reflections(self, limit: int = 50) -> list[dict]:
+        return self._call("query", "reflections:recent", {"limit": limit}) or []
+
     def update_risk_state(self, **kw) -> None:
         self._call("mutation", "riskState:update", kw)
 

@@ -19,6 +19,7 @@ class RiskConfig:
     # Hard trade limits
     max_trade_usd: float = 2_000.0          # per-trade size cap
     max_position_pct: float = 0.25          # max single position as % of capital
+    max_open_exposure_pct: float = 0.30     # max CUMULATIVE open exposure as % of equity
     max_slippage_pct: float = 0.02          # abort if simulated slippage > 2%
     token_allowlist: frozenset = field(default_factory=lambda: TOKEN_ALLOWLIST)
 
@@ -73,6 +74,30 @@ def check_guardrails(
     if symbol not in config.token_allowlist:
         return GuardrailResult(False, f"token {symbol!r} not in allowlist")
 
+    return GuardrailResult(True, "")
+
+
+def check_max_exposure(
+    open_exposure_usd: float,
+    new_size_usd: float,
+    equity: float,
+    config: RiskConfig,
+) -> GuardrailResult:
+    """
+    Cumulative open-exposure cap. `check_guardrails` only bounds a *single* trade
+    vs capital; this bounds the *total* open position after adding `new_size_usd`,
+    so a sequence of individually-legal buys can never pile past the cap. This is
+    the max-exposure invariant the risk engine enforces on every buy (Track 1 is
+    scored on drawdown/exposure, so the bound must be provable, not incidental).
+    """
+    if equity <= 0:
+        return GuardrailResult(True, "")
+    cap = config.max_open_exposure_pct * equity
+    projected = open_exposure_usd + new_size_usd
+    if projected > cap + 1e-9:
+        return GuardrailResult(False,
+            f"max exposure: ${projected:.0f} > cap ${cap:.0f} "
+            f"({config.max_open_exposure_pct:.0%} of equity)")
     return GuardrailResult(True, "")
 
 

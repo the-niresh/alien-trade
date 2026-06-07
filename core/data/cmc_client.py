@@ -3,6 +3,11 @@ CMC data client — historical + live feed.
 All output fields match the backtest Bar exactly (parity from day 1).
 Extended fields (funding_rate, OI, social, flow) are stubbed at 0.0 until
 the CMC Agent Hub endpoints are confirmed; the schema is already wired.
+
+x402 micropayments: if X402_PRIVATE_KEY is set, the client uses the full
+x402 protocol (HTTP 402 → sign EVM payment → retry) for every CMC API call.
+Payment wallet must hold USDC on Base (eip155:8453).  Set X402_NETWORK to
+override the network.  If the key is absent, falls back to plain API-key auth.
 """
 from __future__ import annotations
 
@@ -17,7 +22,7 @@ from dotenv import load_dotenv
 from tenacity import retry, stop_after_attempt, wait_exponential
 
 from backtest.engine import Bar
-from config.constants import CMC_BASE_URL, CMC_SYMBOL_IDS
+from config.constants import CMC_BASE_URL, CMC_SYMBOL_IDS, X402_DEFAULT_NETWORK
 
 load_dotenv(Path(__file__).parent.parent.parent / ".env.local")
 
@@ -26,25 +31,93 @@ CACHE_DIR = Path(__file__).parent / "parquet"
 SYMBOL_IDS = CMC_SYMBOL_IDS
 
 
+def _build_x402_http(
+    base_url: str,
+    base_headers: dict[str, str],
+    timeout: float,
+) -> "_X402HttpxClient | None":
+    """Build an x402-enabled httpx wrapper if X402_PRIVATE_KEY is set."""
+    private_key = os.environ.get("X402_PRIVATE_KEY", "").strip()
+    if not private_key:
+        return None
+    try:
+        from x402 import x402ClientSync
+        from x402.http.x402_http_client import x402HTTPClientSync
+        from x402.mechanisms.evm.exact import register_exact_evm_client
+        from x402.mechanisms.evm.signers import EthAccountSigner
+        from eth_account import Account
+
+        network = os.environ.get("X402_NETWORK", X402_DEFAULT_NETWORK)
+        signer = EthAccountSigner(Account.from_key(private_key))
+        core = x402ClientSync()
+        register_exact_evm_client(core, signer, networks=network)
+        http_client = x402HTTPClientSync(core)
+        return _X402HttpxClient(
+            httpx.Client(base_url=base_url, headers=base_headers, timeout=timeout),
+            http_client,
+        )
+    except Exception:
+        return None
+
+
+class _X402HttpxClient:
+    """
+    Thin wrapper: makes a GET, auto-retries with payment headers on HTTP 402.
+    Falls back gracefully — if x402 signing fails, raises the original error.
+    """
+
+    def __init__(self, http: httpx.Client, x402: "x402HTTPClientSync") -> None:
+        self._http = http
+        self._x402 = x402
+
+    def get(self, path: str, **kwargs) -> httpx.Response:
+        r = self._http.get(path, **kwargs)
+        if r.status_code == 402:
+            payment_hdrs, _ = self._x402.handle_402_response(
+                dict(r.headers), r.content
+            )
+            r = self._http.get(path, headers=payment_hdrs, **kwargs)
+        return r
+
+    def close(self) -> None:
+        self._http.close()
+
+
 class CMCClient:
     """
     CMC Pro API wrapper for historical OHLCV and live quotes.
     Caches to parquet so a 2-year pull is a one-time cost.
+    Uses x402 pay-per-call if X402_PRIVATE_KEY is set.
     """
 
     def __init__(self, api_key: Optional[str] = None):
         key = api_key or os.environ.get("CMC_API_KEY", "")
-        headers: dict[str, str] = {
+        base_headers: dict[str, str] = {
             "X-CMC_PRO_API_KEY": key,
             "Accept": "application/json",
         }
-        x402 = os.environ.get("X402_SECRET", "")
-        if x402:
-            headers["X-Payment"] = x402  # ready for micropayment gating
-        self._http = httpx.Client(base_url=CMC_BASE, headers=headers, timeout=30.0)
+        x402_client = _build_x402_http(CMC_BASE, base_headers, timeout=30.0)
+        if x402_client is not None:
+            self._x402_client = x402_client
+            self._http = None                   # not used when x402 active
+        else:
+            self._x402_client = None
+            self._http = httpx.Client(
+                base_url=CMC_BASE, headers=base_headers, timeout=30.0
+            )
+
+    def _get(self, path: str, **params) -> httpx.Response:
+        """GET with automatic x402 402-payment-retry if enabled."""
+        if self._x402_client is not None:
+            return self._x402_client.get(path, params=params)
+        assert self._http is not None
+        return self._http.get(path, params=params)
 
     def close(self) -> None:
-        self._http.close()
+        if self._x402_client is not None:
+            self._x402_client.close()
+        if self._http is not None:
+            self._http.close()
 
     def __enter__(self) -> "CMCClient":
         return self
@@ -86,16 +159,14 @@ class CMCClient:
     def _get_ohlcv(
         self, cmc_id: int, time_start: str, time_end: str, interval: str
     ) -> list[dict]:
-        r = self._http.get(
+        r = self._get(
             "/v2/cryptocurrency/ohlcv/historical",
-            params={
-                "id": cmc_id,
-                "time_start": time_start,
-                "time_end": time_end,
-                "interval": interval,
-                "convert": "USD",
-                "count": 10000,
-            },
+            id=cmc_id,
+            time_start=time_start,
+            time_end=time_end,
+            interval=interval,
+            convert="USD",
+            count=10000,
         )
         r.raise_for_status()
         return r.json()["data"]["quotes"]
@@ -108,9 +179,10 @@ class CMCClient:
         if symbol not in SYMBOL_IDS:
             raise ValueError(f"Unknown symbol {symbol!r}.")
         cmc_id = SYMBOL_IDS[symbol]
-        r = self._http.get(
+        r = self._get(
             "/v2/cryptocurrency/quotes/latest",
-            params={"id": cmc_id, "convert": "USD"},
+            id=cmc_id,
+            convert="USD",
         )
         r.raise_for_status()
         data = r.json()["data"][str(cmc_id)]
@@ -134,7 +206,7 @@ class CMCClient:
     # ── Bar conversion ───────────────────────────────────────────────────────
 
     def bars_from_df(self, df: pl.DataFrame) -> list[Bar]:
-        """Convert cached OHLCV DataFrame → list[Bar] for the backtest engine."""
+        """Convert cached OHLCV DataFrame -> list[Bar] for the backtest engine."""
         return [
             Bar(
                 timestamp=int(row["timestamp_ms"]),

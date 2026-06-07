@@ -505,6 +505,45 @@ class TestCrashRecovery:
         assert rep.recovered is False
 
 
+# ── 5d. PAPER REHEARSAL reconciliation (Step 7) ───────────────────────────────
+
+class TestRehearsal:
+    def test_paper_rehearsal_reconciles_offline(self):
+        from agent.config import AgentConfig
+        from agent.rehearsal import reconcile
+
+        bars = _bars(150, trend=1.004)
+        cfg = AgentConfig(symbol="BNB")
+        cfg.convex_url = ""                                   # offline bridge
+        cfg.strategy = StrategyParams(s1_fast=5, s1_slow=21, entry_threshold=0.10,
+                                      position_size_usd=1_000.0)
+        rep = reconcile(cfg, bars)
+
+        assert rep.passed
+        assert rep.fills_match and rep.sim_fills == rep.live_fills
+        assert rep.live_fills > 0                             # meaningful (fills happened)
+        assert rep.equity_drift_usd < 1e-6
+        assert rep.one_decision_per_cycle and rep.decisions_written == rep.cycles
+
+
+# ── 5e. OBSERVABILITY: structured logging keyed by trace ──────────────────────
+
+class TestObservability:
+    def test_jlog_emits_valid_json_with_trace(self, capsys):
+        import json as _json
+        from agent.observability import jlog
+        line = jlog("cycle", trace="BNB-123", regime="trend", verdict="allow", equity=10_000.0)
+        rec = _json.loads(line)
+        assert rec["event"] == "cycle" and rec["trace"] == "BNB-123"
+        assert rec["regime"] == "trend" and "ts_ms" in rec
+        assert "BNB-123" in capsys.readouterr().out
+
+    def test_jlog_is_cp1252_safe(self):
+        from agent.observability import jlog
+        # LLM/market text can carry non-cp1252 chars; the line must stay encodable.
+        jlog("digest", note="price rose to $595 — watch resistance").encode("cp1252")
+
+
 # ── 6. LEDGER accounting ──────────────────────────────────────────────────────
 
 class TestLedger:

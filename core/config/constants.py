@@ -74,6 +74,11 @@ TOKENS: dict[str, dict[str, str]] = {
     },
 }
 
+# ── x402 micropayments ───────────────────────────────────────────────────────
+# Default EVM network for x402 pay-per-call: Base mainnet (eip155:8453).
+# Can be overridden at runtime via X402_NETWORK env var.
+X402_DEFAULT_NETWORK = "eip155:8453"
+
 # ── CMC ───────────────────────────────────────────────────────────────────────
 
 CMC_BASE_URL = "https://pro-api.coinmarketcap.com"

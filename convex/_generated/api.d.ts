@@ -12,6 +12,7 @@ import type * as audit from "../audit.js";
 import type * as config from "../config.js";
 import type * as decisions from "../decisions.js";
 import type * as ledger from "../ledger.js";
+import type * as reflections from "../reflections.js";
 import type * as riskState from "../riskState.js";
 import type * as trades from "../trades.js";
 
@@ -26,6 +27,7 @@ declare const fullApi: ApiFromModules<{
   config: typeof config;
   decisions: typeof decisions;
   ledger: typeof ledger;
+  reflections: typeof reflections;
   riskState: typeof riskState;
   trades: typeof trades;
 }>;

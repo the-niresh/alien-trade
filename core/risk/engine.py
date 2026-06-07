@@ -18,7 +18,7 @@ from typing import Optional
 import numpy as np
 
 from backtest.engine import Bar, Order, StrategyFn
-from risk.guardrails import RiskConfig, GuardrailResult, check_guardrails
+from risk.guardrails import RiskConfig, GuardrailResult, check_guardrails, check_max_exposure
 from risk.sizing import compute_position_size
 
 
@@ -156,9 +156,21 @@ class RiskEngine:
         if sized_usd < 10.0:
             return None
 
-        # ── Mistake-avoidance (stub — wired to Upstash Vector in Step 6) ──────
-        # penalty = _query_second_brain(history, order)  # TODO Step 6
-        # if penalty > 0.8: return None
+        # ── Max-exposure invariant: a buy may never push CUMULATIVE open
+        #    exposure past the cap (a sequence of legal buys can't pile over).
+        #    Sells reduce exposure, so they're never gated here. ───────────────
+        if order.side == "buy":
+            exposure = check_max_exposure(
+                open_exposure_usd=self._pos.units * price,
+                new_size_usd=sized_usd,
+                equity=current_equity,
+                config=self._config,
+            )
+            if not exposure.allowed:
+                return None
+
+        # ── Mistake-avoidance: the live Hermes read path runs in the agent loop
+        #    (agent/secondbrain/avoidance.py), off the /core hot path. ─────────
 
         # ── Update internal tracker + emit order ──────────────────────────────
         if order.side == "buy":

@@ -2,12 +2,15 @@ import { logger, task } from "@trigger.dev/sdk/v3";
 
 /**
  * Post-trade reflection job (Hermes loop seam). Fired after each trade closes.
- * Step 6 wires the body to: build {signals, regime, outcome, lesson} → compress
- * → upsert to Upstash Vector for mistake-avoidance. For now it's the idempotent
- * scaffold so the executor → reflection plumbing exists end-to-end.
  *
- * Trigger with an idempotencyKey of the trade/cycle id so a retry never writes
- * the same reflection twice.
+ * Step 6 status: the Hermes write-path is IMPLEMENTED in the Python runtime —
+ * `agent/secondbrain/reflection.py::ReflectionWriter` builds {signals, regime,
+ * outcome, lesson}, embeds it under the setup key in Upstash Vector, and writes
+ * the Convex `reflections` row, fired in-process by the decision loop on a
+ * closing fill. This Trigger.dev task remains as an external backstop: it can
+ * POST {tradeId, cycleId, ...} to the agent if you prefer to drive reflection
+ * out-of-band. Keep the idempotencyKey = trade/cycle id so a retry never writes
+ * the same reflection twice (the Convex mutation is also idempotent on it).
  */
 export const reflection = task({
   id: "reflection",

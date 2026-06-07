@@ -115,3 +115,38 @@ def halt() -> dict:
 def resume() -> dict:
     get_loop().bridge.set_halted(False)
     return {"halted": False}
+
+
+# ── Second Brain (Step 6) — all off the trade hot path ──────────────────────────
+
+def _second_brain():
+    return getattr(get_loop(), "second_brain", None)
+
+
+@app.post("/copilot")
+def copilot(body: dict) -> dict:
+    """Grounded Q&A over the Second Brain. POST {"question": "..."}."""
+    sb = _second_brain()
+    if sb is None:
+        return {"answer": "Second Brain disabled or offline.", "grounded": False}
+    return sb.copilot().ask(str(body.get("question", "")))
+
+
+@app.post("/research")
+def research() -> dict:
+    """Run one Karpathy AutoResearch cycle and store digests."""
+    sb = _second_brain()
+    if sb is None:
+        return {"digests": 0, "note": "Second Brain disabled or offline."}
+    digests = sb.research(symbol=get_loop().symbol).run_cycle()
+    return {"digests": len(digests),
+            "questions": [d.question for d in digests]}
+
+
+@app.get("/telemetry")
+def telemetry() -> dict:
+    """LLM cost telemetry: tokens, cost, cache-hit rate, $ saved vs naive Opus."""
+    sb = _second_brain()
+    if sb is None:
+        return {"enabled": False}
+    return {"enabled": True, **sb.telemetry.snapshot()}

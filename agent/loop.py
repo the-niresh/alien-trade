@@ -58,6 +58,7 @@ class DecisionLoop:
         base_position_usd: float = 1_000.0,
         max_consecutive_losses: int = 5,
         mistake_avoidance: Optional[MistakeAvoidance] = None,
+        reflection_writer: Optional[object] = None,
     ):
         self.feed = feed
         self.strategy = strategy            # the SAME risk-wrapped /core strategy
@@ -69,6 +70,8 @@ class DecisionLoop:
         self.base_position_usd = base_position_usd
         self.max_consecutive_losses = max_consecutive_losses
         self.brain = mistake_avoidance or AllowAll()
+        # Hermes write-side (post-trade reflection). None = disabled (Step 5 default).
+        self.reflection_writer = reflection_writer
         self.ledger = LedgerState(initial_capital=initial_capital)
 
     # ── one cycle ────────────────────────────────────────────────────────────
@@ -103,9 +106,19 @@ class DecisionLoop:
                 verdict, reason = "block", f"mistake-avoidance: {ma.reason}"
                 self.bridge.audit("risk_veto", cycle_id, {"reason": ma.reason}, "warn")
             else:
-                final_size = order.size_usd
-                execution = self.executor.execute(order, bar, idempotency_key=cycle_id)
-                verdict, reason, trade_id = self._handle_execution(execution, bar, cycle_id)
+                exec_order = order
+                # Hermes soft veto: shrink the order on a historically-bad setup.
+                if ma.size_penalty > 0.0:
+                    exec_order = Order(
+                        side=order.side, size_usd=order.size_usd * (1.0 - ma.size_penalty),
+                        symbol=order.symbol, timestamp=order.timestamp,
+                    )
+                    self.bridge.audit("risk_veto", cycle_id,
+                                      {"reason": ma.reason, "size_penalty": ma.size_penalty}, "warn")
+                final_size = exec_order.size_usd
+                execution = self.executor.execute(exec_order, bar, idempotency_key=cycle_id)
+                verdict, reason, trade_id = self._handle_execution(
+                    execution, bar, cycle_id, regime.value, breakdown)
 
         return self._finalise(
             cycle_id, bar, regime.value, verdict, reason, order, execution,
@@ -114,7 +127,8 @@ class DecisionLoop:
 
     # ── execution → ledger → trade/ledger rows ──────────────────────────────
 
-    def _handle_execution(self, execution: ExecutionReport, bar: Bar, cycle_id: str):
+    def _handle_execution(self, execution: ExecutionReport, bar: Bar, cycle_id: str,
+                          regime: str = "", breakdown: Optional[dict] = None):
         if execution.is_fill and execution.fill is not None:
             realized = self.ledger.apply(execution.fill)
             trade_id = self.bridge.record_trade(
@@ -144,6 +158,15 @@ class DecisionLoop:
                              {"side": execution.order.side, "size_usd": execution.order.size_usd,
                               "fill_price": execution.fill.fill_price, "tx_hash": execution.tx_hash,
                               "realized_pnl": realized}, "info")
+            # Hermes write-side: a sell closes/reduces a position → reflect on the
+            # realized outcome. (Buys open positions — no outcome to learn yet.)
+            if (self.reflection_writer is not None
+                    and execution.order.side == "sell" and breakdown is not None):
+                self.reflection_writer.reflect(
+                    cycle_id=cycle_id, trade_id=trade_id, timestamp_ms=bar.timestamp,
+                    regime=regime, side=execution.order.side, signals=breakdown,
+                    realized_pnl=realized,
+                )
             return "allow", execution.reason, trade_id
 
         if execution.status == DUPLICATE:
@@ -199,13 +222,31 @@ class DecisionLoop:
         return results
 
     def run_forever(self, cycle_seconds: int) -> None:
-        """Live driver: one cycle, sleep to cadence, repeat. Ctrl-C to stop."""
+        """Live driver: one cycle, sleep to cadence, repeat. Ctrl-C to stop.
+
+        Each cycle is wrapped so an unanticipated exception is logged (structured,
+        keyed by trace) and audited to Convex, then the loop CONTINUES — a testnet
+        shadow-run must survive the surprises it exists to surface, not die on the
+        first one."""
+        from agent.observability import jlog
         while True:
-            history = self.feed.next()
-            if history:
-                res = self.run_cycle(history)
-                print(f"[cycle] {res.cycle_id} regime={res.regime} verdict={res.verdict} "
-                      f"equity=${res.equity:,.0f} dd={res.drawdown_pct:.2%} :: {res.reason}")
+            try:
+                history = self.feed.next()
+                if history:
+                    res = self.run_cycle(history)
+                    jlog("cycle", trace=res.cycle_id, regime=res.regime,
+                         verdict=res.verdict, equity=round(res.equity, 2),
+                         drawdown=round(res.drawdown_pct, 4),
+                         filled=bool(res.execution and res.execution.is_fill),
+                         halted=res.halted, reason=res.reason)
+            except Exception as e:  # noqa: BLE001 — shadow-run resilience
+                jlog("cycle_error", level="error",
+                     error=str(e), error_type=type(e).__name__)
+                try:
+                    self.bridge.audit("error", None,
+                                      {"error": str(e), "error_type": type(e).__name__}, "error")
+                except Exception:  # noqa: BLE001
+                    pass
             time.sleep(cycle_seconds)
 
 

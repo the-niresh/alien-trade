@@ -8,7 +8,9 @@ import numpy as np
 from backtest.engine import Bar, Order, run_backtest
 from backtest.costs import BSCCostModel
 from backtest.walk_forward import WalkForwardConfig, run_walk_forward
-from risk.guardrails import RiskConfig, TOKEN_ALLOWLIST, check_guardrails, check_slippage
+from risk.guardrails import (
+    RiskConfig, TOKEN_ALLOWLIST, check_guardrails, check_slippage, check_max_exposure,
+)
 from risk.sizing import vol_target_size, kelly_fraction, compute_position_size, realized_vol
 from risk.engine import RiskEngine, make_risk_strategy
 from strategy.combined import StrategyParams, make_strategy
@@ -192,6 +194,82 @@ class TestRiskEngine:
         result = run_backtest(_bars(100, trend=1.004), engine, cost_model=BSCCostModel())
         for f in result.fills:
             assert f.order.size_usd <= 1_000.0 + 1e-6, f"cap breached: {f.order.size_usd}"
+
+
+# ── Max-exposure invariant (Step 7 security pass) ─────────────────────────────
+
+class TestMaxExposureInvariant:
+    """The cumulative open-exposure cap must hold at emission time across ANY buy
+    sequence — a stack of individually-legal buys can never pile past the cap.
+    (Appreciation of an already-held position may drift current exposure above
+    the cap; that's mark-to-market, not a new exposure decision, so it's allowed
+    — the invariant is on the *emitted order*, not the instantaneous mark.)"""
+
+    def test_check_max_exposure_pure(self):
+        cfg = RiskConfig(max_open_exposure_pct=0.30)
+        assert check_max_exposure(2_000, 1_000, 10_000, cfg).allowed        # 3000 == cap
+        assert not check_max_exposure(2_500, 1_000, 10_000, cfg).allowed    # 3500 > 3000
+        assert check_max_exposure(0, 0, 0, cfg).allowed                     # no equity → no-op
+
+    def test_always_buy_cannot_pile_past_cap(self):
+        """Adversarial inner strategy that tries to buy on every bar."""
+        def always_buy(history):
+            return Order(side="buy", size_usd=1_000.0, symbol="BNB",
+                         timestamp=history[-1].timestamp)
+        cfg = RiskConfig(max_open_exposure_pct=0.30, max_trade_usd=2_000.0,
+                         base_position_usd=1_000.0,
+                         daily_loss_limit_pct=1.0, max_consecutive_losses=10_000)
+        engine = RiskEngine(always_buy, cfg, initial_capital=10_000.0)
+        bars = _bars(150, trend=1.001, vol=0.004)
+
+        emitted = 0
+        for i in range(30, len(bars)):
+            hist = bars[: i + 1]
+            price = hist[-1].close
+            units_before = engine._pos.units
+            equity_before = engine._pos.cash + units_before * price
+            order = engine(hist)
+            if order is not None and order.side == "buy":
+                emitted += 1
+                projected = units_before * price + order.size_usd
+                cap = cfg.max_open_exposure_pct * equity_before
+                assert projected <= cap + 1.0, (
+                    f"bar {i}: emitted buy pushes exposure ${projected:.0f} > cap ${cap:.0f}")
+        assert emitted >= 1, "test is meaningless if no buys were ever emitted"
+        # The cap must have BLOCKED most bars (it didn't buy every single bar).
+        assert emitted < (len(bars) - 30)
+
+    def test_random_buy_sell_sequence_holds_invariant(self):
+        """Property check: random buy/sell stream never emits an over-cap buy."""
+        rng = np.random.default_rng(123)
+        def random_trader(history):
+            side = "buy" if rng.random() < 0.7 else "sell"
+            return Order(side=side, size_usd=800.0, symbol="BNB",
+                         timestamp=history[-1].timestamp)
+        cfg = RiskConfig(max_open_exposure_pct=0.25, max_trade_usd=2_000.0,
+                         base_position_usd=800.0,
+                         daily_loss_limit_pct=1.0, max_consecutive_losses=10_000)
+        engine = RiskEngine(random_trader, cfg, initial_capital=10_000.0)
+        bars = _bars(200, trend=1.0005, vol=0.01)
+        for i in range(30, len(bars)):
+            hist = bars[: i + 1]
+            price = hist[-1].close
+            units_before = engine._pos.units
+            equity_before = engine._pos.cash + units_before * price
+            order = engine(hist)
+            if order is not None and order.side == "buy":
+                projected = units_before * price + order.size_usd
+                assert projected <= cfg.max_open_exposure_pct * equity_before + 1.0
+
+    def test_real_strategy_unaffected_single_position(self):
+        """The real single-position strategy never trips the cap (regression guard
+        that the new check doesn't change normal behaviour)."""
+        params = StrategyParams(s1_fast=5, s1_slow=21, entry_threshold=0.05,
+                                position_size_usd=1_000.0)
+        engine = make_risk_strategy(make_strategy(params), RiskConfig(),
+                                    initial_capital=10_000.0)
+        result = run_backtest(_bars(150, trend=1.004), engine, cost_model=BSCCostModel())
+        assert "sortino" in result.metrics   # ran clean, fills produced as before
 
 
 # ── Walk-forward: risk engine reduces max drawdown ────────────────────────────

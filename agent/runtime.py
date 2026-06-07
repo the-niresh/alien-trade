@@ -69,22 +69,37 @@ def build_bridge(cfg: AgentConfig) -> ConvexBridge:
     return bridge
 
 
+def build_second_brain(cfg: AgentConfig, bridge):
+    """Step-6 Hermes + memory layer. Returns None when disabled or fully offline
+    (no keys) so the loop keeps its Step-5 defaults (AllowAll, no reflection)."""
+    if not cfg.second_brain_enabled:
+        return None
+    from agent.secondbrain import build_second_brain as _build
+    sb = _build(params=cfg.strategy, bridge=bridge)
+    return sb if sb.enabled else None
+
+
 def build_loop(cfg: AgentConfig, *, feed=None, dry_run: bool = False,
                recover: bool = False) -> DecisionLoop:
     if feed is None:
         feed = BinanceLiveFeed(cfg.symbol, interval=cfg.bar_interval, history_bars=cfg.history_bars)
+    bridge = build_bridge(cfg)
+    sb = build_second_brain(cfg, bridge)
     loop = DecisionLoop(
         feed=feed,
         strategy=build_strategy(cfg),
         executor=build_executor(cfg, dry_run=dry_run),
-        bridge=build_bridge(cfg),
+        bridge=bridge,
         params=cfg.strategy,
         symbol=cfg.symbol,
         mode=cfg.mode,
         initial_capital=cfg.initial_capital,
         base_position_usd=cfg.risk.base_position_usd,
         max_consecutive_losses=cfg.risk.max_consecutive_losses,
+        mistake_avoidance=sb.avoidance if sb else None,
+        reflection_writer=sb.reflection_writer if sb else None,
     )
+    loop.second_brain = sb   # co-pilot / research / telemetry access (may be None)
     if recover:
         from agent.recovery import recover as _recover
         rep = _recover(loop)

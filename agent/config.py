@@ -49,6 +49,13 @@ class AgentConfig:
     # PWA URL rendered as a terminal QR on startup
     pwa_url: str = field(default_factory=lambda: os.environ.get("PWA_URL", ""))
 
+    # Second Brain (Step 6 — Hermes + AutoResearch + co-pilot). Off the hot path.
+    # Disable with SECOND_BRAIN=0. When on but Upstash/Anthropic keys are absent,
+    # every component degrades to its offline fallback (no network dependency).
+    second_brain_enabled: bool = field(
+        default_factory=lambda: os.environ.get("SECOND_BRAIN", "1").lower()
+        not in ("0", "false", "no"))
+
     # Sub-configs from /core (shared with the sim)
     risk: RiskConfig = field(default_factory=RiskConfig)
     strategy: StrategyParams = field(default_factory=StrategyParams)

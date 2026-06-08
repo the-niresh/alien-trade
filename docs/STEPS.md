@@ -8,6 +8,15 @@ Legend: 🔴 blocker / must-pass · 🟡 important · 🟢 polish · ⏱ timebox
 
 ---
 
+## ▶ RESUME HERE (Jun 8 — after break)
+
+Steps 0–7 are done (sim/live parity, risk engine, Second Brain, paper rehearsal all green). This session locked the **agent-team architecture + social layer**; the build of that is **STEP 8 below**. Nothing needs funding to continue.
+
+- **Done this session:** social ingestion layer **built, tested (9/9), and live** (`agent/social/`, 30 RSS + 8 Farcaster posts pulled, no creds). Docs written: `AGENT_TEAM_PLAN.md`, `SPONSOR_TOOLS_INTEGRATION.md`, `SOCIAL_LAYER.md`; `FRONTEND_PLAN.md` reconciled. Decisions locked: Option-B forecast bridge, read-only agent channel + 3 graduated stops, twscrape = swappable adapter, **CMC x402 = USDC on Base only** ($0.01/call, gasless), **single Trust Wallet** (no burner), fund only when going live.
+- **Next action when back:** STEP 8.1 — write `agent/graph/contracts.py` + add Convex tables (`agent_events`, `forecast_state`, `agent_control`). It's the foundation the agent team **and** the social UI both plug into, and needs zero funds.
+
+---
+
 ## STEP 0 — Foundations (Jun 5–6)
 
 - [x] 🔴 Monorepo layout created: `core/signals core/backtest core/exec core/risk core/data agent/ web/ convex/ jobs/ docs/`. Planning docs moved to `docs/`. `CLAUDE.md` stays at root.
@@ -149,6 +158,52 @@ Legend: 🔴 blocker / must-pass · 🟡 important · 🟢 polish · ⏱ timebox
 - `agent/rehearsal.py` reconciliation: cache 500 bars → 8 sim fills == 8 live fills, drift $0.00, 1 decision/cycle; live feed 200 bars → 1==1, drift $0.00. Both PASS.
 - `pytest agent/tests core/tests` → **174 passed, 1 skipped** (+ max-exposure invariant, rehearsal reconcile, observability tests; parity unbroken).
 - Wallet-independent Step-7 work complete; remaining items (mainnet sanity trade, x402 live settlement, demo) are gated on the wallet/endpoint and tracked for when funded.
+
+---
+
+## STEP 8 — Agent Team + Social Layer + Glass Cockpit (Jun 8+)
+
+> The multi-agent productization. Refs: `AGENT_TEAM_PLAN.md`, `SOCIAL_LAYER.md`,
+> `SPONSOR_TOOLS_INTEGRATION.md`, `FRONTEND_PLAN.md`, memory `reference-cmc-x402`.
+> Build order is contracts-first; nothing here needs funding except 8.6.
+
+### 8.1 Foundation (do first — no funds)
+- [ ] 🔴 `agent/graph/contracts.py` — every inter-agent payload + the failure matrix (AGENT_TEAM_PLAN §9.2/§9.3) defined before wiring.
+- [ ] 🔴 Convex tables: `agent_events` (append-only chat/audit stream), `forecast_state` (Option-B bridge), `agent_control` (kill/pause/stop, user-writable).
+
+### 8.2 Social layer — finish the wiring (ingestion already built + live)
+- [x] 🔴 `agent/social/` ingestion: RSS + Farcaster **live**, Telegram + twscrape built+gated; deterministic sentiment scorer; 9/9 tests; one live pull verified.
+- [x] 🟡 Convex schema `social_sources` / `social_posts` / `sentiment_state` added.
+- [ ] 🔴 `convex/social.ts` — watchlist CRUD (user) + write posts/sentiment (agent).
+- [ ] 🟡 Trigger.dev schedule for `agent.social.ingest` (every N min, off hot path).
+- [ ] 🔴 ★ Bridge `sentiment_state` → core signal **S3** (point-in-time; parity test).
+- [ ] 🟢 Optional async LLM enrichment (pump/manipulation + claim detection).
+
+### 8.3 Orchestrator graph
+- [ ] 🔴 `agent/graph/supervisor.py` (LangGraph). **Start with 2 nodes** (co-pilot + historian), prove graph + channel, then grow (AGENT_TEAM_PLAN §9.6). Single chat entry; observes the hot path via Convex, reacts to events.
+
+### 8.4 Option-B forecast bridge
+- [ ] 🔴 `core/risk/` bounded multiplier (**shrink-only**, decays to neutral) + tests (can't enlarge; decay; sim/live parity). Researcher emits a deterministic confidence float → `forecast_state`.
+
+### 8.5 Glass cockpit (PWA)
+- [ ] 🟡 `emit_event` helper — every agent writes its trace.
+- [ ] 🟡 Read-only agent chat rendering of `agent_events` (grouped by cycle).
+- [ ] 🔴 Three stop controls writing `agent_control`: Stop response / Pause Agents / **Kill Switch** (confirm-gated; reuses existing `/halt`).
+
+### 8.6 x402 go-live (only when funding) — see `reference-cmc-x402`
+- [ ] 🔴 Route live quote to `/x402/v3/cryptocurrency/quotes/latest` when x402 on; keep historical on `/v2` + API key (no x402 historical endpoint exists).
+- [ ] 🔴 Pay via **`twak x402` on the single Trust Wallet** (no burner, no raw key) OR the `X402_PRIVATE_KEY` burner. Fund **15 USDC on Base** (gasless, no ETH).
+- [ ] 🔴 Verify one live `402 → sign → 200 → $0.01 settle`. x402 proven.
+
+### 8.7 Sponsor depth (special-prize upside) — see `SPONSOR_TOOLS_INTEGRATION.md`
+- [ ] 🟡 Wire **CMC MCP (12 tools)** into the researcher + co-pilot.
+- [ ] 🟡 **Publish the Track-2 strategy as a CMC Skill** (Skills Marketplace + Track 2 + CMC prize in one).
+- [ ] 🟢 **TWAK native x402 provider** — expose the regime/signal digest as a paid endpoint ("both sides of x402").
+
+### 8.8 Dreamer (nightly consolidation)
+- [ ] 🟢 Trigger.dev nightly job: review the day, score prior forecasts vs outcomes, dedupe/compress memory, write a nightly digest (AGENT_TEAM_PLAN §9.4).
+
+- ✅ **Exit:** agent team visible in the cockpit; social sentiment feeding S3; forecast bridge shrinking size on cue; x402 live; sponsor depth documented.
 
 ---
 

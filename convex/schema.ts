@@ -122,4 +122,44 @@ export default defineSchema({
   })
     .index("by_cycle", ["cycle_id"])
     .index("by_symbol_time", ["symbol", "timestamp_ms"]),
+
+  // Social layer — the user's curated watchlist of traders/channels to watch.
+  // USER-writable (the "add your list" surface); the agent only reads it.
+  social_sources: defineTable({
+    platform: v.union(
+      v.literal("rss"), v.literal("farcaster"),
+      v.literal("telegram"), v.literal("twitter"),
+    ),
+    handle: v.string(),              // feed URL | username | channel
+    label: v.string(),               // display name
+    weight: v.number(),              // user trust weight
+    enabled: v.boolean(),
+    added_ms: v.number(),
+  })
+    .index("by_platform", ["platform"]),
+
+  // Normalised posts ingested from the watchlist (agent-written, UI feed).
+  social_posts: defineTable({
+    post_id: v.string(),             // "<platform>:<native_id>" (dedupe key)
+    platform: v.string(),
+    author: v.string(),
+    text: v.string(),
+    url: v.string(),
+    ts_ms: v.number(),
+    symbols: v.array(v.string()),    // detected tickers
+  })
+    .index("by_post_id", ["post_id"])
+    .index("by_ts", ["ts_ms"]),
+
+  // Off-hot-path deterministic sentiment feature per symbol (feeds signal S3,
+  // same bridge shape as forecast_state: a bounded number crosses into the core).
+  sentiment_state: defineTable({
+    symbol: v.string(),
+    score: v.number(),               // [-1, 1]
+    confidence: v.number(),          // [0, 1]
+    n_posts: v.number(),
+    ts_ms: v.number(),
+    top_post_ids: v.array(v.string()),
+  })
+    .index("by_symbol", ["symbol"]),
 });

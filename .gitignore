@@ -43,5 +43,9 @@ Thumbs.db
 .vscode/
 *.swp
 
+# Agent-local tooling + memory (not project code)
+.claude/
+/memory/
+
 # bun init boilerplate — not part of this project
 index.ts

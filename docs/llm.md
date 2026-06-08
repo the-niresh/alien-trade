@@ -75,3 +75,47 @@ Want me to also flip the Convex config.trading_mode to mainnet and set conservat
 ✻ Cogitated for 2m 12s
 
 ※ recap: Building Alien-Trade's live trading agent; Step 5 runtime, twak wallet, and crash-recovery are done and the wallet is connected. Next: you set WALLET_ADDRESS in .env.local and fund it with a little BNB and USDT, then I run a mainnet dry-run.
+
+Shipped the social ingestion layer — built, tested, and running live right now with zero credentials and zero cost.
+
+What's in
+
+A swappable-adapter package at agent/social/:
+
+┌──────────────┬────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+│    Piece     │                                                  What it does                                                  │
+├──────────────┼────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ schema.py    │ contracts-first: SocialPost, SourceSpec, SentimentReading                                                      │
+├──────────────┼────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ sources/     │ rss + farcaster (live, no creds), telegram (Telethon) + twitter (twscrape) built behind the same interface,    │
+│              │ gated on creds                                                                                                 │
+├──────────────┼────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ normalize.py │ dedupe, time-filter, ticker detection                                                                          │
+├──────────────┼────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ score.py     │ deterministic lexicon sentiment → bounded [-1,1] reading                                                       │
+├──────────────┼────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ ingest.py    │ watchlist → fan-out → score, failure-isolated (one source down ≠ run down), with a CLI                         │
+└──────────────┴────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+
+Plus: 9 passing tests, three Convex tables (social_sources user-writable watchlist, social_posts feed, sentiment_state), .env.example entries, and docs/SOCIAL_LAYER.md.
+
+Live proof: python -m agent.social.ingest --once pulled 30 RSS + 8 Farcaster posts, scored BTC at −0.244 (bearish, 7 posts), and cleanly skipped Telegram/X as "not configured."
+
+How it honors our locked decisions
+
+This is the part that makes it winning rather than gimmicky:
+- LLM stays off the path — scoring is a deterministic lexicon, reproducible, sim/live-parity-safe. Any LLM enrichment (pump detection, claim extraction) is async and never produces the number that reaches the core.
+- Same bridge shape as Option B — the sentiment reading is a bounded number feeding signal S3 (which was stubbed at 0.0); it can only shrink-or-confirm size within risk caps, never enlarge.
+- twscrape is one swappable adapter, not the foundation — it can ban/break without touching the rest, exactly as you chose.
+
+What you do (only when you want the gated channels)
+
+- Telegram (recommended, legit): free api_id/api_hash from my.telegram.org → set 3 env vars. I'll give you exact .env.local lines.
+- X/twscrape (optional, burner account): install twscrape, add a burner, set X_ACCOUNTS_READY=1.
+- Nothing for RSS + Farcaster — already working.
+
+Next, your call
+
+The remaining wiring (documented in SOCIAL_LAYER.md): Convex social.ts mutations so the PWA hosts the "add your traders" UI + feed, a Trigger.dev schedule, and the sentiment_state → core S3 bridge with a parity test. Want me to do the Convex social.ts functions next (so the user-facing watchlist + feed becomes real), or fold this into the broader contracts.py + Convex tables foundation we'd queued?
+
+✻ Crunched for 10m 52s

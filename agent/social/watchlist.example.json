@@ -1,0 +1,11 @@
+{
+  "_comment": "Sample watchlist. Copy to your own file and point --watchlist at it (or wire it to the Convex social_sources table for the UI). RSS + Farcaster work with no credentials; telegram + twitter need creds (see docs/SOCIAL_LAYER.md).",
+  "symbols": ["BNB", "BTC", "ETH"],
+  "sources": [
+    { "platform": "rss", "handle": "https://cointelegraph.com/rss", "weight": 1.0, "label": "Cointelegraph" },
+    { "platform": "rss", "handle": "https://www.coindesk.com/arc/outboundfeeds/rss/", "weight": 1.0, "label": "CoinDesk" },
+    { "platform": "farcaster", "handle": "dwr", "weight": 1.0, "label": "Dan Romero" },
+    { "platform": "telegram", "handle": "https://t.me/example_calls", "weight": 1.2, "label": "Example Calls", "enabled": false },
+    { "platform": "twitter", "handle": "example_kol", "weight": 1.5, "label": "Example KOL", "enabled": false }
+  ]
+}

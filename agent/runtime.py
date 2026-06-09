@@ -89,6 +89,9 @@ def build_loop(cfg: AgentConfig, *, feed=None, dry_run: bool = False,
     # Lets the loop swap executors live when the UI toggles config.trading_mode
     # (only while flat — see DecisionLoop._sync_trading_mode). Same builder used
     # at boot, so a toggled mode is wired exactly like a launched one.
+    from agent.notify import TelegramBot
+    notifier = TelegramBot(bridge=bridge)
+    notifier.start()   # launches daemon polling thread; no-op when token absent
     executor_factory = lambda m: build_executor(replace(cfg, mode=m), dry_run=dry_run)  # noqa: E731
     loop = DecisionLoop(
         feed=feed,
@@ -105,6 +108,7 @@ def build_loop(cfg: AgentConfig, *, feed=None, dry_run: bool = False,
         reflection_writer=sb.reflection_writer if sb else None,
         executor_factory=executor_factory,
         enforce_activity_floor=cfg.enforce_activity_floor,
+        notifier=notifier,
     )
     loop.second_brain = sb   # co-pilot / research / telemetry access (may be None)
     if recover:

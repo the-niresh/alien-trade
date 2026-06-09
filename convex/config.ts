@@ -28,6 +28,7 @@ export const get = query({
       daily_loss_limit_usd: v.number(),
       max_drawdown_pct: v.number(),
       token_allowlist: v.array(v.string()),
+      equity_floor: v.optional(v.number()),
       updated_at_ms: v.number(),
     }),
   ),
@@ -156,6 +157,7 @@ export const updateLimits = mutation({
     daily_loss_limit_usd: v.optional(v.number()),
     max_drawdown_pct: v.optional(v.number()),
     token_allowlist: v.optional(v.array(v.string())),
+    equity_floor: v.optional(v.number()),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
@@ -171,6 +173,7 @@ export const updateLimits = mutation({
       "daily_loss_limit_usd",
       "max_drawdown_pct",
       "token_allowlist",
+      "equity_floor",
     ] as const) {
       if (args[k] !== undefined) patch[k] = args[k];
     }

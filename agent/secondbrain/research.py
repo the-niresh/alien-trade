@@ -27,6 +27,7 @@ from agent.secondbrain.llm import ClaudeClient
 from agent.secondbrain.schema import KIND_RESEARCH, ResearchDigest
 from agent.secondbrain.vector import VectorStore
 from agent.skills import SkillContext, SkillHub, skill_summary
+from risk.forecast import confidence_from_regime as _confidence_from_regime
 
 # Curated skills pulled each research cycle to ground the digest in the orthogonal
 # CMC signals (S2/S3/regime) that price action alone can't show. Small + bounded:
@@ -156,6 +157,14 @@ class ResearchSupervisor:
         except Exception as e:  # noqa: BLE001
             print(f"[research] could not fetch bars: {e}")
             return []
+
+
+def confidence_from_history(history: list[Bar]) -> float:
+    """Deterministic confidence from the current regime. Returns NEUTRAL (1.0)
+    when history is empty so an empty research cycle can't silently shrink size."""
+    if not history:
+        return 1.0
+    return _confidence_from_regime(detect_regime(history).value)
 
 
 def _skill_brief(key: str, payload: dict) -> str:

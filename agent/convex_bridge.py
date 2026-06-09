@@ -72,6 +72,13 @@ class ConvexBridge:
     def get_config(self) -> Optional[dict]:
         return self._call("query", "config:get", {})
 
+    def get_equity_floor(self) -> float:
+        """Read the equity floor from Convex config. 0 = disabled. Offline → 0."""
+        if not self.enabled:
+            return 0.0
+        cfg = self.get_config()
+        return float(cfg.get("equity_floor") or 0) if cfg else 0.0
+
     def get_trading_mode(self) -> Optional[str]:
         """Live trading-mode read (the UI toggle writes config.trading_mode).
         Offline or unseeded → None, so the loop keeps the mode it booted with."""
@@ -192,6 +199,39 @@ class ConvexBridge:
         keep = {"agents_paused", "paused_agents", "trading_halted",
                 "stop_response_id", "updated_by", "ts_ms", "key"}
         return AgentControl(**{k: v for k, v in doc.items() if k in keep})
+
+    def set_agent_paused(self, paused: bool) -> None:
+        """Toggle advisory-agents pause via agentControl:set."""
+        if not self.enabled:
+            return
+        self._call("mutation", "agentControl:set", {"agents_paused": paused})
+
+    def get_sentiment_state(self, symbol: str) -> Optional[dict]:
+        """Read the latest SentimentReading for a symbol. Offline / missing → None."""
+        if not self.enabled:
+            return None
+        return self._call("query", "social:getSentiment", {"symbol": symbol})
+
+    def set_sentiment_state(self, reading) -> None:
+        """Write a SentimentReading row (upsert by symbol). Takes a social.schema.SentimentReading."""
+        self._call("mutation", "social:setSentiment", reading.as_row())
+
+    def record_social_posts(self, posts: list) -> int:
+        """Batch-insert normalised SocialPost rows (deduped by post_id). Returns insert count."""
+        rows = [{"post_id": p.id, "platform": p.platform, "author": p.author,
+                 "text": p.text[:500], "url": p.url, "ts_ms": p.ts_ms,
+                 "symbols": p.symbols} for p in posts]
+        return self._call("mutation", "social:writePosts", {"posts": rows}) or 0
+
+    def get_forecast_state(self, symbol: str) -> Optional[dict]:
+        """Read the latest ForecastState for a symbol. Offline / missing → None."""
+        if not self.enabled:
+            return None
+        return self._call("query", "forecastState:get", {"symbol": symbol})
+
+    def set_forecast_state(self, forecast) -> None:
+        """Write a ForecastState row (upsert by symbol). Takes a contracts.ForecastState."""
+        self._call("mutation", "forecastState:set", forecast.as_row())
 
     def audit(self, event_type: str, cycle_id: Optional[str], payload: dict, severity: str = "info") -> None:
         self._call("mutation", "audit:log", {

@@ -88,6 +88,7 @@ export default defineSchema({
     daily_loss_limit_usd: v.number(),
     max_drawdown_pct: v.number(),
     token_allowlist: v.array(v.string()),
+    equity_floor: v.optional(v.number()),   // halt if portfolio drops below this USD value (0 = disabled)
     updated_at_ms: v.number(),
   })
     .index("by_key", ["key"]),

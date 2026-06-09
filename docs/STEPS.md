@@ -21,12 +21,22 @@ Steps 0–7 done. STEP 8 well underway: the **agent team is wired and skill-grou
 - **LangGraph supervisor** (`agent/graph/supervisor.py`): all 4 advisory nodes (co_pilot, historian, researcher, reflector), single entry, channel emission + pause control. `agentEvents`/`agentControl` Convex fns **deployed**; channel verified live (reflector→historian wrote+confirmed a real lesson).
 
 **Next actions when back — in priority order:**
-1. **8.3 finish — observe→react trigger** (small, high value): a Trigger.dev watcher (or a Convex-polling loop) that fires `Supervisor.handle()` on `position_closed` events + schedule ticks, so the team is self-driving instead of manually invoked. → see `agent/graph/supervisor.py`, `jobs/src/`.
-2. **8.5 — PWA glass cockpit** (demo value for judges + special prizes): read-only agent-chat rendering of `agent_events` (grouped by cycle, newest-first via `agentEvents:recent`) + the three stop controls writing `agent_control` (`agentControl:set`: Stop response / Pause Agents / Kill Switch, confirm-gated).
-3. **8.4 — Option-B forecast bridge** (gives the Researcher teeth): shrink-only, decay-to-neutral multiplier in `core/risk/` (can't enlarge size; sim/live parity test). Researcher writes a confidence float → `forecast_state`; Risk Officer reads it as a size shrink. Contract already exists (`ForecastState` in `contracts.py`).
-4. **8.2 — social S3 bridge** (★ activates the sentiment signal): `convex/social.ts` (watchlist CRUD + agent-write posts/sentiment) → `sentiment_state` → live loop reads it into the bar's `social_score` (point-in-time, parity test) → Trigger.dev ingest schedule.
+1. ~~**8.3 finish — observe→react trigger**~~ ✅ Done (Jun 9): `POST /supervisor`, `supervisorTick.ts` (2h cron → Researcher), `decisionLoop.ts` fires `position_closed` on sell fills. Agent team is self-driving. 288 passed.
+2. ~~**8.5 — PWA glass cockpit + Equity Floor Guard**~~ ✅ Done (Jun 9): agent channel, 3 stop controls, equity floor guard + warning banners. 10 tests passing. ⚠️ Run `bunx convex dev` to push schema.
+3. ~~**8.4 — Option-B forecast bridge**~~ ✅ Done (Jun 9): `core/risk/forecast.py` (decay_confidence + apply_forecast_multiplier + confidence_from_regime), `convex/forecastState.ts` (get/set), `DecisionLoop._apply_forecast` (shrink-only, Tier-1 safe), Researcher node writes confidence after each AutoResearch cycle. 31 tests passing. ⚠️ Run `bunx convex dev` to push forecastState.ts.
+4. ~~**8.2 — social S3 bridge**~~ ✅ Done (Jun 10): `convex/social.ts` (getSentiment/setSentiment/writePosts/getSources/addSource/toggleSource), bridge get/set/record_social_posts, `DecisionLoop._inject_sentiment` stamps live score onto history[-1] before score_breakdown (offline→noop, parity), `POST /social/ingest` server endpoint, `jobs/src/socialIngest.ts` (30-min cron). 8 tests passing. ⚠️ Run `bunx convex dev` to push social.ts.
 5. **★ Strategy re-tune on CMC data** (blocks confidence in live params): needs the CMC historical plan + wiring funding/OI/social/flow into `cmc_client._parse_ohlcv`, then `core/retune.py --source cmc`. Until then params are unvalidated on the real signal set.
 6. **Compliance before Jun 22**: operator runs `twak compete register` + DoraHacks submission (see COMPETITION COMPLIANCE section). Step-7 carryover: mainnet sanity trade (wallet funding) + demo video.
+7. ~~**8.9 — Telegram alert channel**~~ ✅ Done (Jun 10): full two-way `TelegramBot`; slash commands + inline approve/reject buttons; equity floor, kill-switch, daily summary wired. 19 tests passing.
+8. ~~**8.10 — Supervisor budgets + dedupe**~~ ✅ Done (Jun 10): `MAX_HOPS=4` budget per call, `_last_research_ts` 90-min in-memory dedupe per symbol, `_reflected_cycle_ids` idempotency on `cycle_id`. 10 new tests passing.
+9. ~~**8.11 — Degraded-mode observability**~~ ✅ Done (Jun 10): `DecisionLoop._check_staleness` (forecast >4h, sentiment >2h) emits `RiskGuard` `KIND_OBSERVATION` events on stale→fresh transitions; Signal Health row in cockpit (amber/green dots for Forecast+Sentiment). 10 new tests passing.
+
+10. **8.8 — Dreamer curator** (pre-live): dedupe reflections, forecast calibration tracking, age out stale research. See §8.8 elevated scope.
+11. **Step 9 — Packaging** (after live window closes, before submission): `install.sh` onboarding wizard + Vercel PWA deploy + hosted agent endpoint. Lets judges reproduce the demo from a single curl command.
+12. **8.13 — Tier-1 self-eval rubrics** (pre-live, AGENT_TEAM_PLAN §9.5): Researcher/Co-pilot/Reflector each self-check output quality; low-confidence tagged + visible in cockpit. See §8.13.
+13. **8.14 — Tier-1 failure visibility** (pre-live, §9.3): every advisory node exception emits an `agent_events` row instead of silent swallow. See §8.14.
+14. **8.15 — Researcher fan-out** (pre-live, §9.1): parallelize research across all 5 eligible tokens (`ETH,CAKE,UNI,LINK,AAVE`) via `ThreadPoolExecutor`. See §8.15.
+15. **8.16 — Glass cockpit full build-out** (pre-live, post-funding; `FRONTEND_PLAN.md`): premium UI on top of the functional 8.5 cockpit — animated agent roster + co-pilot chat (centerpiece), wins feed + equity/drawdown chart, risk-cap sliders + live log console, polish pass. Backend glue first (`copilot.ts` action + `copilot_messages`, latest-per-agent roster query, `mode` on reflections). See §8.16.
 
 > Convex deploy reminder: keep `bunx convex dev` running so new functions (`scorecard`, `agentEvents`, `agentControl`) stay live. Run tests with `core/.venv/Scripts/python.exe -m pytest agent/tests core/tests -q`.
 
@@ -186,26 +196,32 @@ Steps 0–7 done. STEP 8 well underway: the **agent team is wired and skill-grou
 - [x] 🔴 `agent/graph/contracts.py` — every inter-agent payload + the failure matrix (AGENT_TEAM_PLAN §9.2/§9.3) defined before wiring. Re-exports existing payloads (`AvoidanceVerdict`/`ResearchDigest`/`Reflection`/`SentimentReading`) as one canonical import site; defines `AgentEvent`/`ForecastState`/`AgentControl` (each `as_row()` matches its Convex columns); roster split into `TIER0_AGENTS`/`TIER1_AGENTS`; `FAILURE_MATRIX` enforces the governing rule in code (`FailurePolicy.__post_init__` rejects any Tier-1 policy claiming `halts_trade`). 13/13 tests in `agent/tests/test_agent_contracts.py`.
 - [x] 🔴 Convex tables: `agent_events` (append-only chat/audit stream; by_cycle/by_ts/by_agent), `forecast_state` (Option-B bridge; by_symbol), `agent_control` (kill/pause/stop singleton, user-writable; by_key). Deployed to `festive-newt-1` — schema + indexes verified live.
 
-### 8.2 Social layer — finish the wiring (ingestion already built + live)
+### 8.2 Social layer ✅
 - [x] 🔴 `agent/social/` ingestion: RSS + Farcaster **live**, Telegram + twscrape built+gated; deterministic sentiment scorer; 9/9 tests; one live pull verified.
 - [x] 🟡 Convex schema `social_sources` / `social_posts` / `sentiment_state` added.
-- [ ] 🔴 `convex/social.ts` — watchlist CRUD (user) + write posts/sentiment (agent).
-- [ ] 🟡 Trigger.dev schedule for `agent.social.ingest` (every N min, off hot path).
-- [ ] 🔴 ★ Bridge `sentiment_state` → core signal **S3** (point-in-time; parity test).
+- [x] 🔴 `convex/social.ts` — `getSentiment`/`setSentiment` (per-symbol upsert), `writePosts` (batch, deduped), `getSources`/`addSource`/`toggleSource` (watchlist CRUD). ⚠️ `bunx convex dev` to deploy.
+- [x] 🟡 `jobs/src/socialIngest.ts` — 30-min cron → `POST /social/ingest`; failure swallowed (advisory).
+- [x] 🔴 ★ `DecisionLoop._inject_sentiment` — reads `sentiment_state` from bridge, stamps score onto `history[-1]` via `dataclasses.replace` (point-in-time, immutable); offline/sim → noop (parity). `POST /social/ingest` writes back to Convex.
 - [ ] 🟢 Optional async LLM enrichment (pump/manipulation + claim detection).
 
-### 8.3 Orchestrator graph
+### 8.3 Orchestrator graph ✅
 - [x] 🔴 `agent/graph/supervisor.py` (LangGraph `StateGraph`) — **all 4 advisory nodes** (co_pilot, historian, researcher, reflector) with single entry `Supervisor.handle()`. Routing (§4): user→co_pilot (history-intent→historian); schedule tick→researcher; trade-close→reflector→historian.write (graph edge); other events→historian. Per-node AgentEvent emission + Pause-Agents short-circuit. langgraph in core venv. Live-verified: co_pilot grounded in live `funding_regime` skill; reflector→historian chain wrote+confirmed a real lesson, both events on the channel. Tests `agent/tests/test_supervisor.py` (16).
 - [x] 🔴 Channel + control Convex fns: `convex/agentEvents.ts` (append/recent), `convex/agentControl.ts` (get/set); bridge `emit_event`/`recent_events`/`get_agent_control`. **Deployed** (`convex dev`) + channel verified live (events land + read back).
-- [ ] 🟡 **Observe→react trigger**: a watcher (Trigger.dev) that polls Convex for `position_closed`/schedule ticks and calls `Supervisor.handle()` — currently `handle()` is invoked manually. Plus PWA channel view (8.5).
+- [x] 🟡 **Observe→react trigger**: `POST /supervisor` on `agent/server.py` (supervisor singleton, swallows all exceptions — advisory path never breaks the trading server). `jobs/src/supervisorTick.ts` fires every 2 h with `kind=research_tick` → Researcher. `jobs/src/decisionLoop.ts` fires `kind=position_closed` after every sell fill → Reflector→Historian chain. `_cycle_to_dict` now exposes `side` + `realized_pnl` fields. 9 tests in `agent/tests/test_supervisor_endpoint.py`. Agent team is now **self-driving**. Suite: **288 passed, 1 skipped**.
 
-### 8.4 Option-B forecast bridge
-- [ ] 🔴 `core/risk/` bounded multiplier (**shrink-only**, decays to neutral) + tests (can't enlarge; decay; sim/live parity). Researcher emits a deterministic confidence float → `forecast_state`.
+### 8.4 Option-B forecast bridge ✅
+- [x] 🔴 `core/risk/forecast.py` — `decay_confidence` (linear decay to NEUTRAL), `apply_forecast_multiplier` (shrink-only, clamped to [FORECAST_FLOOR=0.5, 1.0]), `confidence_from_regime` (trend_up=1.0, chop=0.75, high_vol=0.65, trend_down=0.55). 31 tests: can't enlarge, decay, clamp, parity (offline→1.0), error-safe (Tier-1).
+- [x] 🔴 `convex/forecastState.ts` — `get` (query by symbol) + `set` (upsert). ⚠️ Run `bunx convex dev` to deploy.
+- [x] 🔴 `agent/convex_bridge.py` — `get_forecast_state(symbol)` + `set_forecast_state(forecast)`.
+- [x] 🔴 `agent/loop.py::DecisionLoop._apply_forecast` — reads forecast, applies decay at bar.timestamp, shrink-only multiply; any exception swallowed (Tier-1 must never halt a trade).
+- [x] 🔴 `agent/graph/supervisor.py::_researcher_node` — calls `_fetch_history()` before `run_cycle(history)`, computes `confidence_from_history`, writes `ForecastState` via `_write_forecast`. Failure swallowed.
+- [x] 🟡 `agent/secondbrain/research.py::confidence_from_history` — deterministic: empty history → NEUTRAL (1.0).
 
-### 8.5 Glass cockpit (PWA)
-- [ ] 🟡 `emit_event` helper — every agent writes its trace.
-- [ ] 🟡 Read-only agent chat rendering of `agent_events` (grouped by cycle).
-- [ ] 🔴 Three stop controls writing `agent_control`: Stop response / Pause Agents / **Kill Switch** (confirm-gated; reuses existing `/halt`).
+### 8.5 Glass cockpit (PWA) + Equity Floor Guard ✅
+- [x] 🟡 `emit_event` helper — RiskGuard agent emits `agent_events` warn/halt rows; supervisor nodes already emit per-event. Channel live.
+- [x] 🟡 Read-only agent channel rendering of `agent_events` in `web/src/App.tsx` — newest-first list, agent badge + kind tag + headline + cycle slice; max 30 events.
+- [x] 🔴 Three stop controls writing `agent_control`: **Kill Switch** (confirm-gated, writes both `config.setHalted` + `agentControl.set`), **Pause Agents** (toggle, confirm-gated), **Stop Response** (one-shot cancel, confirm-gated).
+- [x] 🔴 **Equity Floor Guard** — `check_equity_floor()` + `EquityFloorCheck` in `core/risk/guardrails.py`; `get_equity_floor()` in `ConvexBridge`; `_check_equity_floor()` in `DecisionLoop.run_cycle()` (runs before kill-switch check, sets `config.halted` on breach, emits RiskGuard agent_event). `convex/schema.ts` + `convex/config.ts` updated with optional `equity_floor` field; `updateLimits` accepts it. PWA settings panel lets user set/disable the floor live (writes `config.updateLimits`). Warning banners: orange pre-alert at 120% of floor, red halt banner on breach — both driven by recent RiskGuard `agent_events`. Telegram hook point stubbed (8.9). 10 tests in `agent/tests/test_equity_floor.py` (all passing). ⚠️ Run `bunx convex dev` to push schema change to live Convex.
 
 ### 8.6 x402 go-live (only when funding) — see `reference-cmc-x402`
 - [ ] 🔴 Route live quote to `/x402/v3/cryptocurrency/quotes/latest` when x402 on; keep historical on `/v2` + API key (no x402 historical endpoint exists).
@@ -219,10 +235,135 @@ Steps 0–7 done. STEP 8 well underway: the **agent team is wired and skill-grou
 - [ ] 🟡 **Publish the Track-2 strategy as a CMC Skill** (Skills Marketplace + Track 2 + CMC prize in one).
 - [ ] 🟢 **TWAK native x402 provider** — expose the regime/signal digest as a paid endpoint ("both sides of x402").
 
-### 8.8 Dreamer (nightly consolidation)
-- [ ] 🟢 Trigger.dev nightly job: review the day, score prior forecasts vs outcomes, dedupe/compress memory, write a nightly digest (AGENT_TEAM_PLAN §9.4).
+### 8.8 Dreamer (nightly consolidation) — elevated scope (Hermes lesson)
+> Elevated from 🟢 polish to 🟡 important: memory rot during the 7-day live window is a real
+> risk. Without a curator, the Reflector writes redundant lessons and the Researcher stores
+> overlapping digests, making avoidance lookups noisier over time.
 
-- ✅ **Exit:** agent team visible in the cockpit; social sentiment feeding S3; forecast bridge shrinking size on cue; x402 live; sponsor depth documented.
+- [ ] 🟡 Trigger.dev nightly job (`jobs/src/dreamer.ts`, fires at 02:00 UTC): calls `POST /dreamer` on the agent server.
+- [ ] 🟡 `agent/secondbrain/dreamer.py::Dreamer.run()`:
+  - **Dedupe reflections**: fetch recent `reflections` from Convex; embed + cluster near-identical lessons (cosine ≥ 0.92); keep the highest-confidence version, soft-delete duplicates.
+  - **Score forecast quality**: for each closed trade, match entry-time `forecast_confidence` from `forecast_calibration` table → compute bucket win-rates (high/med/low confidence). Log back to Convex `forecast_calibration` summary row.
+  - **Age out stale research**: mark any `ResearchDigest` older than 48h as `stale=True` in Upstash metadata; co-pilot and avoidance lookups skip stale docs.
+  - **Nightly digest**: write a `ResearchDigest(question="nightly", answer=summary)` to Second Brain with top lessons, forecast score, and memory count.
+- [ ] 🟡 `convex/schema.ts`: add `forecast_calibration` table (`cycle_id`, `symbol`, `forecast_confidence`, `regime`, `realized_pnl`, `ts_ms`). New `stale` field on `reflections`.
+- [ ] 🟡 `DecisionLoop._finalise`: on every sell fill, append a `forecast_calibration` row (entry confidence snapshot + realized_pnl).
+- ✅ **Exit:** after 24h of paper run, Dreamer produces a nightly digest; duplicate reflections are merged; forecast win-rate by confidence bucket is queryable.
+
+### 8.9 Telegram Alert Channel ✅
+> User-owned Telegram bot: operator creates a bot via @BotFather, drops `TELEGRAM_BOT_TOKEN` + `TELEGRAM_CHAT_ID` in `.env.local`. Agent sends notifications — no third-party relay, no webhook server.
+
+- [x] 🟡 `agent/notify.py` — `TelegramNotifier`: `send(text)` posts to `https://api.telegram.org/bot{token}/sendMessage`; graceful no-op + single warning log when token absent. No retry loop — fire-and-forget (alerts are best-effort).
+- [x] 🟡 Wire alert events:
+  - **Equity floor pre-alert** (`portfolio ≤ floor × 1.20`): wired in `DecisionLoop._check_equity_floor`.
+  - **Equity floor halt** (`portfolio ≤ floor`): wired in `DecisionLoop._check_equity_floor`.
+  - **Kill switch fired** (any source, rising-edge only, not double-fired with floor halt): wired in `DecisionLoop._finalise`.
+  - **Daily PnL summary** (calendar-day rollover): wired in `DecisionLoop.run_cycle`; sends date, PnL, max DD, trades, rule-adherence score.
+- [ ] 🟢 Onboarding wizard (Step 9) prompts for `TELEGRAM_BOT_TOKEN` + `TELEGRAM_CHAT_ID` as optional fields with setup instructions (create bot → get chat ID).
+- ✅ **Exit:** operator receives equity-floor + kill-switch alerts in Telegram during the live window without polling the cockpit.
+
+- ✅ **Exit (Step 8):** agent team visible in the cockpit; equity floor guard + Telegram alerts wired; social sentiment feeding S3; forecast bridge shrinking size on cue; x402 live; sponsor depth documented.
+
+### 8.10 Supervisor Budgets + Dedupe (Hermes lesson — pre-live) ✅
+> Autonomous loops degrade by looping, not just by being wrong. A research_tick that
+> overlaps with itself burns tokens and fills the channel with noise. A Reflector called
+> twice on the same close creates duplicate lessons. Budget + dedupe prevents both.
+
+- [ ] 🟡 **Per-run budget** in `agent/graph/supervisor.py`: add `max_hops: int = 4` and `max_tool_calls: int = 8` to `SupervisorState`. Each node increments a counter; if exceeded, the node emits a `KIND_CONTROL` event ("budget exceeded — skipping") and routes to END. This hard-caps runaway token spend per supervisor call.
+- [ ] 🟡 **Research-tick dedupe**: `agent/graph/supervisor.py::_researcher_node` checks Convex `agentControl` for `last_research_ts[symbol]`. If `now - last_research_ts < 90 min`, log and skip (return cached confidence). Write `last_research_ts` on successful completion.
+- [ ] 🟡 **Reflection dedupe**: `agent/graph/supervisor.py::_reflector_node` checks `last_reflected_cycle_id` in `agentControl`. If the incoming `cycle_id` matches, skip (idempotent on same close event). Prevents Trigger.dev retries from doubling lessons.
+- [ ] 🟢 **No-progress detection**: if `_researcher_node` produces a `ResearchDigest` whose `answer` hash matches the previous digest for the same symbol, emit a low-priority event and back off 4h before the next research tick.
+- ✅ **Exit:** `/supervisor` called twice on the same close event writes exactly one reflection; research tick within a 90-min window is a no-op; budget counter prevents > 4 hops per call.
+
+### 8.11 Degraded-Mode Observability (Hermes lesson — pre-live) ✅
+> During the live window the operator needs to know: "is my sentiment stale?", "is my
+> forecast stale?", "is the vector store offline?" A green cockpit over dead signals is
+> worse than no cockpit — it hides the problem.
+
+- [ ] 🟡 `agent/loop.py::DecisionLoop._check_staleness(bar)`: called each cycle, checks:
+  - `forecast_age_ms = now - forecast_state.ts_ms` → stale if > 4h and Researcher should have run
+  - `sentiment_age_ms = now - sentiment_state.ts_ms` → stale if > 2h
+  - `vector_ok`: wraps `VectorMistakeAvoidance.health()` (one no-op query, cached 10min)
+  Emits a `RiskGuard` `agent_event` with `kind=KIND_OBSERVATION` on first stale detection per source; clears on recovery. Never raises.
+- [ ] 🟡 `web/src/App.tsx`: add a **Signal Health** row to the cockpit — colored dots (green / amber / red) for Forecast, Sentiment, Vector, and Convex bridge. Driven by filtering recent `agent_events` for `agent="RiskGuard"` staleness events.
+- [ ] 🟡 **Telegram alert on staleness**: `TelegramBot.register_command("health", ...)` returns current signal health. Wire `_check_staleness` to call `bot.send()` on first stale detection of each source (one alert per source per hour max).
+- [ ] 🟢 Every auto-halt emitted by `RiskGuard` should carry a `recovery` field in its `detail`: `"auto"` (will clear itself) vs `"manual"` (operator must act). Wire into cockpit banner text.
+- ✅ **Exit:** cockpit shows amber/red dot when forecast or sentiment is stale; operator receives one Telegram alert per stale source; health command returns live status.
+
+### 8.13 Tier-1 Self-Eval Rubrics (AGENT_TEAM_PLAN §9.5 — pre-live)
+> The plan says Tier-1 agents must flag failure with a reason rather than silently
+> delivering garbage. Currently none of the three LLM agents check their own output
+> quality. This is a 2–3 hour wiring job with high demo value: "the agent knows when
+> it doesn't know."
+
+- [ ] 🟡 **Researcher self-check** (`agent/secondbrain/research.py::ResearchAgent.synthesise`): after producing a digest, call LLM (Haiku T0, cheap) with a one-sentence rubric prompt: *"Is this digest specific, actionable, and grounded in the data above? Reply YES or NO + one sentence."* If NO → retry once with the same context. If still NO → tag `digest.low_confidence = True` and emit a `KIND_OBSERVATION` AgentEvent `"Researcher: low-confidence digest flagged"`. Offline → skip check (parity).
+- [ ] 🟡 **Co-pilot self-check** (`agent/secondbrain/copilot.py::CoPilot.ask`): after building the answer, scan whether every key claim has a `[source: …]` cite in the retrieved docs. If any claim is uncited → prepend `"⚠️ Some claims could not be grounded in retrieved memory. "` to the answer. No LLM call needed — pure text scan. Never blocks the answer.
+- [ ] 🟡 **Reflector self-check** (`agent/secondbrain/reflection.py::ReflectionWriter.write`): after the LLM produces a lesson string, verify it starts with a concrete regime/signal qualifier (e.g. "In CHOP with S1 negative…"). If it looks like a generic platitude (< 8 words, no numbers, no regime mention) → regenerate once with an explicit rubric injection. If still fails → store as-is with `quality="low"` tag in the Convex `reflections` row.
+- [ ] 🟢 Surface `low_confidence` / `quality="low"` tags in the cockpit agent channel badge (amber instead of green) so the operator can see when the advisory layer is uncertain.
+- ✅ **Exit:** a researcher digest that fails the rubric is tagged and visible in the channel; co-pilot answer with uncited claims carries a visible warning; reflector stores a `quality` field on every lesson.
+
+### 8.14 Tier-1 Failure Visibility (AGENT_TEAM_PLAN §9.3 — pre-live, wiring only) ✅
+> The failure matrix says "every failure is a visible agent_events row, never a silent
+> swallow." Currently every supervisor node wraps its body in `except Exception: pass`
+> (correct — advisory must never break trading) but emits nothing to the channel. During
+> the live window a silently failing Researcher looks identical to a working one.
+
+- [ ] 🟡 In `agent/graph/supervisor.py`, replace bare `except Exception: pass` in each node with a helper `_emit_failure(state, agent_name, error)` that emits a `KIND_CONTROL` AgentEvent (`agent=agent_name`, `headline=f"{agent_name} failed: {type(error).__name__}"`, `detail={"error": str(error)[:200]}`). Trading is still unaffected; the operator sees the failure in the cockpit and Telegram.
+- [ ] 🟡 Same pattern for `agent/server.py` supervisor endpoint exception handler and `agent/convex_bridge.py` `emit_event` failures — any swallowed exception that a user would want to know about during the live window should reach the channel.
+- [ ] 🟢 Add `failure_count` counter per agent to `agentControl` (incremented on each failure event); surface in the Signal Health cockpit row (8.11) as a badge count.
+- ✅ **Exit:** failing a supervisor node mid-run writes a visible red event to the agent channel; operator does not need to grep logs to know an advisory agent crashed.
+
+### 8.15 Researcher Fan-out Across Symbols (AGENT_TEAM_PLAN §9.1 — pre-live)
+> The plan says parallelize the Researcher across symbols/anomalies. Currently
+> `ResearchSupervisor.run_cycle` is single-symbol sequential. Fan-out is
+> straightforward since each `ResearchAgent` is stateless per symbol.
+
+- [ ] 🟢 `agent/secondbrain/research.py::ResearchSupervisor.run_cycle`: if `symbols` list has > 1 entry, run `ResearchAgent` per symbol concurrently via `concurrent.futures.ThreadPoolExecutor(max_workers=3)`. Collect all digests. Each symbol's digest is independently stored; the nightly Dreamer consolidates across symbols.
+- [ ] 🟢 `agent/graph/supervisor.py::_researcher_node`: pass `symbols = bridge.get_token_allowlist()` (the eligible-token list `{ETH,CAKE,UNI,LINK,AAVE}`) into `run_cycle`. Research now covers all eligible tokens, not just the loop's active symbol.
+- [ ] 🟢 Research-tick dedupe (8.10) applies per-symbol: `last_research_ts[symbol]` checked for each before spawning.
+- ✅ **Exit:** one research tick produces digests for all 5 eligible tokens concurrently; each has its own `forecast_state` row; co-pilot can answer questions about any eligible token, not just the active one.
+
+### 8.16 Glass Cockpit Full Build-out (FRONTEND_PLAN.md — pre-live, post-funding)
+> The mission-control UI. Source of truth: `FRONTEND_PLAN.md` (rendering) +
+> `AGENT_TEAM_PLAN.md` §7 (data shapes). 8.5 shipped the **functional** cockpit
+> (agent channel render, 3 stop controls, equity-floor settings + banners). 8.16 is
+> the **premium** build-out: animated agent roster, co-pilot chat, polish system.
+> Locked: browser never talks to the agent port — all live data flows through Convex
+> cloud (decision #5); the prompt is ask/explain/trigger only, **never** the trade path
+> (decision #1). Build is local-only (no public deploy); not funding-gated for the UI
+> itself, sequenced after the funding/compliance work. Stack: shadcn/ui + Tailwind +
+> Framer Motion + recharts + vite-plugin-pwa (current `web/` is plain-CSS → upgrade).
+
+**Backend glue (small Convex additions — do first; verified against `convex/`):**
+- [ ] 🔴 `convex/copilot.ts` — `ask` **action** (proxies `POST /copilot` on the agent or Anthropic → `{answer, sources}`) + `copilot_messages` table (persist the thread, syncs across devices). *(gap — `POST /copilot` exists on the agent; no Convex action/table yet.)*
+- [ ] 🟡 `convex/agentEvents.ts` — add a **latest-per-agent** roster query (derived "latest row per agent" over the append-only stream) for §3. *(gap — only `append`/`recent` exist; roster must derive, not double-write.)*
+- [ ] 🟡 `reflections` — add a `mode` field + a **wins query** (`outcome_label == "win"`, filter testnet) for the wins feed. *(gap — `byOutcome` exists; no `mode` field.)*
+- [ ] 🟢 `config.setCaps` — verify `config.updateLimits` covers all 5 slider caps (max position / daily-loss / slippage / max-exposure / consecutive-losses); extend if any are missing. *(partial — `updateLimits` exists.)*
+- [x] 🟢 `ledger.history` (equity/drawdown chart) — **built** (`convex/ledger.ts`). `agent_control` (kill/pause/stop) — **built** (8.1). `agent_events` append/recent — **built** (8.3). Co-pilot, reflections, research digests, telemetry — **built** (Step 6); UI just surfaces them.
+
+**Frontend build sequence (FRONTEND_PLAN §12):**
+- [ ] 🟡 **1. Shell** — Tailwind/shadcn install + mission-control dark theme (`#0b0f17`, glass cards, faint grid, accent glows green on a win) + layout. Replace the plain-CSS component.
+- [ ] 🔴 **2. Co-pilot + animated agent roster (centerpiece)** — chat box → `copilot.ask` → render `{answer, sources}`, streamed token-by-token. **Animated roster/selector**: agent glyphs orbit the supervisor node; active one docks into the prompt as a pill; motion = state (idle breathe / running ring / done pop+check); `@`-mention routing; per-agent color+sigil (Core = different shape, it's the deterministic engine). Framer Motion; respect `prefers-reduced-motion`. **GUARDRAIL: prompt is ask/explain/trigger only — never routes into the signal/trade path.**
+- [ ] 🟡 **3. Testnet-wins feed + equity/drawdown chart** — wins feed from reflections (`win`, testnet) showing setup + realized PnL + Hermes lesson; equity/drawdown chart off `ledger.history` (recharts). Drawdown as the hero line (flat while PnL climbs = the risk-adjusted story).
+- [ ] 🟡 **4. Risk-cap sliders + mode toggle + live log console** — caps as live sliders → `config.setCaps`/`updateLimits` (show "applies next cycle"); paper/testnet/mainnet toggle (mainnet double-confirm); read-only **live log console** streaming `jlog` JSON (`agent/observability.py`) — the "watch the terminal from the UI" pane. Trigger buttons: Run research now / Run one cycle / Reconcile / Explain last decision. *(Kill switch + pause + stop already in 8.5.)*
+- [ ] 🟢 **5. Polish pass** — PnL count-up, sparklines that draw in, spring physics, skeleton shimmers, persistent heartbeat tick each cycle, win animation (restrained confetti + green glow), optional ambient sound (off by default), PWA push on events that matter (kill / drawdown breach / big win), reduced-motion paths. Self-custody badge + audit-stream + "blocked N risky trades" counters (TWAK/BNB prize hooks).
+- ✅ **Exit (8.16):** demo moments live — kill switch from phone halts within one cycle; co-pilot answers "why did you skip that pump?" citing the exact past loss; drawdown flat while PnL climbs; "$X saved vs naive Opus" telemetry on screen; self-custody + audit trail visible. (FRONTEND_PLAN §10.)
+
+> **Out of scope (FRONTEND_PLAN §11, decisions):** no browser extension (now/future), no multitenant SaaS / per-user agents, no desktop app (web + PWA only), Option-B offline-local backend deferred (Convex cloud stays the bus).
+
+### 8.12 Advisory Evaluation Harness (Hermes lesson — post-live, Step 9 seam)
+> "Does the Researcher sound smart?" is the wrong question. The right question: did it
+> improve drawdown? Did it reduce bad entries? Did it add noise? This requires a replay
+> harness that runs the same historical window with Second Brain on vs off and measures
+> the delta — not the agent output text.
+
+- [ ] 🟢 `agent/tests/test_advisory_impact.py` — replay a fixed 30-day bar window twice: once with `SECOND_BRAIN=0` (baseline), once with it on. Assert:
+  - `max_drawdown(with_sb) <= max_drawdown(baseline) + tolerance`  (advisory layer must not worsen drawdown)
+  - `false_block_rate = blocks_on_winning_setups / total_blocks < 0.30`
+  - `useful_shrink_rate = shrinks_that_improved_outcome / total_shrinks > 0.50`
+- [ ] 🟢 `core/risk/forecast.py`: add `ForecastCalibration.brier_score(buckets)` — given confidence bucket → realized win-rate pairs, compute a Brier-like score. Dreamer logs this nightly.
+- [ ] 🟢 Memory lineage: add `source_cycle_id` to `Reflection` and `ResearchDigest` dataclasses + Convex columns. Reflector stamps the closing `cycle_id`; Researcher stamps the research-tick cycle. Enables "why did the agent shrink here?" traceability.
+- ✅ **Exit:** advisory layer provably doesn't worsen drawdown on the training window; Brier score is queryable; each reflection traces back to its originating trade.
 
 ---
 
@@ -254,6 +395,37 @@ Steps 0–7 done. STEP 8 well underway: the **agent team is wired and skill-grou
 - [ ] 🔴 Track 1: live PnL, drawdown chart, audit trail, demo, docs.
 - [ ] 🔴 Track 2 (free): strategy skill + walk-forward backtest report.
 - [ ] 🔴 Special-prize evidence: CMC / TWAK / BNB SDK usage writeups.
+
+---
+
+## STEP 9 — Packaging + Distribution (Jul 1–5, post-live)
+
+> Build after the live window closes. Nothing here affects Track 1 scoring — it exists so judges can reproduce the demo and future operators can onboard in 30 seconds.
+
+### 9.1 Onboarding wizard (`install.sh`)
+- [ ] 🔴 `install.sh` hosted at a stable URL (e.g. Vercel edge or GitHub Pages raw). Invoked via `curl https://<host>/install | bash`.
+- [ ] 🔴 Checks deps: Python ≥ 3.11, `uv`, `bun`, `twak` CLI — prints install instructions for any missing.
+- [ ] 🔴 Interactive prompts (with defaults shown):
+  - Required: `CMC_API_KEY`, `TW_ACCESS_ID`, `TW_HMAC_SECRET`, `CONVEX_DEPLOY_URL`, `UPSTASH_REDIS_REST_URL`, `UPSTASH_VECTOR_REST_URL`, `ANTHROPIC_API_KEY`
+  - Risk caps: `EQUITY_FLOOR` (e.g. 50), `DAILY_LOSS_CAP_PCT`, `MAX_OPEN_EXPOSURE_PCT`
+  - Optional: `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` (with setup hint)
+  - Optional: `X402_PRIVATE_KEY` (USDC on Base for CMC x402)
+- [ ] 🔴 Writes `.env.local` → runs `bunx convex dev` health check → starts agent in paper mode → prints ASCII QR + PWA URL.
+- [ ] 🟡 Non-interactive mode for CI: `curl ... | bash -s -- --non-interactive` reads from env.
+
+### 9.2 Deploy PWA (web/)
+- [ ] 🟡 `vercel deploy` from `web/` — set `VITE_CONVEX_URL` env var. Zero-config for Vite. PWA URL becomes the QR target.
+- [ ] 🟡 Update `agent/qr.py` to use the Vercel URL when `PWA_URL` is unset.
+
+### 9.3 Deploy agent (optional, for judges)
+- [ ] 🟢 `Dockerfile` for the FastAPI agent (`agent/`). `EXECUTION_BACKEND=paper` for demo deployments (no real capital).
+- [ ] 🟢 `fly.toml` or `railway.json` — one-command deploy on Railway/Fly.io.
+- [ ] 🟢 Host `install.sh` as a Vercel edge function or at a GitHub Pages raw URL.
+
+### 9.4 Demo video
+- [ ] 🔴 Record demo video (~3 min): install wizard → paper run → glass cockpit → equity floor alert → kill switch → reflection stored in Second Brain. *(Also tracked in Step 7 — do before Jun 21 if possible, re-record polished version post-live.)*
+
+- ✅ **Exit:** a judge can clone-and-run from one curl command; demo video covers all judging criteria.
 
 ---
 

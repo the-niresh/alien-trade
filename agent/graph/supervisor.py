@@ -14,10 +14,18 @@ Historian, prove graph + channel, then grow"). Routing through the single entry:
 Every node emits exactly one AgentEvent to the Activity Channel (the glass cockpit).
 A user "Pause Agents" control short-circuits the Tier-1 nodes here — Tier-0 trading
 is a different process and is unaffected (failure-matrix §9.3).
+
+8.10: Each call is budgeted (MAX_HOPS) to prevent runaway token spend. The Researcher
+dedupes within a 90-min window per symbol; the Reflector dedupes per cycle_id so
+Trigger.dev retries can't write duplicate lessons.
+
+8.14: Every node wraps its body in _emit_failure on exception rather than swallowing
+silently — the operator sees failures in the cockpit without having to grep logs.
 """
 from __future__ import annotations
 
 import operator
+import time
 from typing import Annotated, Optional, TypedDict
 
 from langgraph.graph import END, START, StateGraph
@@ -40,9 +48,13 @@ _HISTORY_HINTS = (
     "lost before", "last time", " past ", "history", "learned",
     "have we", "previously", "mistake", "seen this before",
 )
-# Event kinds the supervisor reacts to (off the hot path — it observes Convex).
 _RESEARCH_KINDS = ("research_tick", "schedule")
 _CLOSE_KINDS = ("position_closed", "trade_closed")
+
+# Hard ceiling on hops per supervisor call (8.10 — prevents runaway token spend).
+MAX_HOPS: int = 4
+# Research tick dedupe: skip if the same symbol was researched within this window.
+_RESEARCH_DEDUPE_SECS: float = 90 * 60  # 90 minutes
 
 
 class SupervisorState(TypedDict, total=False):
@@ -56,9 +68,11 @@ class SupervisorState(TypedDict, total=False):
     answer: str                    # co-pilot output
     analysis: str                  # historian output
     digests: list                  # researcher output (digest ids)
+    confidence: float              # researcher forecast confidence (0..1)
     lesson: str                    # reflector output
     from_reflection: bool          # set by reflector → historian confirms the write
     events: Annotated[list, operator.add]   # AgentEvents emitted this run
+    hops: Annotated[int, operator.add]      # hop counter; each node adds 1
 
 
 def route(state: SupervisorState) -> str:
@@ -86,6 +100,10 @@ class Supervisor:
         self.bridge = bridge
         self._copilot = sb.copilot()
         self.graph = self._build()
+        # 8.10 in-memory dedupe state (resets on server restart — acceptable for the
+        # live window; a fresh research after restart is a feature, not a bug).
+        self._last_research_ts: dict = {}      # symbol -> float (epoch seconds)
+        self._reflected_cycle_ids: set = set() # cycle_ids already reflected this session
 
     def _build(self):
         g = StateGraph(SupervisorState)
@@ -114,7 +132,7 @@ class Supervisor:
         state: SupervisorState = {
             "input": text, "kind": kind, "symbol": symbol or "",
             "cycle_id": cycle_id, "payload": payload or {},
-            "paused": control.agents_paused, "events": [],
+            "paused": control.agents_paused, "events": [], "hops": 0,
         }
         return self.graph.invoke(state)
 
@@ -123,7 +141,13 @@ class Supervisor:
     def _co_pilot_node(self, state: SupervisorState) -> dict:
         if state.get("paused"):
             return self._paused(COPILOT, state)
-        out = self._copilot.ask(state.get("input", ""))
+        if state.get("hops", 0) >= MAX_HOPS:
+            return self._budget_exceeded(COPILOT, state)
+        try:
+            out = self._copilot.ask(state.get("input", ""))
+        except Exception as exc:  # noqa: BLE001
+            evt = self._emit_failure(state, COPILOT, exc)
+            return {"route": "co_pilot", "answer": "", "events": [evt], "hops": 1}
         answer = out.get("answer", "")
         evt = self._emit(AgentEvent(
             agent=COPILOT, kind=KIND_ANALYSIS, headline=_one_line(answer),
@@ -132,34 +156,74 @@ class Supervisor:
                     "skills": out.get("skills", []),
                     "n_sources": len(out.get("sources", []))},
         ))
-        return {"route": "co_pilot", "answer": answer, "events": [evt]}
+        return {"route": "co_pilot", "answer": answer, "events": [evt], "hops": 1}
 
     def _researcher_node(self, state: SupervisorState) -> dict:
         if state.get("paused"):
             return self._paused(RESEARCHER, state)
+        if state.get("hops", 0) >= MAX_HOPS:
+            return self._budget_exceeded(RESEARCHER, state)
+        symbol = state.get("symbol") or "ETH"
+        # 8.10 research-tick dedupe: skip if the same symbol ran within 90 min
+        now = time.time()
+        last_ts = self._last_research_ts.get(symbol, 0.0)
+        if now - last_ts < _RESEARCH_DEDUPE_SECS:
+            age_min = round((now - last_ts) / 60, 1)
+            evt = self._emit(AgentEvent(
+                agent=RESEARCHER, kind=KIND_CONTROL,
+                headline=(f"Research tick skipped for {symbol} — ran {age_min} min ago "
+                          f"(dedupe window: 90 min)"),
+                cycle_id=state.get("cycle_id"),
+                detail={"symbol": symbol, "last_research_age_min": age_min,
+                        "dedupe_window_min": 90},
+            ))
+            return {"route": "researcher", "digests": [], "confidence": 1.0,
+                    "events": [evt], "hops": 1}
         digests = []
+        confidence = 1.0
         try:
-            sup = self.sb.research(state.get("symbol") or "ETH")
-            digests = sup.run_cycle()
-        except Exception:  # noqa: BLE001 — advisory; a failed cycle never halts trading
-            digests = []
-        headline = (f"AutoResearch produced {len(digests)} digest(s)"
+            sup = self.sb.research(symbol)
+            history = sup._fetch_history()
+            digests = sup.run_cycle(history=history)
+            from agent.secondbrain.research import confidence_from_history
+            confidence = confidence_from_history(history)
+            self._write_forecast(symbol, confidence, history)
+            self._last_research_ts[symbol] = time.time()  # update only on success
+        except Exception as exc:  # noqa: BLE001
+            evt_fail = self._emit_failure(state, RESEARCHER, exc)
+            return {"route": "researcher", "digests": [], "confidence": 1.0,
+                    "events": [evt_fail], "hops": 1}
+        headline = (f"AutoResearch produced {len(digests)} digest(s), confidence={confidence:.2f}"
                     if digests else "AutoResearch cycle produced no digests")
         evt = self._emit(AgentEvent(
             agent=RESEARCHER, kind=KIND_OBSERVATION, headline=_one_line(headline),
             cycle_id=state.get("cycle_id"),
-            detail={"n_digests": len(digests),
+            detail={"n_digests": len(digests), "confidence": round(confidence, 4),
                     "questions": [getattr(d, "question", "") for d in digests[:3]]},
             refs=[getattr(d, "id", "") for d in digests[:3]],
         ))
         return {"route": "researcher", "digests": [getattr(d, "id", "") for d in digests],
-                "events": [evt]}
+                "confidence": confidence, "events": [evt], "hops": 1}
 
     def _reflector_node(self, state: SupervisorState) -> dict:
         if state.get("paused"):
             return self._paused(REFLECTOR, state)
+        if state.get("hops", 0) >= MAX_HOPS:
+            return self._budget_exceeded(REFLECTOR, state)
         p = state.get("payload") or {}
         cycle_id = state.get("cycle_id") or p.get("cycle_id", "")
+        # 8.10 reflection dedupe: idempotent on cycle_id so Trigger.dev retries
+        # don't write duplicate lessons for the same trade close event.
+        if cycle_id and cycle_id in self._reflected_cycle_ids:
+            evt = self._emit(AgentEvent(
+                agent=REFLECTOR, kind=KIND_CONTROL,
+                headline=(f"Reflection skipped — already reflected for "
+                          f"cycle {cycle_id[-12:]}"),
+                cycle_id=cycle_id,
+                detail={"cycle_id": cycle_id, "reason": "duplicate cycle_id"},
+            ))
+            return {"route": "reflector", "lesson": "", "from_reflection": False,
+                    "events": [evt], "hops": 1}
         lesson, ref_id = "", ""
         try:
             r = self.sb.reflection_writer.reflect(
@@ -171,8 +235,12 @@ class Supervisor:
             if r is not None:
                 lesson = getattr(r, "lesson", "") or ""
                 ref_id = f"refl-{cycle_id}"
-        except Exception:  # noqa: BLE001 — advisory; reflection failing never halts trading
-            lesson = ""
+            if cycle_id:
+                self._reflected_cycle_ids.add(cycle_id)
+        except Exception as exc:  # noqa: BLE001
+            evt_fail = self._emit_failure(state, REFLECTOR, exc)
+            return {"route": "reflector", "lesson": "", "from_reflection": True,
+                    "events": [evt_fail], "hops": 1}
         evt = self._emit(AgentEvent(
             agent=REFLECTOR, kind=KIND_HANDOFF,
             headline=_one_line(f"Reflected on closed trade -> {lesson}" if lesson
@@ -184,11 +252,13 @@ class Supervisor:
         ))
         # Hand to the Historian to confirm the lesson now lives in memory.
         return {"route": "reflector", "lesson": lesson, "from_reflection": True,
-                "events": [evt]}
+                "events": [evt], "hops": 1}
 
     def _historian_node(self, state: SupervisorState) -> dict:
         if state.get("paused"):
             return self._paused(HISTORIAN, state)
+        if state.get("hops", 0) >= MAX_HOPS:
+            return self._budget_exceeded(HISTORIAN, state)
         # Write-confirmation path: the Reflector just stored a lesson → acknowledge it.
         if state.get("from_reflection"):
             lesson = state.get("lesson", "")
@@ -198,13 +268,15 @@ class Supervisor:
                 agent=HISTORIAN, kind=KIND_ANALYSIS, headline=_one_line(analysis),
                 cycle_id=state.get("cycle_id"), detail={"wrote_reflection": bool(lesson)},
             ))
-            return {"route": "historian", "analysis": analysis, "events": [evt]}
+            return {"route": "historian", "analysis": analysis, "events": [evt], "hops": 1}
         query_text = state.get("input") or state.get("symbol") or ""
         hits = []
         try:
             hits = self.sb.vector.query(query_text, top_k=5, kind=KIND_REFLECTION)
-        except Exception:  # noqa: BLE001 — advisory; an empty history is fine
-            hits = []
+        except Exception as exc:  # noqa: BLE001
+            evt_fail = self._emit_failure(state, HISTORIAN, exc)
+            return {"route": "historian", "analysis": "No prior lessons (vector error).",
+                    "events": [evt_fail], "hops": 1}
         if hits:
             analysis = (f"{len(hits)} past lesson(s) on this setup. "
                         f"Most similar: {hits[0].text[:140]}")
@@ -216,9 +288,25 @@ class Supervisor:
             detail={"n_hits": len(hits), "symbol": state.get("symbol", "")},
             refs=[h.id for h in hits[:3]],
         ))
-        return {"route": "historian", "analysis": analysis, "events": [evt]}
+        return {"route": "historian", "analysis": analysis, "events": [evt], "hops": 1}
 
     # ── helpers ────────────────────────────────────────────────────────────────
+
+    def _write_forecast(self, symbol: str, confidence: float, history: list) -> None:
+        """Write the Researcher's deterministic confidence to forecast_state.
+        Failure is swallowed — Researcher is Tier-1 (failure-matrix §9.3)."""
+        if self.bridge is None:
+            return
+        try:
+            from agent.graph.contracts import DEFAULT_FORECAST_TTL_MS, ForecastState
+            from backtest.regime import detect_regime
+            reason = (f"regime={detect_regime(history).value}" if history
+                      else "no history available")
+            fs = ForecastState(symbol=symbol, confidence=confidence,
+                               reason=reason, ttl_ms=DEFAULT_FORECAST_TTL_MS)
+            self.bridge.set_forecast_state(fs)
+        except Exception:  # noqa: BLE001
+            pass
 
     def _paused(self, agent: str, state: SupervisorState) -> dict:
         evt = self._emit(AgentEvent(
@@ -226,7 +314,28 @@ class Supervisor:
             headline=f"{agent} skipped - agents paused by user",
             cycle_id=state.get("cycle_id"), detail={"paused": True},
         ))
-        return {"route": agent, "events": [evt]}
+        return {"route": agent, "events": [evt], "hops": 1}
+
+    def _budget_exceeded(self, agent_name: str, state: SupervisorState) -> dict:
+        """8.10: Hard cap on hops per supervisor call — prevents runaway token spend."""
+        evt = self._emit(AgentEvent(
+            agent=agent_name, kind=KIND_CONTROL,
+            headline=f"{agent_name}: budget exceeded ({MAX_HOPS} hops) — skipping",
+            cycle_id=state.get("cycle_id"),
+            detail={"hops": state.get("hops", 0), "max_hops": MAX_HOPS},
+        ))
+        return {"route": agent_name, "events": [evt], "hops": 1}
+
+    def _emit_failure(self, state: SupervisorState, agent_name: str,
+                      error: Exception) -> AgentEvent:
+        """8.14: Replace bare except-pass with a visible failure event in the channel.
+        The operator sees failures in the cockpit without having to grep logs."""
+        return self._emit(AgentEvent(
+            agent=agent_name, kind=KIND_CONTROL,
+            headline=f"{agent_name} failed: {type(error).__name__}",
+            cycle_id=state.get("cycle_id"),
+            detail={"error": str(error)[:200], "error_type": type(error).__name__},
+        ))
 
     def _emit(self, event: AgentEvent) -> AgentEvent:
         """Write one trace to the channel. A channel-write failure is swallowed —

@@ -16,9 +16,10 @@ from __future__ import annotations
 
 import time
 from dataclasses import dataclass, field
-from typing import Callable, Optional
+from typing import TYPE_CHECKING, Callable, Optional
 
 from backtest.engine import Bar, Fill, Order, StrategyFn, Trade
+from risk.guardrails import check_equity_floor
 from backtest.regime import detect_regime
 from scorecard import OperationalStats, RuleAdherence, compute_scorecard
 from strategy.combined import StrategyParams, score_breakdown
@@ -27,6 +28,9 @@ from agent.brain import AllowAll, MistakeAvoidance
 from agent.convex_bridge import ConvexBridge
 from agent.executor import DUPLICATE, FAILED, REJECTED, Executor, ExecutionReport
 from agent.ledger import LedgerState
+
+if TYPE_CHECKING:
+    from agent.notify import TelegramNotifier
 
 
 @dataclass
@@ -64,6 +68,7 @@ class DecisionLoop:
         enforce_activity_floor: bool = False,
         activity_deadline_hour: int = 23,
         activity_trade_usd: float = 15.0,
+        notifier: Optional["TelegramNotifier"] = None,
     ):
         self.feed = feed
         self.strategy = strategy            # the SAME risk-wrapped /core strategy
@@ -72,6 +77,7 @@ class DecisionLoop:
         self.params = params
         self.symbol = symbol
         self.mode = mode
+        self.notifier = notifier
         # Live mode toggle (the UI writes config.trading_mode). When a factory is
         # supplied, the loop swaps its executor to match the toggle each cycle —
         # but only while FLAT (an open position must close under the mode it was
@@ -120,6 +126,44 @@ class DecisionLoop:
         self._activity_day = -1
         self._trades_today = 0
 
+        # ── Telegram alert state ────────────────────────────────────────────
+        # Distinguish equity-floor-triggered halts from user-triggered ones so
+        # we don't double-fire (floor sends its own specific message).
+        self._halted_by_floor: bool = False
+        # Daily PnL summary: snapshot equity at day-start; send on rollover.
+        self._daily_pnl_start: float = initial_capital
+        self._daily_max_dd: float = 0.0
+
+        # ── 8.11 Degraded-mode observability ────────────────────────────────
+        # Track which sources are currently stale so we emit on each transition
+        # (stale → fresh, fresh → stale) rather than every cycle.
+        self._stale_sources: set = set()
+
+    # ── notify helper (Telegram 8.9) ─────────────────────────────────────────
+
+    def _notify(self, text: str) -> None:
+        if self.notifier is not None:
+            self.notifier.send(text)
+
+    def _notify_with_approval(
+        self, text: str,
+        on_approve=None, on_reject=None,
+        approve_label: str = "Approve",
+        reject_label: str = "Reject",
+        timeout_s: float = 300.0,
+    ) -> None:
+        """Send with inline buttons if the notifier supports it, else plain send."""
+        if self.notifier is None:
+            return
+        if hasattr(self.notifier, "send_approval"):
+            self.notifier.send_approval(
+                text, on_approve=on_approve, on_reject=on_reject,
+                approve_label=approve_label, reject_label=reject_label,
+                timeout_s=timeout_s,
+            )
+        else:
+            self.notifier.send(text)
+
     # ── one cycle ────────────────────────────────────────────────────────────
 
     def run_cycle(self, history: list[Bar]) -> CycleResult:
@@ -130,16 +174,33 @@ class DecisionLoop:
         # Reset the per-day trade counter on a calendar-day rollover (activity floor).
         day = bar.timestamp // 86_400_000
         if day != self._activity_day:
+            if self._activity_day != -1:
+                self._send_daily_summary(bar)
             self._activity_day = day
             self._trades_today = 0
+            self._daily_pnl_start = self.ledger.mark(bar.open)
+            self._daily_max_dd = 0.0
 
         # ── Live trading-mode toggle: align the executor with the UI ─────────
         self._sync_trading_mode(bar, cycle_id)
 
+        # Social S3 bridge: inject live sentiment into the last bar (point-in-time,
+        # live-only overlay — offline/sim bridge returns None → history unchanged).
+        history = self._inject_sentiment(history, bar)
         regime = detect_regime(history)
         breakdown = score_breakdown(history, self.params)
         signals = _signals_obj(breakdown)
         target_usd = breakdown["target"] * self.base_position_usd
+
+        # 8.11 — emit RiskGuard observation when advisory signals go stale
+        self._check_staleness(bar, cycle_id)
+
+        # ── Equity floor: halt if capital fell below user-set minimum ───────
+        if self._check_equity_floor(bar, cycle_id):
+            return self._finalise(
+                cycle_id, bar, regime.value, "block", "equity floor halt",
+                None, None, 0.0, 0.0, None, {}, {}, halted=True,
+            )
 
         # ── Kill switch: halt within one cycle ──────────────────────────────
         if self.bridge.is_halted():
@@ -170,6 +231,8 @@ class DecisionLoop:
                     )
                     self.bridge.audit("risk_veto", cycle_id,
                                       {"reason": ma.reason, "size_penalty": ma.size_penalty}, "warn")
+                # Option-B forecast bridge: Researcher confidence can only shrink size
+                exec_order = self._apply_forecast(exec_order, bar, cycle_id)
                 final_size = exec_order.size_usd
                 execution = self.executor.execute(exec_order, bar, idempotency_key=cycle_id)
                 verdict, reason, trade_id = self._handle_execution(
@@ -227,6 +290,84 @@ class DecisionLoop:
         self.bridge.audit("mode_switch", cycle_id,
                           {"from": previous, "to": desired}, "info")
 
+    # ── equity floor guard ───────────────────────────────────────────────────────
+
+    def _check_equity_floor(self, bar: Bar, cycle_id: str) -> bool:
+        """Returns True (and sets config.halted) if equity hit the user-set floor.
+        Emits an agent_events warn/halt row for the glass cockpit. Live-only overlay:
+        floor=0 (default) is a no-op so sim/paper parity is preserved."""
+        floor = self.bridge.get_equity_floor()
+        if floor <= 0:
+            return False
+        equity = self.ledger.mark(bar.close)
+        result = check_equity_floor(equity, floor)
+        if not result.halt and not result.warn:
+            return False
+        severity = "warn"
+        headline = (
+            f"HALT: equity floor hit (${equity:.2f} <= ${floor:.2f})"
+            if result.halt
+            else f"WARNING: portfolio ${equity:.2f} approaching floor ${floor:.2f}"
+        )
+        self.bridge.audit(
+            "equity_floor_halt" if result.halt else "equity_floor_warn",
+            cycle_id, {"equity_usd": equity, "floor_usd": floor, "reason": result.reason},
+            severity,
+        )
+        try:
+            from agent.graph.contracts import AgentEvent, KIND_CONTROL
+            self.bridge.emit_event(AgentEvent(
+                agent="RiskGuard", kind=KIND_CONTROL, headline=headline,
+                cycle_id=cycle_id,
+                detail={"equity_usd": equity, "floor_usd": floor, "halt": result.halt},
+            ))
+        except Exception:  # noqa: BLE001 — channel write must never crash the loop
+            pass
+        if result.halt:
+            def _resume_trading():
+                self.bridge.set_halted(False)
+            self._notify_with_approval(
+                f"HALT: Equity floor hit (${equity:.2f} <= ${floor:.2f}).\n"
+                f"Trading halted. Fund wallet or tap Resume.",
+                on_approve=_resume_trading,
+                on_reject=None,
+                approve_label="Resume Trading",
+                reject_label="Keep Halted",
+            )
+            self._halted_by_floor = True
+            self.bridge.set_halted(True)
+            return True
+        # warn path — plain notification, no action buttons
+        self._notify(
+            f"WARNING: Portfolio ${equity:.2f} approaching floor ${floor:.2f}"
+            f" — consider adding capital or tightening caps."
+        )
+        return False
+
+    # ── daily summary ─────────────────────────────────────────────────────────
+
+    def _send_daily_summary(self, bar: Bar) -> None:
+        """Fire end-of-day Telegram summary at calendar-day rollover."""
+        try:
+            import datetime
+            equity = self.ledger.mark(bar.close)
+            pnl = equity - self._daily_pnl_start
+            pnl_sign = "+" if pnl >= 0 else ""
+            date_str = datetime.datetime.utcfromtimestamp(
+                self._activity_day * 86_400
+            ).strftime("%Y-%m-%d")
+            adherence = (
+                1.0 - (self._blocks_fired / max(self._cycles_total, 1))
+            )
+            self._notify(
+                f"Daily summary {date_str}\n"
+                f"PnL: {pnl_sign}${pnl:.2f}  Equity: ${equity:.2f}\n"
+                f"Max DD: {self._daily_max_dd:.2%}  Trades: {self._trades_today}\n"
+                f"Rule adherence: {adherence:.1%}"
+            )
+        except Exception:  # noqa: BLE001 — summary must never crash the loop
+            pass
+
     # ── activity floor ─────────────────────────────────────────────────────────
 
     def _maybe_compliance_trade(self, bar: Bar, cycle_id: str) -> None:
@@ -260,6 +401,102 @@ class DecisionLoop:
             "reason": "no trade yet today — forcing minimal compliance swap",
         }, "info")
         self._handle_execution(execution, bar, cycle_id)
+
+    # ── social S3 bridge ─────────────────────────────────────────────────────
+
+    def _inject_sentiment(self, history: list[Bar], bar: Bar) -> list[Bar]:
+        """Read live sentiment_state from Convex and stamp it onto history[-1].
+        Returns history unchanged when offline (sim parity: social_score stays 0.0).
+        Any exception is swallowed — social is off the hot path."""
+        try:
+            ss = self.bridge.get_sentiment_state(self.symbol)
+            if ss is None:
+                return history
+            score = float(ss.get("score", 0.0))
+            if score == 0.0:
+                return history
+            import dataclasses
+            patched = dataclasses.replace(history[-1], social_score=score)
+            return list(history[:-1]) + [patched]
+        except Exception:  # noqa: BLE001 — social is advisory; never crash a cycle
+            return history
+
+    # ── 8.11 degraded-mode observability ─────────────────────────────────────
+
+    def _check_staleness(self, bar: Bar, cycle_id: str) -> None:
+        """Emit a RiskGuard observation event each time an advisory signal goes stale
+        or recovers. Staleness thresholds: forecast > 4h, sentiment > 2h.
+        Never raises — observability must not crash a cycle."""
+        now_ms = bar.timestamp
+        stale_now: set = set()
+        try:
+            fs = self.bridge.get_forecast_state(self.symbol)
+            if fs is not None:
+                age_ms = now_ms - int(fs.get("ts_ms", now_ms))
+                if age_ms > 4 * 3_600_000:
+                    stale_now.add("forecast")
+        except Exception:  # noqa: BLE001
+            pass
+        try:
+            ss = self.bridge.get_sentiment_state(self.symbol)
+            if ss is not None:
+                age_ms = now_ms - int(ss.get("ts_ms", now_ms))
+                if age_ms > 2 * 3_600_000:
+                    stale_now.add("sentiment")
+        except Exception:  # noqa: BLE001
+            pass
+        for src in stale_now - self._stale_sources:
+            self._emit_staleness_event(src, bar, cycle_id, stale=True)
+        for src in self._stale_sources - stale_now:
+            self._emit_staleness_event(src, bar, cycle_id, stale=False)
+        self._stale_sources = stale_now
+
+    def _emit_staleness_event(self, source: str, bar: Bar, cycle_id: str,
+                              stale: bool) -> None:
+        stale_hours = 2 if source == "sentiment" else 4
+        headline = (f"STALE: {source} signal not updated in >{stale_hours}h"
+                    if stale else f"RECOVERED: {source} signal is fresh again")
+        try:
+            from agent.graph.contracts import AgentEvent, KIND_OBSERVATION
+            self.bridge.emit_event(AgentEvent(
+                agent="RiskGuard", kind=KIND_OBSERVATION, headline=headline,
+                cycle_id=cycle_id, detail={"source": source, "stale": stale},
+            ))
+        except Exception:  # noqa: BLE001
+            pass
+        if stale:
+            self._notify(headline)
+
+    # ── forecast bridge ──────────────────────────────────────────────────────
+
+    def _apply_forecast(self, exec_order: Order, bar: Bar, cycle_id: str) -> Order:
+        """Read the latest Researcher forecast from Convex, apply decay + shrink-only
+        multiply. A missing / stale / error forecast decays to NEUTRAL (1.0) — it
+        can NEVER silently block a trade (Researcher is Tier-1; failure-matrix §9.3)."""
+        from risk.forecast import NEUTRAL, apply_forecast_multiplier, decay_confidence
+        try:
+            fs = self.bridge.get_forecast_state(self.symbol)
+            if fs is None:
+                return exec_order
+            raw_conf = float(fs.get("confidence", NEUTRAL))
+            ts_ms = int(fs.get("ts_ms", bar.timestamp))
+            ttl_ms = int(fs.get("ttl_ms", 6 * 3_600_000))
+            age_ms = max(0, bar.timestamp - ts_ms)
+            conf = decay_confidence(raw_conf, age_ms, ttl_ms)
+            if conf >= NEUTRAL - 1e-9:
+                return exec_order   # fast path: neutral → no-op
+            new_size = apply_forecast_multiplier(exec_order.size_usd, conf)
+            if new_size < exec_order.size_usd - 1e-6:
+                self.bridge.audit("forecast_shrink", cycle_id, {
+                    "confidence": round(conf, 4), "age_ms": age_ms,
+                    "from_size": round(exec_order.size_usd, 2),
+                    "to_size": round(new_size, 2),
+                    "reason": fs.get("reason", ""),
+                }, "info")
+            return Order(side=exec_order.side, size_usd=new_size,
+                         symbol=exec_order.symbol, timestamp=exec_order.timestamp)
+        except Exception:  # noqa: BLE001 — Tier-1; must never crash a trading cycle
+            return exec_order
 
     # ── execution → ledger → trade/ledger rows ──────────────────────────────
 
@@ -360,7 +597,20 @@ class DecisionLoop:
             self._peak_exposure_pct = max(self._peak_exposure_pct, open_exp / equity)
         if halted and not self._was_halted:        # rising edge only
             self._kill_switch_activations += 1
+            if not self._halted_by_floor:
+                def _resume_from_ks():
+                    self.bridge.set_halted(False)
+                self._notify_with_approval(
+                    "Kill switch activated. Agent halted.",
+                    on_approve=_resume_from_ks,
+                    on_reject=None,
+                    approve_label="Resume",
+                    reject_label="Stay Halted",
+                )
+        if not halted:
+            self._halted_by_floor = False
         self._was_halted = halted
+        self._daily_max_dd = max(self._daily_max_dd, drawdown)
         if circuit and not self._was_circuit:
             self._circuit_breaker_activations += 1
         self._was_circuit = circuit

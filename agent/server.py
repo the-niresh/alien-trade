@@ -34,6 +34,7 @@ except ImportError as e:  # pragma: no cover
 
 
 _loop: DecisionLoop | None = None
+_supervisor = None   # agent.graph.supervisor.Supervisor — built lazily after loop warms
 
 
 def get_loop() -> DecisionLoop:
@@ -44,6 +45,24 @@ def get_loop() -> DecisionLoop:
         recover = os.environ.get("AGENT_RECOVER", "").lower() in ("1", "true", "yes")
         _loop = build_loop(cfg, dry_run=dry, recover=recover)
     return _loop
+
+
+def get_supervisor():
+    """Lazily build the LangGraph supervisor, reusing the loop's second_brain + bridge.
+    Returns None gracefully when SECOND_BRAIN=0 or langgraph is absent."""
+    global _supervisor
+    if _supervisor is not None:
+        return _supervisor
+    loop = get_loop()
+    sb = getattr(loop, "second_brain", None)
+    if sb is None:
+        return None
+    try:
+        from agent.graph.supervisor import Supervisor
+        _supervisor = Supervisor(sb, bridge=loop.bridge)
+    except Exception:  # noqa: BLE001 — advisory layer; never break the trading server
+        return None
+    return _supervisor
 
 
 @asynccontextmanager
@@ -58,6 +77,7 @@ app = FastAPI(title="Alien-Trade Agent", version="0.1.0", lifespan=lifespan)
 def _cycle_to_dict(res: CycleResult | None) -> dict:
     if res is None:
         return {"ran": False, "reason": "no market data available"}
+    filled = bool(res.execution and res.execution.is_fill)
     return {
         "ran": True,
         "cycle_id": res.cycle_id,
@@ -66,7 +86,10 @@ def _cycle_to_dict(res: CycleResult | None) -> dict:
         "regime": res.regime,
         "verdict": res.verdict,
         "reason": res.reason,
-        "filled": bool(res.execution and res.execution.is_fill),
+        "filled": filled,
+        "side": res.order.side if (filled and res.order) else None,
+        "realized_pnl": res.execution.realized_pnl if (filled and res.execution) else None,
+        "signals": res.breakdown,
         "tx_hash": res.execution.tx_hash if res.execution else None,
         "equity": res.equity,
         "drawdown_pct": res.drawdown_pct,
@@ -76,6 +99,31 @@ def _cycle_to_dict(res: CycleResult | None) -> dict:
 @app.get("/health")
 def health() -> dict:
     return {"status": "ok"}
+
+
+@app.post("/social/ingest")
+def social_ingest() -> dict:
+    """Run one social ingest pass: fetch posts → score sentiment → write Convex.
+    Off the hot path — returns ok:false on any error without raising."""
+    try:
+        from pathlib import Path
+        from agent.social.ingest import ingest, load_watchlist
+        wl = Path(__file__).resolve().parent / "social" / "watchlist.example.json"
+        symbols, specs = load_watchlist(wl)
+        res = ingest(symbols, specs)
+        loop = get_loop()
+        inserted = loop.bridge.record_social_posts(res.posts)
+        for sym, reading in res.readings.items():
+            loop.bridge.set_sentiment_state(reading)
+        return {
+            "ok": True,
+            "posts_ingested": len(res.posts),
+            "posts_inserted": inserted,
+            "symbols": list(res.readings.keys()),
+            "skipped": res.skipped,
+        }
+    except Exception as e:  # noqa: BLE001
+        return {"ok": False, "error": str(e)}
 
 
 @app.post("/cycle")
@@ -141,6 +189,49 @@ def research() -> dict:
     digests = sb.research(symbol=get_loop().symbol).run_cycle()
     return {"digests": len(digests),
             "questions": [d.question for d in digests]}
+
+
+@app.post("/supervisor")
+def supervisor_event(body: dict) -> dict:
+    """Observe→react entry for the LangGraph supervisor team.
+
+    Trigger.dev calls this on schedule ticks (kind=research_tick) and after
+    sell fills (kind=position_closed). The supervisor routes to the right
+    advisory node and emits AgentEvents to the Activity Channel. Always
+    returns — a failed advisory run must never surface as a 5xx to Trigger.dev
+    (which would dead-letter and alert on a non-critical path).
+    """
+    sup = get_supervisor()
+    if sup is None:
+        return {"ok": False, "reason": "supervisor unavailable (SECOND_BRAIN=0 or langgraph absent)"}
+    kind = str(body.get("kind", "user"))
+    symbol = str(body.get("symbol", "") or get_loop().symbol)
+    cycle_id = body.get("cycle_id")
+    payload = body.get("payload") or {}
+    try:
+        out = sup.handle(
+            body.get("text", kind),
+            kind=kind, symbol=symbol,
+            cycle_id=cycle_id, payload=payload,
+        )
+        return {
+            "ok": True,
+            "route": out.get("route"),
+            "events_emitted": len(out.get("events", [])),
+        }
+    except Exception as exc:  # noqa: BLE001 — advisory path; never raise to Trigger.dev
+        # 8.14: surface the failure in the cockpit channel so the operator can see it
+        try:
+            from agent.graph.contracts import AgentEvent, KIND_CONTROL
+            sup._emit(AgentEvent(
+                agent="Supervisor", kind=KIND_CONTROL,
+                headline=f"Supervisor endpoint failed: {type(exc).__name__}",
+                cycle_id=cycle_id,
+                detail={"error": str(exc)[:200], "error_type": type(exc).__name__},
+            ))
+        except Exception:  # noqa: BLE001
+            pass
+        return {"ok": False, "reason": str(exc)}
 
 
 @app.get("/telemetry")

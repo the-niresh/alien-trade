@@ -13,10 +13,12 @@ import type * as agentEvents from "../agentEvents.js";
 import type * as audit from "../audit.js";
 import type * as config from "../config.js";
 import type * as decisions from "../decisions.js";
+import type * as forecastState from "../forecastState.js";
 import type * as ledger from "../ledger.js";
 import type * as reflections from "../reflections.js";
 import type * as riskState from "../riskState.js";
 import type * as scorecard from "../scorecard.js";
+import type * as social from "../social.js";
 import type * as trades from "../trades.js";
 
 import type {
@@ -31,10 +33,12 @@ declare const fullApi: ApiFromModules<{
   audit: typeof audit;
   config: typeof config;
   decisions: typeof decisions;
+  forecastState: typeof forecastState;
   ledger: typeof ledger;
   reflections: typeof reflections;
   riskState: typeof riskState;
   scorecard: typeof scorecard;
+  social: typeof social;
   trades: typeof trades;
 }>;
 

@@ -52,6 +52,7 @@ __all__ = [
     "AvoidanceVerdict", "Reflection", "ResearchDigest", "MemoryHit", "SentimentReading",
     # agent roster / event taxonomy
     "AGENTS", "TIER0_AGENTS", "TIER1_AGENTS", "tier_of", "is_tier0",
+    "RISK_GUARD", "SUPERVISOR",
     "EVENT_KINDS", "AgentEvent",
     # option-B forecast bridge
     "NEUTRAL_CONFIDENCE", "DEFAULT_FORECAST_TTL_MS", "ForecastState",
@@ -70,6 +71,7 @@ __all__ = [
 ORCHESTRATOR = "Orchestrator"
 STRATEGIST = "Strategist"
 RISK_OFFICER = "Risk Officer"
+RISK_GUARD = "RiskGuard"   # deterministic guardrail (equity floor, staleness) — emits to channel
 TRADE_HANDLER = "Trade Handler"
 HISTORIAN = "Historian"
 RESEARCHER = "Researcher"
@@ -77,10 +79,13 @@ REFLECTOR = "Reflector"
 COPILOT = "Co-pilot"
 DREAMER = "Dreamer"
 USER = "User"  # control-surface events ("User paused the agents")
+SUPERVISOR = "Supervisor"  # orchestrator endpoint failure events
 
 TIER0_AGENTS = frozenset({STRATEGIST, RISK_OFFICER, TRADE_HANDLER})
 TIER1_AGENTS = frozenset({HISTORIAN, RESEARCHER, REFLECTOR, COPILOT, DREAMER})
-AGENTS = frozenset({ORCHESTRATOR, USER}) | TIER0_AGENTS | TIER1_AGENTS
+# Guardrails / infrastructure agents — in AGENTS but not in either tier
+# (they observe, enforce limits, and emit events; they don't make trade decisions)
+AGENTS = frozenset({ORCHESTRATOR, USER, SUPERVISOR, RISK_GUARD}) | TIER0_AGENTS | TIER1_AGENTS
 
 
 def tier_of(agent: str) -> Optional[int]:
@@ -297,6 +302,8 @@ def failure_policy_for(agent: str) -> FailurePolicy:
     take down the hot path before it's added to the matrix."""
     if agent in FAILURE_MATRIX:
         return FAILURE_MATRIX[agent]
+    # SUPERVISOR / ORCHESTRATOR / USER are routing agents, not trade agents —
+    # they observe and route; they don't trade, so they can't halt trading.
     return FailurePolicy(
         agent,
         on_failure="log to channel; continue (default Tier-1 safe stance)",

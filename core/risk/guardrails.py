@@ -104,6 +104,32 @@ def check_max_exposure(
     return GuardrailResult(True, "")
 
 
+class EquityFloorCheck(NamedTuple):
+    halt: bool    # portfolio_usd <= floor_usd → halt immediately
+    warn: bool    # portfolio_usd <= floor_usd * 1.20 (but > floor) → pre-alert
+    reason: str
+
+
+def check_equity_floor(portfolio_usd: float, floor_usd: float) -> EquityFloorCheck:
+    """Capital floor guard. floor_usd=0 is a no-op (feature disabled).
+    Pre-alert fires at 120% of floor so the operator has time to act.
+    Only shrinks (never grows) position — sim treats floor=0 always."""
+    if floor_usd <= 0:
+        return EquityFloorCheck(halt=False, warn=False, reason="")
+    if portfolio_usd <= floor_usd:
+        return EquityFloorCheck(
+            halt=True, warn=False,
+            reason=f"equity floor: ${portfolio_usd:.2f} <= floor ${floor_usd:.2f}",
+        )
+    if portfolio_usd <= floor_usd * 1.20:
+        return EquityFloorCheck(
+            halt=False, warn=True,
+            reason=(f"portfolio ${portfolio_usd:.2f} approaching floor "
+                    f"${floor_usd:.2f} (warn at ${floor_usd * 1.20:.2f})"),
+        )
+    return EquityFloorCheck(halt=False, warn=False, reason="")
+
+
 def check_slippage(simulated_slippage_pct: float, config: RiskConfig) -> GuardrailResult:
     """Pre-send slippage check — called after simulate-before-send (Step 5)."""
     if simulated_slippage_pct > config.max_slippage_pct:

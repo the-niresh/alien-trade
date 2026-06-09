@@ -8,12 +8,15 @@
  * @module
  */
 
+import type * as agentControl from "../agentControl.js";
+import type * as agentEvents from "../agentEvents.js";
 import type * as audit from "../audit.js";
 import type * as config from "../config.js";
 import type * as decisions from "../decisions.js";
 import type * as ledger from "../ledger.js";
 import type * as reflections from "../reflections.js";
 import type * as riskState from "../riskState.js";
+import type * as scorecard from "../scorecard.js";
 import type * as trades from "../trades.js";
 
 import type {
@@ -23,12 +26,15 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  agentControl: typeof agentControl;
+  agentEvents: typeof agentEvents;
   audit: typeof audit;
   config: typeof config;
   decisions: typeof decisions;
   ledger: typeof ledger;
   reflections: typeof reflections;
   riskState: typeof riskState;
+  scorecard: typeof scorecard;
   trades: typeof trades;
 }>;
 

@@ -49,3 +49,6 @@ Thumbs.db
 
 # bun init boilerplate — not part of this project
 index.ts
+
+# TS incremental build cache
+*.tsbuildinfo

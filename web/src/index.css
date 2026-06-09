@@ -29,6 +29,18 @@ body { margin: 0; padding: 0; }
 .badge-on { background: #3a1212; color: #f87171; }
 .badge-off { background: #0f2a1d; color: #34d399; }
 
+/* Segmented trading-mode toggle */
+.seg { display: inline-flex; background: #0b0f17; border: 1px solid #1e2937;
+  border-radius: 10px; padding: 3px; gap: 3px; }
+.seg-btn { border: none; background: transparent; color: #8b98a5; cursor: pointer;
+  padding: 7px 14px; border-radius: 8px; font-weight: 700; font-size: 12px;
+  text-transform: uppercase; letter-spacing: 0.4px; }
+.seg-btn:disabled { cursor: default; opacity: 0.5; }
+.seg-on { color: #e6edf3; }
+.seg-on.seg-testnet { background: #14304a; color: #7dd3fc; }
+.seg-on.seg-paper { background: #2a230f; color: #fbbf24; }
+.seg-on.seg-mainnet { background: #3a1212; color: #f87171; }
+
 table { width: 100%; border-collapse: collapse; font-size: 13px; }
 th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid #1a2433; }
 th { color: #8b98a5; font-weight: 600; font-size: 11px; text-transform: uppercase; }

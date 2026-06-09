@@ -109,9 +109,9 @@ class TestGuardrails:
         assert not r.allowed
         assert "allowlist" in r.reason
 
-    def test_token_allowlist_passes_bnb(self):
+    def test_token_allowlist_passes_allowed_token(self):
         cfg = self._cfg()
-        r = check_guardrails("BNB", 500.0, daily_loss_pct=0.0,
+        r = check_guardrails("ETH", 500.0, daily_loss_pct=0.0,
                              consecutive_losses=0, capital=10_000.0, config=cfg)
         assert r.allowed
 
@@ -122,7 +122,7 @@ class TestGuardrails:
 
     def test_clean_trade_passes_all(self):
         cfg = self._cfg()
-        r = check_guardrails("BNB", 800.0, daily_loss_pct=0.01,
+        r = check_guardrails("ETH", 800.0, daily_loss_pct=0.01,
                              consecutive_losses=1, capital=10_000.0, config=cfg)
         assert r.allowed
 
@@ -214,7 +214,7 @@ class TestMaxExposureInvariant:
     def test_always_buy_cannot_pile_past_cap(self):
         """Adversarial inner strategy that tries to buy on every bar."""
         def always_buy(history):
-            return Order(side="buy", size_usd=1_000.0, symbol="BNB",
+            return Order(side="buy", size_usd=1_000.0, symbol="ETH",
                          timestamp=history[-1].timestamp)
         cfg = RiskConfig(max_open_exposure_pct=0.30, max_trade_usd=2_000.0,
                          base_position_usd=1_000.0,
@@ -244,7 +244,7 @@ class TestMaxExposureInvariant:
         rng = np.random.default_rng(123)
         def random_trader(history):
             side = "buy" if rng.random() < 0.7 else "sell"
-            return Order(side=side, size_usd=800.0, symbol="BNB",
+            return Order(side=side, size_usd=800.0, symbol="ETH",
                          timestamp=history[-1].timestamp)
         cfg = RiskConfig(max_open_exposure_pct=0.25, max_trade_usd=2_000.0,
                          base_position_usd=800.0,

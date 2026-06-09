@@ -22,7 +22,7 @@ from agent.runtime import build_replay_loop, _print_summary
 
 def main(argv=None) -> None:
     ap = argparse.ArgumentParser(description="Alien-Trade paper smoke run")
-    ap.add_argument("--symbol", default="BNB")
+    ap.add_argument("--symbol", default="ETH")
     ap.add_argument("--bars", type=int, default=250, help="use the last N historical bars")
     args = ap.parse_args(argv)
 

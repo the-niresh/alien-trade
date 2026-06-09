@@ -39,7 +39,7 @@ _loop: DecisionLoop | None = None
 def get_loop() -> DecisionLoop:
     global _loop
     if _loop is None:
-        cfg = AgentConfig(symbol=os.environ.get("AGENT_SYMBOL", "BNB"))
+        cfg = AgentConfig(symbol=os.environ.get("AGENT_SYMBOL", "ETH"))
         dry = os.environ.get("AGENT_DRY_RUN", "").lower() in ("1", "true", "yes")
         recover = os.environ.get("AGENT_RECOVER", "").lower() in ("1", "true", "yes")
         _loop = build_loop(cfg, dry_run=dry, recover=recover)

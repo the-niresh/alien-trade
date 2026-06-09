@@ -26,6 +26,12 @@ from backtest.regime import detect_regime
 from agent.secondbrain.llm import ClaudeClient
 from agent.secondbrain.schema import KIND_RESEARCH, ResearchDigest
 from agent.secondbrain.vector import VectorStore
+from agent.skills import SkillContext, SkillHub, skill_summary
+
+# Curated skills pulled each research cycle to ground the digest in the orthogonal
+# CMC signals (S2/S3/regime) that price action alone can't show. Small + bounded:
+# these are paid, off-hot-path calls. Override via ResearchAgent.skill_keys.
+_DEFAULT_SKILL_KEYS = ("market_regime", "funding_regime", "kol_sentiment")
 
 _DIGEST_SYSTEM = (
     "You are a crypto market research analyst. Given a specific question and the "
@@ -39,6 +45,10 @@ class ResearchAgent:
     """The self-directing sub-agent: identify unknowns → gather → synthesise."""
     llm: ClaudeClient
     symbol: str = "BNB"
+    # CMC Skill Hub (Tier-1 curated reads enrich the context). None/offline →
+    # the agent works exactly as before on price + live quote (offline-first).
+    skills: Optional[SkillHub] = None
+    skill_keys: tuple[str, ...] = _DEFAULT_SKILL_KEYS
 
     def identify_unknowns(self, history: list[Bar]) -> list[str]:
         """Decide what to research from the current data. Always returns ≥1 item
@@ -79,7 +89,25 @@ class ResearchAgent:
             closes = [b.close for b in history[-10:]]
             lines.append(f"last 10 closes: {[round(c, 2) for c in closes]}")
             lines.append(f"regime: {detect_regime(history).value}")
+        lines.extend(self._skill_evidence())
         return "\n".join(lines)
+
+    def _skill_evidence(self) -> list[str]:
+        """Curated CMC skill reads (funding regime, sentiment, market regime) as
+        compact one-liners. Each call is guarded — a skill failing is advisory and
+        must never break a research cycle (failure-matrix). Empty when offline."""
+        if self.skills is None or not self.skills.enabled:
+            return []
+        ctx = SkillContext(symbol=self.symbol)
+        out: list[str] = []
+        for key in self.skill_keys:
+            try:
+                brief = _skill_brief(key, self.skills.run_curated(key, ctx))
+            except Exception:  # noqa: BLE001 — advisory only
+                brief = ""
+            if brief:
+                out.append(brief)
+        return out
 
     def synthesise(self, question: str, context: str) -> str:
         prompt = f"Question: {question}\n\nMarket context:\n{context}\n\nDigest:"
@@ -91,10 +119,11 @@ class ResearchSupervisor:
     vector: VectorStore
     llm: ClaudeClient
     symbol: str = "BNB"
+    skills: Optional[SkillHub] = None
     agent: ResearchAgent = field(init=False)
 
     def __post_init__(self) -> None:
-        self.agent = ResearchAgent(llm=self.llm, symbol=self.symbol)
+        self.agent = ResearchAgent(llm=self.llm, symbol=self.symbol, skills=self.skills)
 
     def run_cycle(self, history: Optional[list[Bar]] = None, *, max_questions: int = 3) -> list[ResearchDigest]:
         """One full AutoResearch cycle: spawn sub-agent → research → store digests."""
@@ -127,6 +156,12 @@ class ResearchSupervisor:
         except Exception as e:  # noqa: BLE001
             print(f"[research] could not fetch bars: {e}")
             return []
+
+
+def _skill_brief(key: str, payload: dict) -> str:
+    """Compact one-liner for a curated skill read (delegates to the shared
+    summariser; kept as a thin local name the research agent + tests use)."""
+    return skill_summary(payload, key)
 
 
 def main(argv: list[str] | None = None) -> None:

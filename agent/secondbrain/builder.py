@@ -21,6 +21,7 @@ from agent.secondbrain.llm import ClaudeClient
 from agent.secondbrain.reflection import ReflectionWriter
 from agent.secondbrain.telemetry import CostTelemetry
 from agent.secondbrain.vector import VectorStore
+from agent.skills import SkillHub
 
 
 @dataclass
@@ -31,6 +32,7 @@ class SecondBrain:
     telemetry: CostTelemetry
     avoidance: VectorMistakeAvoidance
     reflection_writer: ReflectionWriter
+    skills: SkillHub
     bridge: Optional[object] = None
 
     @property
@@ -39,11 +41,13 @@ class SecondBrain:
 
     def copilot(self):
         from agent.secondbrain.copilot import CoPilot
-        return CoPilot(vector=self.vector, llm=self.llm, bridge=self.bridge)
+        return CoPilot(vector=self.vector, llm=self.llm, bridge=self.bridge,
+                       skills=self.skills)
 
     def research(self, symbol: str = "BNB"):
         from agent.secondbrain.research import ResearchSupervisor
-        return ResearchSupervisor(vector=self.vector, llm=self.llm, symbol=symbol)
+        return ResearchSupervisor(vector=self.vector, llm=self.llm, symbol=symbol,
+                                  skills=self.skills)
 
     def close(self) -> None:
         for c in (self.vector, self.cache, self.llm):
@@ -77,7 +81,9 @@ def build_second_brain(
     )
     reflection_writer = ReflectionWriter(vector=vector, llm=llm, bridge=bridge)
     avoidance = VectorMistakeAvoidance(vector=vector, params=params)
+    skills = SkillHub()   # reads CMC_MCP_API_KEY; offline-first if absent
     return SecondBrain(
         vector=vector, llm=llm, cache=cache, telemetry=telemetry,
-        avoidance=avoidance, reflection_writer=reflection_writer, bridge=bridge,
+        avoidance=avoidance, reflection_writer=reflection_writer,
+        skills=skills, bridge=bridge,
     )

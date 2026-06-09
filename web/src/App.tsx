@@ -11,6 +11,18 @@ export default function App() {
   const config = useQuery(api.config.get);
   const decisions = useQuery(api.decisions.recent, { limit: 12 });
   const setHalted = useMutation(api.config.setHalted);
+  const setTradingMode = useMutation(api.config.setTradingMode);
+
+  const mode = config?.trading_mode;
+  const onModeClick = (next: "testnet" | "paper" | "mainnet") => {
+    if (next === mode) return;
+    // mainnet moves real funds — make the judge confirm the irreversible switch.
+    if (next === "mainnet" &&
+        !window.confirm("Switch to LIVE (mainnet)? This trades real funds via self-custody signing.")) {
+      return;
+    }
+    setTradingMode({ trading_mode: next });
+  };
 
   const halted = config?.halted ?? false;
   const pnl = ledger?.cumulative_pnl_usd;
@@ -20,7 +32,27 @@ export default function App() {
     <div className="wrap">
       <div className="title">👽 ALIEN-TRADE</div>
       <div className="sub">
-        Autonomous BSC agent · mode: {config?.trading_mode ?? "—"} · live state via Convex
+        Autonomous BSC agent · live state via Convex
+      </div>
+
+      <div className="kill">
+        <div>
+          <div style={{ fontWeight: 700 }}>Trading mode</div>
+          <div className="sub">Testnet & paper are risk-free · Live trades real funds</div>
+        </div>
+        <div className="seg" role="group" aria-label="Trading mode">
+          {(["testnet", "paper", "mainnet"] as const).map((m) => (
+            <button
+              key={m}
+              className={`seg-btn ${mode === m ? `seg-on seg-${m}` : ""}`}
+              aria-pressed={mode === m}
+              onClick={() => onModeClick(m)}
+              disabled={config === undefined}
+            >
+              {m === "mainnet" ? "LIVE" : m}
+            </button>
+          ))}
+        </div>
       </div>
 
       <div className="kill">

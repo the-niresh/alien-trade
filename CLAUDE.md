@@ -150,8 +150,14 @@ Start with S1 + S2 + one of S3/S4. Add the third only if it improves out-of-samp
 
 ### L3: BNB AI Agent SDK
 
-- Spot swaps (PancakeSwap V3) for long positions
-- Perps (PancakeSwap Perps) for short positions — capped at 2x leverage, regime-gated
+> **Scoring ruling (organizer, locked):** only `twak swap` transactions count toward
+> PnL — see `reference-hackathon-rules`. So the scored agent is **spot-long-only**.
+> Perps (Aster/PancakeSwap) are NOT `twak swap` calls and would not count; the `raw`
+> BNB-SDK signer path (`OnchainExecutor`) is dev/testnet only. Also: BNB/BTC/BTCB are
+> NOT in the eligible-token list — trade the curated allowlist (ETH/CAKE/UNI/LINK/AAVE).
+
+- Spot swaps via `twak swap` (self-custody) for long positions — the only scored path
+- ~~Perps for shorts~~ — dropped from the scored path (not a `twak swap`; see ruling above)
 - Slippage simulation before every send (simulate-before-send pattern)
 - Gas estimation from real fills → feeds the cost model in the backtest engine
 - On-chain receipt as the ledger source of truth (real fill price, real gas paid)

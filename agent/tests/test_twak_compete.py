@@ -1,0 +1,20 @@
+"""
+twak competition registration — pin the exact CLI args. Registration is a one-shot
+on-chain action before the trading window; wrong args = silent DQ, so the command
+shape is worth locking down. No real `twak` binary needed (we stub `_run`).
+"""
+from __future__ import annotations
+
+from agent.twak_cli import TwakCli
+
+
+def test_compete_register_and_status_args(monkeypatch):
+    calls = []
+    cli = TwakCli(chain="bsc", binary="/fake/twak")
+    monkeypatch.setattr(cli, "_run", lambda *a, **k: calls.append(a) or {"ok": True})
+
+    cli.compete_register()
+    assert calls[-1] == ("compete", "register", "--chain", "bsc", "--json")
+
+    cli.compete_status()
+    assert calls[-1] == ("compete", "status", "--chain", "bsc", "--json")

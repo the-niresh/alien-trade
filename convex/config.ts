@@ -80,7 +80,7 @@ export const ensure = mutation({
       max_position_usd: args.max_position_usd ?? 2000,
       daily_loss_limit_usd: args.daily_loss_limit_usd ?? 500,
       max_drawdown_pct: args.max_drawdown_pct ?? 0.15,
-      token_allowlist: args.token_allowlist ?? ["BNB", "BTCB", "ETH"],
+      token_allowlist: args.token_allowlist ?? ["ETH", "CAKE", "UNI", "LINK", "AAVE"],
       updated_at_ms: Date.now(),
     });
   },
@@ -103,12 +103,47 @@ export const setHalted = mutation({
         max_position_usd: 2000,
         daily_loss_limit_usd: 500,
         max_drawdown_pct: 0.15,
-        token_allowlist: ["BNB", "BTCB", "ETH"],
+        token_allowlist: ["ETH", "CAKE", "UNI", "LINK", "AAVE"],
         updated_at_ms: Date.now(),
       });
       return null;
     }
     await ctx.db.patch(row._id, { halted: args.halted, updated_at_ms: Date.now() });
+    return null;
+  },
+});
+
+/**
+ * Trading-mode toggle — the user/judge picks testnet | paper | mainnet from the UI.
+ * Dedicated (vs `updateLimits`) so the toggle is a single obvious call and seeds the
+ * singleton if it's missing. The agent reads `config.trading_mode` each cycle and
+ * routes execution accordingly (testnet vs paper vs self-custody mainnet).
+ */
+export const setTradingMode = mutation({
+  args: { trading_mode: tradingMode },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const row = await ctx.db
+      .query("config")
+      .withIndex("by_key", (q) => q.eq("key", KEY))
+      .unique();
+    if (!row) {
+      await ctx.db.insert("config", {
+        key: KEY,
+        halted: false,
+        trading_mode: args.trading_mode,
+        max_position_usd: 2000,
+        daily_loss_limit_usd: 500,
+        max_drawdown_pct: 0.15,
+        token_allowlist: ["ETH", "CAKE", "UNI", "LINK", "AAVE"],
+        updated_at_ms: Date.now(),
+      });
+      return null;
+    }
+    await ctx.db.patch(row._id, {
+      trading_mode: args.trading_mode,
+      updated_at_ms: Date.now(),
+    });
     return null;
   },
 });

@@ -109,7 +109,7 @@ def _load_bars(cfg: AgentConfig, source: str, n: int):
 
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description="Step 7 paper rehearsal + reconciliation")
-    ap.add_argument("--symbol", default="BNB")
+    ap.add_argument("--symbol", default="ETH")
     ap.add_argument("--bars", type=int, default=500, help="window size (bars)")
     ap.add_argument("--source", choices=["cache", "live"], default="cache",
                     help="cache = historical parquet (deterministic); live = real feed")

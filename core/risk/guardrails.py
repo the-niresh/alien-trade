@@ -8,8 +8,11 @@ from dataclasses import dataclass, field
 from typing import NamedTuple
 
 # ── Token allowlist ───────────────────────────────────────────────────────────
-
-TOKEN_ALLOWLIST: frozenset[str] = frozenset({"BNB", "BTC", "BTCB", "ETH"})
+# Our risk ceiling: the only tokens the agent will trade. A curated SUBSET of the
+# competition's 149 eligible BEP-20s (see reference-hackathon-rules / docs/docs.md)
+# — liquid majors with full CMC data for S1/S2. NOTE: BNB / BTC / BTCB are NOT in
+# the competition's eligible list, so trading them would not count toward PnL.
+TOKEN_ALLOWLIST: frozenset[str] = frozenset({"ETH", "CAKE", "UNI", "LINK", "AAVE"})
 
 
 # ── Config ────────────────────────────────────────────────────────────────────

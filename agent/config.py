@@ -23,8 +23,8 @@ VALID_MODES = ("paper", "testnet", "mainnet")
 
 @dataclass
 class AgentConfig:
-    # Market
-    symbol: str = "BNB"
+    # Market — must be a competition-eligible BEP-20 (BNB/BTC/BTCB are NOT eligible).
+    symbol: str = "ETH"
     bar_interval: str = "1h"          # decision cadence (matches STRATEGY.md)
     history_bars: int = 200           # rolling window handed to the strategy
 
@@ -42,6 +42,13 @@ class AgentConfig:
 
     # Loop cadence (seconds between cycles when running live/forever)
     cycle_seconds: int = 3600
+
+    # Competition activity floor: force >= 1 trade/day (Track-1 qualification).
+    # OFF by default — it would diverge a paper run from the sim, so enable it only
+    # for the live window (ACTIVITY_FLOOR=1 or runtime --activity-floor).
+    enforce_activity_floor: bool = field(
+        default_factory=lambda: os.environ.get("ACTIVITY_FLOOR", "").lower()
+        in ("1", "true", "yes"))
 
     # Convex bus
     convex_url: str = field(default_factory=lambda: os.environ.get("CONVEX_URL", ""))

@@ -72,6 +72,14 @@ class ConvexBridge:
     def get_config(self) -> Optional[dict]:
         return self._call("query", "config:get", {})
 
+    def get_trading_mode(self) -> Optional[str]:
+        """Live trading-mode read (the UI toggle writes config.trading_mode).
+        Offline or unseeded → None, so the loop keeps the mode it booted with."""
+        if not self.enabled:
+            return None
+        cfg = self.get_config()
+        return cfg.get("trading_mode") if cfg else None
+
     def recent_trades(self, limit: int = 200) -> list[dict]:
         """Trades newest-first (for crash recovery, reverse to replay)."""
         return self._call("query", "trades:recent", {"limit": limit}) or []
@@ -157,6 +165,33 @@ class ConvexBridge:
 
     def update_risk_state(self, **kw) -> None:
         self._call("mutation", "riskState:update", kw)
+
+    def update_scorecard(self, **kw) -> None:
+        """Upsert the live scorecard singleton (core/scorecard.py as_convex_row)."""
+        self._call("mutation", "scorecard:update", kw)
+
+    # ── agent team: activity channel + control ─────────────────────────────────
+
+    def emit_event(self, event) -> Optional[str]:
+        """Append one AgentEvent to the Activity Channel (glass cockpit). Takes a
+        contracts.AgentEvent; offline → logged like any other write."""
+        return self._call("mutation", "agentEvents:append", event.as_row())
+
+    def recent_events(self, limit: int = 50) -> list[dict]:
+        return self._call("query", "agentEvents:recent", {"limit": limit}) or []
+
+    def get_agent_control(self):
+        """Read the user control doc as a contracts.AgentControl. Offline / unseeded
+        → defaults (nothing paused) so the supervisor never blocks on a missing doc."""
+        from agent.graph.contracts import AgentControl
+        if not self.enabled:
+            return AgentControl()
+        doc = self._call("query", "agentControl:get", {})
+        if not doc:
+            return AgentControl()
+        keep = {"agents_paused", "paused_agents", "trading_halted",
+                "stop_response_id", "updated_by", "ts_ms", "key"}
+        return AgentControl(**{k: v for k, v in doc.items() if k in keep})
 
     def audit(self, event_type: str, cycle_id: Optional[str], payload: dict, severity: str = "info") -> None:
         self._call("mutation", "audit:log", {

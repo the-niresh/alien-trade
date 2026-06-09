@@ -12,6 +12,7 @@ CLI:
 from __future__ import annotations
 
 import argparse
+from dataclasses import replace
 from typing import Optional
 
 from backtest.costs import BSCCostModel
@@ -85,6 +86,10 @@ def build_loop(cfg: AgentConfig, *, feed=None, dry_run: bool = False,
         feed = BinanceLiveFeed(cfg.symbol, interval=cfg.bar_interval, history_bars=cfg.history_bars)
     bridge = build_bridge(cfg)
     sb = build_second_brain(cfg, bridge)
+    # Lets the loop swap executors live when the UI toggles config.trading_mode
+    # (only while flat — see DecisionLoop._sync_trading_mode). Same builder used
+    # at boot, so a toggled mode is wired exactly like a launched one.
+    executor_factory = lambda m: build_executor(replace(cfg, mode=m), dry_run=dry_run)  # noqa: E731
     loop = DecisionLoop(
         feed=feed,
         strategy=build_strategy(cfg),
@@ -98,6 +103,8 @@ def build_loop(cfg: AgentConfig, *, feed=None, dry_run: bool = False,
         max_consecutive_losses=cfg.risk.max_consecutive_losses,
         mistake_avoidance=sb.avoidance if sb else None,
         reflection_writer=sb.reflection_writer if sb else None,
+        executor_factory=executor_factory,
+        enforce_activity_floor=cfg.enforce_activity_floor,
     )
     loop.second_brain = sb   # co-pilot / research / telemetry access (may be None)
     if recover:
@@ -122,16 +129,20 @@ def build_replay_loop(cfg: AgentConfig, bars, *, warmup: int = 0, dry_run: bool 
 def main(argv: Optional[list[str]] = None) -> None:
     ap = argparse.ArgumentParser(description="Alien-Trade live runtime")
     ap.add_argument("--mode", choices=["paper", "testnet", "mainnet"], default=None)
-    ap.add_argument("--symbol", default="BNB")
+    ap.add_argument("--symbol", default="ETH")
     ap.add_argument("--cycles", type=int, default=None, help="run N cycles then stop")
     ap.add_argument("--dry-run", action="store_true", help="simulate-before-send only")
     ap.add_argument("--replay", action="store_true", help="replay recent live bars deterministically")
     ap.add_argument("--recover", action="store_true", help="rebuild state from Convex on startup")
+    ap.add_argument("--activity-floor", action="store_true",
+                    help="force >= 1 trade/day (Track-1 qualification; live window only)")
     args = ap.parse_args(argv)
 
     cfg = AgentConfig(symbol=args.symbol)
     if args.mode:
         cfg.mode = args.mode
+    if args.activity_floor:
+        cfg.enforce_activity_floor = True
 
     print(f"\n  ALIEN-TRADE runtime  ·  mode={cfg.mode}  symbol={cfg.symbol}  "
           f"convex={'on' if cfg.convex_url else 'offline'}")

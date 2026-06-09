@@ -119,3 +119,27 @@ Next, your call
 The remaining wiring (documented in SOCIAL_LAYER.md): Convex social.ts mutations so the PWA hosts the "add your traders" UI + feed, a Trigger.dev schedule, and the sentiment_state → core S3 bridge with a parity test. Want me to do the Convex social.ts functions next (so the user-facing watchlist + feed becomes real), or fold this into the broader contracts.py + Convex tables foundation we'd queued?
 
 ✻ Crunched for 10m 52s
+What I built
+
+agent/graph/contracts.py — the contracts-first foundation (§9.2). One versioned home for every cross-boundary payload:
+- Re-export site — AvoidanceVerdict, ResearchDigest, Reflection, MemoryHit, SentimentReading imported once so no agent hunts for "what shape?"
+- New shapes — AgentEvent (the glass-cockpit trace row), ForecastState (the Option-B bridge number), AgentControl (the three graduated stops). Each .as_row() serializes to its Convex columns exactly — one write path, no drift.
+- Roster + tiers — TIER0_AGENTS / TIER1_AGENTS with tier_of() / is_tier0().
+- FAILURE_MATRIX — the governing rule is enforced in code, not prose: FailurePolicy.__post_init__ raises if any Tier-1 (advisory/learning) agent claims it can halt a trade. Unknown agents default to the safe Tier-1 stance.
+
+A deliberate boundary I kept: contracts.py owns the data shapes; the Option-B decay+clamp math stays in core/risk/ (STEP 8.4) operating on plain floats, so /core never imports agent/ (locked decision #2).
+
+Three Convex tables in convex/schema.ts: agent_eve, forecast_state (by_symbol), agent_control (by_keysingleton).                                                                                                                        
+Verification (run-before-build)                                                                                                    
+- agent/tests/test_agent_contracts.py — 13/13 pass (row↔column parity, the no-Tier-1-can-halt invariant, event validation,          re-export site).
+- Schema deployed to festive-newt-1 via convex dev --once; all three tables + indexes confirmed live through the Convex tables API. - Full suite: 196 passed, 1 skipped — no regressio
+                                                                                                                                    STEPS.md is updated (8.1 checked, RESUME pointer a
+                                                                                                                                    Next, your call — three unblocked, zero-funds path
+1. 8.2 — convex/social.ts watchlist CRUD + the sentiment_state → core S3 bridge with a parity test (makes the user-facing           watchlist/feed real; finishes the social layer).
+2. 8.4 — the Option-B forecast multiplier in core/risk/ (shrink-only + decay + parity tests) — the math the new forecast_state      table feeds.
+3. 8.3 — scaffold agent/graph/supervisor.py with just 2 nodes (Co-pilot + Historian) to prove the graph + channel before growing.  
+I'd lean toward 8.2 — it converts the already-live social ingestion into something visible in the PWA and closes the S3 seam, which is the highest user-facing payoff. Want me to take
+
+✻ Cooked for 6m 14s
+
+※ recap: Goal: ship the agent-team layer for the BSCone: contracts.py plus three Convex tables built,tested (196 passing), and deployed live. Next action: STEP 8.2, write convex/social.ts watchlist CRUD and the sentiment_state to core S3 bridge. (disable recaps in /config)

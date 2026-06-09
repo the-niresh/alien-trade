@@ -85,10 +85,15 @@ CMC_BASE_URL = "https://pro-api.coinmarketcap.com"
 
 # CMC integer IDs for the trading universe
 CMC_SYMBOL_IDS: dict[str, int] = {
-    "BNB":  1839,
-    "BTC":  1,
+    "BNB":  1839,   # dev/reference only — NOT competition-eligible
+    "BTC":  1,      # dev/reference only — NOT competition-eligible
     "ETH":  1027,
     "USDT": 825,
+    # Competition-eligible allowlist (see reference-hackathon-rules)
+    "CAKE": 7186,
+    "UNI":  7083,
+    "LINK": 1975,
+    "AAVE": 7278,
 }
 
 # ── Binance ───────────────────────────────────────────────────────────────────
@@ -96,11 +101,16 @@ CMC_SYMBOL_IDS: dict[str, int] = {
 BINANCE_BASE_URL = "https://api.binance.com"
 
 BINANCE_SYMBOL_PAIRS: dict[str, str] = {
-    "BNB":  "BNBUSDT",
+    "BNB":  "BNBUSDT",   # dev/reference only — NOT competition-eligible
     "WBNB": "BNBUSDT",
-    "BTC":  "BTCUSDT",
+    "BTC":  "BTCUSDT",   # dev/reference only — NOT competition-eligible
     "BTCB": "BTCUSDT",
     "ETH":  "ETHUSDT",
+    # Competition-eligible allowlist (see reference-hackathon-rules)
+    "CAKE": "CAKEUSDT",
+    "UNI":  "UNIUSDT",
+    "LINK": "LINKUSDT",
+    "AAVE": "AAVEUSDT",
 }
 
 BINANCE_INTERVAL_MAP: dict[str, str] = {

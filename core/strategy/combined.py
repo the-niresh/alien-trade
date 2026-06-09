@@ -8,7 +8,8 @@ Decision flow per bar:
   4. compare target to current position  → enter / exit / hold
 
 Rebalance band prevents constant churning on noise (saves gas + slippage).
-Only trades long positions for now (perp shorts wired in Step 4/5).
+Spot-long-only: perp shorts were dropped from the scored path (only `twak swap`
+transactions count toward competition PnL — see reference-hackathon-rules).
 """
 from __future__ import annotations
 
@@ -55,6 +56,9 @@ class StrategyParams:
     rebalance_band: float = 0.15
     # Position sizing
     position_size_usd: float = 1_000.0
+    # Traded symbol — must be a competition-eligible BEP-20 (see docs/GOAL.md /
+    # reference). BNB/BTC/BTCB are NOT eligible; ETH is the liquid default.
+    symbol: str = "ETH"
 
 
 # ── Strategy factory ──────────────────────────────────────────────────────────
@@ -82,7 +86,7 @@ def make_strategy(params: StrategyParams) -> StrategyFn:
             return Order(
                 side="sell",
                 size_usd=params.position_size_usd,
-                symbol="BNB",
+                symbol=params.symbol,
                 timestamp=bar.timestamp,
             )
 
@@ -109,7 +113,7 @@ def make_strategy(params: StrategyParams) -> StrategyFn:
             return Order(
                 side="buy",
                 size_usd=params.position_size_usd,
-                symbol="BNB",
+                symbol=params.symbol,
                 timestamp=bar.timestamp,
             )
         if in_position[0] and target < params.exit_threshold:
@@ -117,7 +121,7 @@ def make_strategy(params: StrategyParams) -> StrategyFn:
             return Order(
                 side="sell",
                 size_usd=params.position_size_usd,
-                symbol="BNB",
+                symbol=params.symbol,
                 timestamp=bar.timestamp,
             )
         return None

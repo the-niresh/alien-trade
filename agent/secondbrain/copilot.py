@@ -20,6 +20,14 @@ from agent.secondbrain.schema import (
     KIND_INSTITUTIONAL, KIND_REFLECTION, KIND_RESEARCH, MemoryHit,
 )
 from agent.secondbrain.vector import VectorStore
+from agent.skills import (
+    SkillContext,
+    SkillHub,
+    detect_symbol,
+    params_from_schema,
+    route_curated,
+    skill_summary,
+)
 
 _COPILOT_SYSTEM = (
     "You are Alien-Trade's co-pilot. Answer the operator's question using ONLY the "
@@ -33,20 +41,72 @@ class CoPilot:
     vector: VectorStore
     llm: ClaudeClient
     bridge: Optional[object] = None
+    # CMC Skill Hub (Tier-2 dynamic find_skill->execute). None/offline → the
+    # co-pilot answers from memory + live state only (offline-first, unchanged).
+    skills: Optional[SkillHub] = None
 
     def ask(self, question: str, *, tier: str = "T1", per_kind: int = 3) -> dict:
         hits = self._retrieve(question, per_kind)
         live = self._live_state()
-        prompt = self._build_prompt(question, hits, live)
+        skill_lines = self._skill_evidence(question)
+        prompt = self._build_prompt(question, hits, live, skill_lines)
         res = self.llm.complete(prompt, system=_COPILOT_SYSTEM, tier=tier, max_tokens=400)
         return {
             "question": question,
             "answer": res.text,
             "sources": [{"id": h.id, "kind": h.metadata.get("kind"),
                          "score": round(h.score, 3), "text": h.text} for h in hits],
-            "grounded": bool(hits) or bool(live),
+            "skills": skill_lines,
+            "grounded": bool(hits) or bool(live) or bool(skill_lines),
             "stub": res.stub,
         }
+
+    # ── live CMC skills (Tier-2 dynamic discovery) ─────────────────────────────
+
+    def _skill_evidence(self, question: str, *, top_k: int = 3, max_skills: int = 2) -> list[str]:
+        """Live CMC skill reads for an open-ended question. Curated-first: if the
+        question maps to pinned skills (known-good params), run those; only fall
+        back to dynamic find_skill for the long tail (best-effort params, fragile).
+        Guarded throughout — a skill failing is advisory, never breaks an answer
+        (failure-matrix). Empty when offline or nothing usable comes back."""
+        if self.skills is None or not self.skills.enabled:
+            return []
+        symbol = detect_symbol(question)
+
+        # Tier 1 — curated (reliable). Reuse the hub's pinned param-builders.
+        curated = route_curated(question)[:max_skills]
+        if curated:
+            ctx = SkillContext(symbol=symbol)
+            out = []
+            for key in curated:
+                try:
+                    brief = skill_summary(self.skills.run_curated(key, ctx), key)
+                except Exception:  # noqa: BLE001 — advisory only
+                    brief = ""
+                if brief:
+                    out.append(brief)
+            if out:
+                return out
+
+        # Tier 2 — dynamic discovery for questions no curated skill covers.
+        return self._dynamic_evidence(question, symbol, top_k=top_k, max_skills=max_skills)
+
+    def _dynamic_evidence(self, question, symbol, *, top_k, max_skills) -> list[str]:
+        out: list[str] = []
+        for cand in self.skills.find_skill(question, top_k=top_k):
+            if len(out) >= max_skills:
+                break
+            name = cand.get("uniqueName")
+            if not name:
+                continue
+            try:
+                params = params_from_schema(cand.get("inputSchema", {}), question, symbol)
+                brief = skill_summary(self.skills.execute_skill(name, params), name)
+            except Exception:  # noqa: BLE001 — advisory only
+                brief = ""
+            if brief:
+                out.append(brief)
+        return out
 
     # ── retrieval ────────────────────────────────────────────────────────────────
 
@@ -75,14 +135,17 @@ class CoPilot:
         return "\n".join(lines)
 
     @staticmethod
-    def _build_prompt(question: str, hits: list[MemoryHit], live: str) -> str:
+    def _build_prompt(question: str, hits: list[MemoryHit], live: str,
+                      skill_lines: Optional[list[str]] = None) -> str:
         mem = "\n".join(
             f"- [{h.metadata.get('kind', '?')}] {h.text} "
             f"(outcome={h.metadata.get('outcome_label', 'n/a')})"
             for h in hits
         ) or "(no relevant memories found)"
         live_block = live or "(no live state available)"
+        skills_block = "\n".join(skill_lines) if skill_lines else "(no live CMC skill reads)"
         return (f"MEMORY:\n{mem}\n\nLIVE STATE:\n{live_block}\n\n"
+                f"LIVE CMC SKILLS:\n{skills_block}\n\n"
                 f"QUESTION: {question}\n\nAnswer:")
 
 

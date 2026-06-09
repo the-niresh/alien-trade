@@ -8,12 +8,27 @@ Legend: 🔴 blocker / must-pass · 🟡 important · 🟢 polish · ⏱ timebox
 
 ---
 
-## ▶ RESUME HERE (Jun 8 — after break)
+## ▶ RESUME HERE (Jun 9 — after break)
 
-Steps 0–7 are done (sim/live parity, risk engine, Second Brain, paper rehearsal all green). This session locked the **agent-team architecture + social layer**; the build of that is **STEP 8 below**. Nothing needs funding to continue.
+Steps 0–7 done. STEP 8 well underway: the **agent team is wired and skill-grounded**, the **goal scorecard** and **competition constraints** are in place. Full suite **281 passed, 1 skipped**. Nothing below needs funding except 8.6.
 
-- **Done this session:** social ingestion layer **built, tested (9/9), and live** (`agent/social/`, 30 RSS + 8 Farcaster posts pulled, no creds). Docs written: `AGENT_TEAM_PLAN.md`, `SPONSOR_TOOLS_INTEGRATION.md`, `SOCIAL_LAYER.md`; `FRONTEND_PLAN.md` reconciled. Decisions locked: Option-B forecast bridge, read-only agent channel + 3 graduated stops, twscrape = swappable adapter, **CMC x402 = USDC on Base only** ($0.01/call, gasless), **single Trust Wallet** (no burner), fund only when going live.
-- **Next action when back:** STEP 8.1 — write `agent/graph/contracts.py` + add Convex tables (`agent_events`, `forecast_state`, `agent_control`). It's the foundation the agent team **and** the social UI both plug into, and needs zero funds.
+**Done this session (Jun 9):**
+- **Goal scorecard** (`core/scorecard.py` + Convex `scorecard` table, doc `docs/GOAL.md`): objective `Sortino − 2·|maxDD|` + full scorecard (drawdown depth+duration, consistency, trade quality, cost ratio, exposure, autonomy, rule-adherence). Wired into the live loop (`DecisionLoop` pushes `scorecard:update` each cycle, guarded).
+- **UI testnet/paper/LIVE toggle** (`web/`, `config.setTradingMode`) + **live mode read-back** in the loop (`_sync_trading_mode`, switches executor only while flat).
+- **Eligible-token rebuild** (organizer rule: only `twak swap` counts; BNB/BTC/BTCB NOT eligible): allowlist `{ETH,CAKE,UNI,LINK,AAVE}`, default symbol **ETH**, perps dropped from scored path. **Activity floor** (`enforce_activity_floor`) for ≥1 trade/day. `twak compete register` wrapper. Rules captured in memory `reference-hackathon-rules`.
+- **CMC re-tune tool** (`core/retune.py`, `--source cmc|binance`). ⚠️ result is the finding: S1-only on OHLCV is **negative OOS** — the edge is in S2/S3/S4 (CMC funding/OI/social/flow), which need the gated CMC plan + extended-field endpoints.
+- **CMC Skill Hub** (`agent/skills/`): two-tier loader (curated 8 + dynamic `find_skill`), raw-httpx stateless MCP transport, live-verified. **Research + co-pilot now consume it** (curated-first, dynamic fallback).
+- **LangGraph supervisor** (`agent/graph/supervisor.py`): all 4 advisory nodes (co_pilot, historian, researcher, reflector), single entry, channel emission + pause control. `agentEvents`/`agentControl` Convex fns **deployed**; channel verified live (reflector→historian wrote+confirmed a real lesson).
+
+**Next actions when back — in priority order:**
+1. **8.3 finish — observe→react trigger** (small, high value): a Trigger.dev watcher (or a Convex-polling loop) that fires `Supervisor.handle()` on `position_closed` events + schedule ticks, so the team is self-driving instead of manually invoked. → see `agent/graph/supervisor.py`, `jobs/src/`.
+2. **8.5 — PWA glass cockpit** (demo value for judges + special prizes): read-only agent-chat rendering of `agent_events` (grouped by cycle, newest-first via `agentEvents:recent`) + the three stop controls writing `agent_control` (`agentControl:set`: Stop response / Pause Agents / Kill Switch, confirm-gated).
+3. **8.4 — Option-B forecast bridge** (gives the Researcher teeth): shrink-only, decay-to-neutral multiplier in `core/risk/` (can't enlarge size; sim/live parity test). Researcher writes a confidence float → `forecast_state`; Risk Officer reads it as a size shrink. Contract already exists (`ForecastState` in `contracts.py`).
+4. **8.2 — social S3 bridge** (★ activates the sentiment signal): `convex/social.ts` (watchlist CRUD + agent-write posts/sentiment) → `sentiment_state` → live loop reads it into the bar's `social_score` (point-in-time, parity test) → Trigger.dev ingest schedule.
+5. **★ Strategy re-tune on CMC data** (blocks confidence in live params): needs the CMC historical plan + wiring funding/OI/social/flow into `cmc_client._parse_ohlcv`, then `core/retune.py --source cmc`. Until then params are unvalidated on the real signal set.
+6. **Compliance before Jun 22**: operator runs `twak compete register` + DoraHacks submission (see COMPETITION COMPLIANCE section). Step-7 carryover: mainnet sanity trade (wallet funding) + demo video.
+
+> Convex deploy reminder: keep `bunx convex dev` running so new functions (`scorecard`, `agentEvents`, `agentControl`) stay live. Run tests with `core/.venv/Scripts/python.exe -m pytest agent/tests core/tests -q`.
 
 ---
 
@@ -167,9 +182,9 @@ Steps 0–7 are done (sim/live parity, risk engine, Second Brain, paper rehearsa
 > `SPONSOR_TOOLS_INTEGRATION.md`, `FRONTEND_PLAN.md`, memory `reference-cmc-x402`.
 > Build order is contracts-first; nothing here needs funding except 8.6.
 
-### 8.1 Foundation (do first — no funds)
-- [ ] 🔴 `agent/graph/contracts.py` — every inter-agent payload + the failure matrix (AGENT_TEAM_PLAN §9.2/§9.3) defined before wiring.
-- [ ] 🔴 Convex tables: `agent_events` (append-only chat/audit stream), `forecast_state` (Option-B bridge), `agent_control` (kill/pause/stop, user-writable).
+### 8.1 Foundation (do first — no funds) ✅
+- [x] 🔴 `agent/graph/contracts.py` — every inter-agent payload + the failure matrix (AGENT_TEAM_PLAN §9.2/§9.3) defined before wiring. Re-exports existing payloads (`AvoidanceVerdict`/`ResearchDigest`/`Reflection`/`SentimentReading`) as one canonical import site; defines `AgentEvent`/`ForecastState`/`AgentControl` (each `as_row()` matches its Convex columns); roster split into `TIER0_AGENTS`/`TIER1_AGENTS`; `FAILURE_MATRIX` enforces the governing rule in code (`FailurePolicy.__post_init__` rejects any Tier-1 policy claiming `halts_trade`). 13/13 tests in `agent/tests/test_agent_contracts.py`.
+- [x] 🔴 Convex tables: `agent_events` (append-only chat/audit stream; by_cycle/by_ts/by_agent), `forecast_state` (Option-B bridge; by_symbol), `agent_control` (kill/pause/stop singleton, user-writable; by_key). Deployed to `festive-newt-1` — schema + indexes verified live.
 
 ### 8.2 Social layer — finish the wiring (ingestion already built + live)
 - [x] 🔴 `agent/social/` ingestion: RSS + Farcaster **live**, Telegram + twscrape built+gated; deterministic sentiment scorer; 9/9 tests; one live pull verified.
@@ -180,7 +195,9 @@ Steps 0–7 are done (sim/live parity, risk engine, Second Brain, paper rehearsa
 - [ ] 🟢 Optional async LLM enrichment (pump/manipulation + claim detection).
 
 ### 8.3 Orchestrator graph
-- [ ] 🔴 `agent/graph/supervisor.py` (LangGraph). **Start with 2 nodes** (co-pilot + historian), prove graph + channel, then grow (AGENT_TEAM_PLAN §9.6). Single chat entry; observes the hot path via Convex, reacts to events.
+- [x] 🔴 `agent/graph/supervisor.py` (LangGraph `StateGraph`) — **all 4 advisory nodes** (co_pilot, historian, researcher, reflector) with single entry `Supervisor.handle()`. Routing (§4): user→co_pilot (history-intent→historian); schedule tick→researcher; trade-close→reflector→historian.write (graph edge); other events→historian. Per-node AgentEvent emission + Pause-Agents short-circuit. langgraph in core venv. Live-verified: co_pilot grounded in live `funding_regime` skill; reflector→historian chain wrote+confirmed a real lesson, both events on the channel. Tests `agent/tests/test_supervisor.py` (16).
+- [x] 🔴 Channel + control Convex fns: `convex/agentEvents.ts` (append/recent), `convex/agentControl.ts` (get/set); bridge `emit_event`/`recent_events`/`get_agent_control`. **Deployed** (`convex dev`) + channel verified live (events land + read back).
+- [ ] 🟡 **Observe→react trigger**: a watcher (Trigger.dev) that polls Convex for `position_closed`/schedule ticks and calls `Supervisor.handle()` — currently `handle()` is invoked manually. Plus PWA channel view (8.5).
 
 ### 8.4 Option-B forecast bridge
 - [ ] 🔴 `core/risk/` bounded multiplier (**shrink-only**, decays to neutral) + tests (can't enlarge; decay; sim/live parity). Researcher emits a deterministic confidence float → `forecast_state`.
@@ -196,7 +213,9 @@ Steps 0–7 are done (sim/live parity, risk engine, Second Brain, paper rehearsa
 - [ ] 🔴 Verify one live `402 → sign → 200 → $0.01 settle`. x402 proven.
 
 ### 8.7 Sponsor depth (special-prize upside) — see `SPONSOR_TOOLS_INTEGRATION.md`
-- [ ] 🟡 Wire **CMC MCP (12 tools)** into the researcher + co-pilot.
+- [x] 🟡 **CMC Skill Hub loader built** — `agent/skills/` two-tier loader (curated registry of 8 signal-mapped skills + dynamic `find_skill`), raw-httpx MCP Streamable-HTTP transport (stateless, SSE), offline-first. Live-verified against `mcp.coinmarketcap.com/skill-hub`. Tests: `agent/tests/test_skill_hub.py` (16).
+- [x] 🟡 **Research agent wired to the hub** — `ResearchAgent` pulls curated reads (market_regime/funding_regime/kol_sentiment) into `gather_context` each AutoResearch cycle → digests grounded in orthogonal CMC signals; guarded per-skill, offline-first. Live-verified. Tests: `agent/tests/test_research_skills.py` (7).
+- [x] 🟡 **Co-pilot wired to the hub** — `_skill_evidence` is curated-first (keyword `route_curated` → pinned skills) with dynamic `find_skill` fallback for the long tail; evidence folds into the answer as a `LIVE CMC SKILLS:` block. Live-verified both tiers. Tests: `agent/tests/test_copilot_skills.py` (12). **Next:** LangGraph supervisor (8.3). Off the hot path (locked #1).
 - [ ] 🟡 **Publish the Track-2 strategy as a CMC Skill** (Skills Marketplace + Track 2 + CMC prize in one).
 - [ ] 🟢 **TWAK native x402 provider** — expose the regime/signal digest as a paid endpoint ("both sides of x402").
 
@@ -207,10 +226,24 @@ Steps 0–7 are done (sim/live parity, risk engine, Second Brain, paper rehearsa
 
 ---
 
+## COMPETITION COMPLIANCE — register + qualify (before Jun 22)
+
+> Source: memory `reference-hackathon-rules` (organizer rulings + DoraHacks page).
+> These are hard gates — miss one and the live PnL doesn't count.
+
+- [ ] 🔴 **On-chain registration before the window opens (Jun 22).** Operator runs `twak compete register` (wrapper: `TwakCli.compete_register()`; check with `compete_status()`) — or MCP `competition_register` → competition contract `0x212c61b9b72c95d95bf29cf032f5e5635629aed5` on BSC. Late entries are rejected. *(wrapper built; the actual run is operator/wallet-gated.)*
+- [ ] 🔴 **DoraHacks submission** — submit the agent's BSC wallet address + a short strategy writeup (how the results were achieved).
+- [x] 🔴 **Only `twak swap` trades count toward PnL** (organizer-locked, Gwen 6/8). Scored trades route through `TwakSwapExecutor`; the `raw` BNB-SDK path is dev/testnet only. Perps (Aster/PancakeSwap) are not `twak swap` → don't count → spot-long-only (CLAUDE.md L3 updated).
+- [x] 🔴 **Eligible tokens only.** Allowlist = curated subset `{ETH,CAKE,UNI,LINK,AAVE}` of CMC's 149-token list; default symbol = **ETH**. **BNB/BTC/BTCB are NOT eligible** (removed). ⚠️ **Re-tune still owed on CMC data** — `core/retune.py` run on Binance OHLCV (S1-only, no funding/OI/social/flow) is **negative OOS** (WF return −4%, Sortino −0.15); the edge lives in the orthogonal CMC signals (S2/S3/S4), so re-run `retune.py` against CMC data before trusting any params.
+- [x] 🔴 ★ **Activity floor: ≥ 1 trade/day.** Built: `DecisionLoop.enforce_activity_floor` forces one minimal compliance swap late in the day if nothing has traded (trims if holding, else tiny buy). Enable for live via `--activity-floor` / `ACTIVITY_FLOOR=1` (off in paper/rehearsal so sim parity holds). Still: hold non-zero in-scope assets at window start; never let the portfolio fall to ≤ $1 (that hour scores 0%).
+
+---
+
 ## LIVE WINDOW — Operate (Jun 22–28)
 
 - [ ] 🔴 **Feature freeze.** Tune **risk caps only**, never strategy logic.
 - [ ] 🔴 Daily: review PnL + **drawdown** + rule adherence (all judged).
+- [ ] 🔴 Daily: confirm **≥ 1 `twak swap` trade executed** (qualification floor) and portfolio > $1.
 - [ ] 🟡 Confirm Trigger.dev jobs healthy; alerts wired to you.
 - [ ] 🟢 Capture standout reflections + token-savings stats for the writeup.
 

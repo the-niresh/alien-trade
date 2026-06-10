@@ -1,7 +1,7 @@
 """
-S2 — Derivatives signal: funding rate (contrarian) + open interest (confirmatory).
+Derivatives signal: funding rate (contrarian) + open interest (confirmatory).
 Output: float in [-1, +1].
-Returns 0.0 gracefully when CMC extended data is absent (all zeros).
+Returns 0.0 gracefully when derivatives data is absent (all zeros).
 
 Edge: positioning data front-runs liquidations.  Most backtest-only teams miss this.
 """
@@ -18,7 +18,7 @@ _FUNDING_SHORT_EXTREME = -0.0002   # -0.02%/8h → crowded shorts → contrarian
 
 # ── Public API ────────────────────────────────────────────────────────────────
 
-def s2_derivatives(
+def derivatives_signal(
     history: list[Bar],
     lookback: int = 7,
 ) -> float:
@@ -26,7 +26,7 @@ def s2_derivatives(
     Combined derivatives score in [-1, 1].
     Component 1 (60%): funding rate — contrarian on extremes.
     Component 2 (40%): OI trend vs price trend — confirmatory / divergence flag.
-    Returns 0.0 when funding_rate and open_interest are all zero (CMC not yet wired).
+    Returns 0.0 when funding_rate and open_interest are all zero (data not yet available).
     """
     if len(history) < lookback + 1:
         return 0.0

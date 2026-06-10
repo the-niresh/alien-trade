@@ -1,5 +1,5 @@
 """
-S4 — On-chain flow signal.
+On-chain flow signal.
 Net outflow from exchanges (accumulation) = bullish precursor.
 Net inflow (distribution / sell pressure) = bearish.
 Score is the z-score of current net_flow vs recent history, sign-flipped
@@ -14,12 +14,12 @@ import numpy as np
 from backtest.engine import Bar
 
 
-def s4_onchain(history: list[Bar], lookback: int = 14) -> float:
+def flow_signal(history: list[Bar], lookback: int = 14) -> float:
     """
     On-chain net flow z-score signal in [-1, 1].
     Positive = net outflow (accumulation = smart money buying off exchange).
     Negative = net inflow (distribution = selling pressure building).
-    Returns 0.0 when net_flow is all zeros (CMC not yet wired).
+    Returns 0.0 when net_flow is all zeros (on-chain data not yet available).
     """
     if len(history) < lookback + 1:
         return 0.0

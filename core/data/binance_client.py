@@ -7,6 +7,7 @@ Symbol mapping: BNB→BNBUSDT, BTC/BTCB→BTCUSDT, ETH→ETHUSDT, USDT stays cas
 """
 from __future__ import annotations
 
+import bisect
 import datetime
 from pathlib import Path
 from typing import Optional
@@ -16,12 +17,17 @@ import polars as pl
 from tenacity import retry, stop_after_attempt, wait_exponential
 
 from backtest.engine import Bar
-from config.constants import BINANCE_BASE_URL, BINANCE_SYMBOL_PAIRS, BINANCE_INTERVAL_MAP
+from config.constants import (
+    BINANCE_BASE_URL, BINANCE_FUTURES_BASE_URL, BINANCE_FUTURES_PAIRS,
+    BINANCE_SYMBOL_PAIRS, BINANCE_INTERVAL_MAP,
+)
 
-BINANCE_BASE  = BINANCE_BASE_URL
-CACHE_DIR     = Path(__file__).parent / "parquet"
-SYMBOL_PAIRS  = BINANCE_SYMBOL_PAIRS
-INTERVAL_MAP  = BINANCE_INTERVAL_MAP
+BINANCE_BASE    = BINANCE_BASE_URL
+FUTURES_BASE    = BINANCE_FUTURES_BASE_URL
+FUTURES_PAIRS   = BINANCE_FUTURES_PAIRS
+CACHE_DIR       = Path(__file__).parent / "parquet"
+SYMBOL_PAIRS    = BINANCE_SYMBOL_PAIRS
+INTERVAL_MAP    = BINANCE_INTERVAL_MAP
 
 
 class BinanceClient:
@@ -31,10 +37,12 @@ class BinanceClient:
     """
 
     def __init__(self):
-        self._http = httpx.Client(base_url=BINANCE_BASE, timeout=30.0)
+        self._http    = httpx.Client(base_url=BINANCE_BASE,   timeout=30.0)
+        self._futures = httpx.Client(base_url=FUTURES_BASE, timeout=30.0)
 
     def close(self) -> None:
         self._http.close()
+        self._futures.close()
 
     def __enter__(self) -> "BinanceClient":
         return self
@@ -48,17 +56,26 @@ class BinanceClient:
         days_back: int = 730,
         interval: str = "daily",
         force_refresh: bool = False,
+        enrich_s2: bool = True,
     ) -> pl.DataFrame:
-        """
-        Pull OHLCV for `symbol` going back `days_back` days.
-        Returns polars DataFrame with the same schema as CMCClient (10 columns).
+        """Pull OHLCV for `symbol` going back `days_back` days.
+
+        When `enrich_s2=True` (default) and the symbol has a Binance futures pair,
+        funding_rate and open_interest are populated from the public fapi endpoints
+        (free, no key). Falls back gracefully when the futures API is unreachable.
+        Returns polars DataFrame with the same 10-column schema as CMCClient.
         """
         if symbol not in SYMBOL_PAIRS:
             raise ValueError(f"No Binance pair for {symbol!r}. Add it to SYMBOL_PAIRS.")
 
         cache = _cache_path(symbol, days_back, interval)
         if cache.exists() and not force_refresh:
-            return pl.read_parquet(cache)
+            df = pl.read_parquet(cache)
+            # Re-enrich on cache hit only if S2 is still all-zero (old cache)
+            if enrich_s2 and df["funding_rate"].max() == 0.0:
+                df = self.enrich_s2(df, symbol)
+                df.write_parquet(cache)
+            return df
 
         pair = SYMBOL_PAIRS[symbol]
         binance_interval = INTERVAL_MAP.get(interval, "1d")
@@ -68,6 +85,9 @@ class BinanceClient:
 
         klines = self._fetch_klines(pair, binance_interval, start_ms, end_ms)
         df = _parse_klines(klines)
+
+        if enrich_s2:
+            df = self.enrich_s2(df, symbol)
 
         CACHE_DIR.mkdir(parents=True, exist_ok=True)
         df.write_parquet(cache)
@@ -131,6 +151,141 @@ class BinanceClient:
             klines = klines[:-1]  # drop the in-progress candle
         return self.bars_from_df(_parse_klines(klines))
 
+    # ── S2 enrichment (free Binance Futures API) ────────────────────────────
+
+    def enrich_s2(self, df: pl.DataFrame, symbol: str) -> pl.DataFrame:
+        """Add real funding_rate + open_interest to an OHLCV dataframe using
+        Binance Futures public endpoints (no key required).
+
+        - Funding rates: 8h settlements, forward-filled to every bar.
+        - Open interest: hourly snapshots, aligned by timestamp.
+
+        Falls back gracefully: if the symbol has no futures pair or the API
+        call fails, the dataframe is returned unchanged (zeros stay zeros).
+        Both sources are cached to parquet to avoid redundant network calls.
+        """
+        futures_pair = FUTURES_PAIRS.get(symbol)
+        if not futures_pair:
+            return df  # no futures pair for this symbol (e.g. CAKE)
+
+        ts_list = df["timestamp_ms"].to_list()
+        if not ts_list:
+            return df
+        start_ms, end_ms = int(ts_list[0]), int(ts_list[-1])
+
+        # Funding rates
+        fr_data = self._load_or_fetch_funding(futures_pair, start_ms, end_ms)
+        # OI history (only available for hourly and above)
+        oi_data = self._load_or_fetch_oi(futures_pair, start_ms, end_ms)
+
+        return _merge_s2(df, fr_data, oi_data)
+
+    def _load_or_fetch_funding(
+        self, pair: str, start_ms: int, end_ms: int
+    ) -> list[dict]:
+        cache = CACHE_DIR / f"binance_futures_fr_{pair}.parquet"
+        try:
+            if cache.exists():
+                cached = pl.read_parquet(cache).to_dicts()
+                # If cache covers our window, use it; otherwise re-fetch
+                cached_start = cached[0]["fundingTime"] if cached else end_ms + 1
+                cached_end   = cached[-1]["fundingTime"] if cached else 0
+                if int(cached_start) <= start_ms and int(cached_end) >= end_ms:
+                    return cached
+        except Exception:
+            pass
+        try:
+            rows = self._fetch_funding_history(pair, start_ms, end_ms)
+            if rows:
+                CACHE_DIR.mkdir(parents=True, exist_ok=True)
+                pl.DataFrame(rows).write_parquet(cache)
+            return rows
+        except Exception as e:
+            print(f"[binance-futures] funding rate fetch failed for {pair}: {e}")
+            return []
+
+    def _load_or_fetch_oi(
+        self, pair: str, start_ms: int, end_ms: int
+    ) -> list[dict]:
+        cache = CACHE_DIR / f"binance_futures_oi_{pair}_1h.parquet"
+        try:
+            if cache.exists():
+                cached = pl.read_parquet(cache).to_dicts()
+                if cached:
+                    cs = int(cached[0]["timestamp"])
+                    ce = int(cached[-1]["timestamp"])
+                    if cs <= start_ms and ce >= end_ms:
+                        return cached
+        except Exception:
+            pass
+        try:
+            rows = self._fetch_oi_history(pair, start_ms, end_ms)
+            if rows:
+                CACHE_DIR.mkdir(parents=True, exist_ok=True)
+                pl.DataFrame(rows).write_parquet(cache)
+            return rows
+        except Exception as e:
+            print(f"[binance-futures] OI history fetch failed for {pair}: {e}")
+            return []
+
+    @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=8))
+    def _fetch_funding_history(
+        self, pair: str, start_ms: int, end_ms: int
+    ) -> list[dict]:
+        """Paginate Binance fapi fundingRate (8h settlements, up to 1000/request)."""
+        all_rows: list[dict] = []
+        cursor = start_ms
+        while cursor <= end_ms:
+            r = self._futures.get(
+                "/fapi/v1/fundingRate",
+                params={"symbol": pair, "startTime": cursor,
+                        "endTime": end_ms, "limit": 1000},
+            )
+            r.raise_for_status()
+            batch = r.json()
+            if not batch:
+                break
+            for row in batch:
+                all_rows.append({
+                    "fundingTime": int(row["fundingTime"]),
+                    "fundingRate": float(row["fundingRate"]),
+                })
+            last_ts = int(batch[-1]["fundingTime"])
+            if last_ts <= cursor or len(batch) < 1000:
+                break
+            cursor = last_ts + 1
+        return all_rows
+
+    @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=8))
+    def _fetch_oi_history(
+        self, pair: str, start_ms: int, end_ms: int, period: str = "1h"
+    ) -> list[dict]:
+        """Paginate Binance futures openInterestHist (500/request, hourly)."""
+        all_rows: list[dict] = []
+        cursor = start_ms
+        # Binance restricts each OI hist request to a limited time window
+        chunk_ms = 200 * 3_600_000  # 200 hourly bars per request to stay within limits
+        while cursor <= end_ms:
+            chunk_end = min(cursor + chunk_ms, end_ms)
+            r = self._futures.get(
+                "/futures/data/openInterestHist",
+                params={"symbol": pair, "period": period,
+                        "startTime": cursor, "endTime": chunk_end, "limit": 500},
+            )
+            r.raise_for_status()
+            batch = r.json()
+            if not batch:
+                cursor = chunk_end + 1
+                continue
+            for row in batch:
+                all_rows.append({
+                    "timestamp": int(row["timestamp"]),
+                    "sumOpenInterest": float(row["sumOpenInterest"]),
+                })
+            last_ts = int(batch[-1]["timestamp"])
+            cursor = max(last_ts + 1, chunk_end + 1)
+        return all_rows
+
     def bars_from_df(self, df: pl.DataFrame) -> list[Bar]:
         """Convert cached OHLCV DataFrame → list[Bar] for the backtest engine."""
         return [
@@ -151,6 +306,55 @@ class BinanceClient:
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
+
+def _merge_s2(
+    df: pl.DataFrame,
+    funding_rows: list[dict],
+    oi_rows: list[dict],
+) -> pl.DataFrame:
+    """Merge futures S2 signals into an OHLCV dataframe.
+
+    Funding rate: forward-filled from each 8h settlement.
+    Open interest: aligned by nearest hourly snapshot (within ±1h).
+    """
+    timestamps = df["timestamp_ms"].to_list()
+
+    # ── Funding rate (forward-fill) ──────────────────────────────────────────
+    fr_sorted = sorted(funding_rows, key=lambda r: int(r["fundingTime"]))
+    fr_ts  = [int(r["fundingTime"]) for r in fr_sorted]
+    fr_val = [float(r["fundingRate"]) for r in fr_sorted]
+
+    new_fr: list[float] = []
+    fr_idx = 0
+    current_fr = 0.0
+    for ts in timestamps:
+        # Advance while the next settlement is at or before this bar's timestamp
+        while fr_idx < len(fr_ts) and fr_ts[fr_idx] <= ts:
+            current_fr = fr_val[fr_idx]
+            fr_idx += 1
+        new_fr.append(current_fr)
+
+    # ── Open interest (nearest snapshot) ────────────────────────────────────
+    oi_sorted = sorted(oi_rows, key=lambda r: int(r["timestamp"]))
+    oi_ts  = [int(r["timestamp"]) for r in oi_sorted]
+    oi_val = [float(r["sumOpenInterest"]) for r in oi_sorted]
+
+    new_oi: list[float] = []
+    for ts in timestamps:
+        idx = bisect.bisect_right(oi_ts, ts) - 1
+        if idx >= 0 and ts - oi_ts[idx] <= 3_600_000:  # within 1h
+            new_oi.append(oi_val[idx])
+        else:
+            new_oi.append(0.0)
+
+    if not any(new_fr) and not any(new_oi):
+        return df  # nothing to merge (empty futures data)
+
+    return df.with_columns([
+        pl.Series("funding_rate",  new_fr, dtype=pl.Float64),
+        pl.Series("open_interest", new_oi, dtype=pl.Float64),
+    ])
+
 
 def _cache_path(symbol: str, days_back: int, interval: str) -> Path:
     return CACHE_DIR / f"binance_{symbol}_{days_back}d_{interval}.parquet"

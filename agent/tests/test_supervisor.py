@@ -168,7 +168,7 @@ def test_trade_close_reflects_then_historian_confirms():
     out = sup.handle("ETH position closed", kind="position_closed", symbol="ETH",
                      cycle_id="ETH-123",
                      payload={"trade_id": "t1", "regime": "chop", "side": "sell",
-                              "signals": {"s1": 0.2}, "realized_pnl": -42.0,
+                              "signals": {"momentum": 0.2}, "realized_pnl": -42.0,
                               "timestamp_ms": 100})
     # reflector ran with the payload, then handed to historian
     assert sb.reflection_writer.calls[-1]["realized_pnl"] == -42.0

@@ -1,11 +1,12 @@
 """
-Combined strategy: S1 + S2 (+ optional S3/S4) with regime gating and rebalance band.
+Combined strategy: momentum + derivatives (+ optional sentiment/flow) with regime
+gating and rebalance band.
 
 Decision flow per bar:
-  1. detect_regime(history)              → regime gate multiplier
-  2. compute S1, S2, (S3, S4) scores    → each in [-1, 1]
-  3. weighted sum + gate                 → target in [-1, 1] * gate
-  4. compare target to current position  → enter / exit / hold
+  1. detect_regime(history)                    → regime gate multiplier
+  2. compute momentum, derivatives, sentiment, flow scores  → each in [-1, 1]
+  3. weighted sum + gate                        → target in [-1, 1] * gate
+  4. compare target to current position         → enter / exit / hold
 
 Rebalance band prevents constant churning on noise (saves gas + slippage).
 Spot-long-only: perp shorts were dropped from the scored path (only `twak swap`
@@ -13,17 +14,17 @@ transactions count toward competition PnL — see reference-hackathon-rules).
 """
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Optional
 
 import numpy as np
 
 from backtest.engine import Bar, Order, StrategyFn
 from backtest.regime import Regime, detect_regime
-from signals.momentum import s1_momentum
-from signals.derivatives import s2_derivatives
-from signals.sentiment import s3_sentiment
-from signals.onchain import s4_onchain
+from signals.momentum import momentum_signal
+from signals.derivatives import derivatives_signal
+from signals.sentiment import sentiment_signal
+from signals.onchain import flow_signal
 
 
 # ── Regime gates ──────────────────────────────────────────────────────────────
@@ -40,24 +41,24 @@ REGIME_GATES: dict[Regime, float] = {
 
 @dataclass
 class StrategyParams:
-    # S1 — momentum / trend
-    s1_fast: int = 8
-    s1_slow: int = 21
-    s1_roc: int = 10
+    # Momentum signal (EMA cross + ROC)
+    ema_fast: int = 8
+    ema_slow: int = 21
+    roc_period: int = 10
     # Signal weights (each ≥ 0; sum should be ≤ 1)
-    w_s1: float = 0.65
-    w_s2: float = 0.35
-    w_s3: float = 0.0    # enabled when CMC social data improves OOS Sortino
-    w_s4: float = 0.0    # enabled when CMC flow data improves OOS Sortino
+    w_momentum:    float = 0.65
+    w_derivatives: float = 0.35
+    w_sentiment:   float = 0.0   # enabled when social data improves OOS Sortino
+    w_flow:        float = 0.0   # enabled when on-chain flow data improves OOS Sortino
     # Entry / exit thresholds (applied to gated composite score)
     entry_threshold: float = 0.30
-    exit_threshold: float = -0.10
+    exit_threshold:  float = -0.10
     # Rebalance band: skip trade if |target - current| < band (cuts churn)
     rebalance_band: float = 0.15
     # Position sizing
     position_size_usd: float = 1_000.0
-    # Traded symbol — must be a competition-eligible BEP-20 (see docs/GOAL.md /
-    # reference). BNB/BTC/BTCB are NOT eligible; ETH is the liquid default.
+    # Traded symbol — must be a competition-eligible BEP-20 (see docs/GOAL.md).
+    # BNB/BTC/BTCB are NOT eligible; ETH is the liquid default.
     symbol: str = "ETH"
 
 
@@ -71,7 +72,7 @@ def make_strategy(params: StrategyParams) -> StrategyFn:
     in_position: list[bool] = [False]   # mutable cell — survives bar-by-bar calls
 
     def strategy(history: list[Bar]) -> Optional[Order]:
-        if len(history) < params.s1_slow + 5:
+        if len(history) < params.ema_slow + 5:
             return None
 
         bar = history[-1]
@@ -91,15 +92,15 @@ def make_strategy(params: StrategyParams) -> StrategyFn:
             )
 
         # ── Signal scores ─────────────────────────────────────────────────────
-        s1 = s1_momentum(history, params.s1_fast, params.s1_slow, params.s1_roc)
-        s2 = s2_derivatives(history)
-        s3 = s3_sentiment(history) if params.w_s3 > 0.0 else 0.0
-        s4 = s4_onchain(history) if params.w_s4 > 0.0 else 0.0
+        mom  = momentum_signal(history, params.ema_fast, params.ema_slow, params.roc_period)
+        deriv = derivatives_signal(history)
+        sent = sentiment_signal(history) if params.w_sentiment > 0.0 else 0.0
+        flow = flow_signal(history)      if params.w_flow > 0.0 else 0.0
 
-        raw = (params.w_s1 * s1
-               + params.w_s2 * s2
-               + params.w_s3 * s3
-               + params.w_s4 * s4)
+        raw = (params.w_momentum    * mom
+               + params.w_derivatives * deriv
+               + params.w_sentiment   * sent
+               + params.w_flow        * flow)
         target = float(np.clip(raw, -1.0, 1.0)) * gate
 
         # ── Rebalance band ────────────────────────────────────────────────────
@@ -135,18 +136,22 @@ def score_breakdown(history: list[Bar], params: StrategyParams) -> dict:
     """Return per-signal scores + composite for a given history slice."""
     regime = detect_regime(history)
     gate = REGIME_GATES.get(regime, 1.0)
-    s1 = s1_momentum(history, params.s1_fast, params.s1_slow, params.s1_roc)
-    s2 = s2_derivatives(history)
-    s3 = s3_sentiment(history) if params.w_s3 > 0.0 else 0.0
-    s4 = s4_onchain(history)   if params.w_s4 > 0.0 else 0.0
-    raw = params.w_s1 * s1 + params.w_s2 * s2 + params.w_s3 * s3 + params.w_s4 * s4
+    mom   = momentum_signal(history, params.ema_fast, params.ema_slow, params.roc_period)
+    deriv = derivatives_signal(history)
+    sent  = sentiment_signal(history) if params.w_sentiment > 0.0 else 0.0
+        # note: flow_signal variable name shadowed below, use unique name
+    onchain = flow_signal(history)    if params.w_flow > 0.0 else 0.0
+    raw = (params.w_momentum    * mom
+           + params.w_derivatives * deriv
+           + params.w_sentiment   * sent
+           + params.w_flow        * onchain)
     return {
-        "regime": regime.value,
-        "gate": gate,
-        "s1": round(s1, 4),
-        "s2": round(s2, 4),
-        "s3": round(s3, 4),
-        "s4": round(s4, 4),
-        "raw": round(raw, 4),
-        "target": round(float(np.clip(raw, -1.0, 1.0)) * gate, 4),
+        "regime":      regime.value,
+        "gate":        gate,
+        "momentum":    round(mom,     4),
+        "derivatives": round(deriv,   4),
+        "sentiment":   round(sent,    4),
+        "flow":        round(onchain, 4),
+        "raw":         round(raw,     4),
+        "target":      round(float(np.clip(raw, -1.0, 1.0)) * gate, 4),
     }

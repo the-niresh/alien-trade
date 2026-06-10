@@ -51,9 +51,14 @@ class CoPilot:
         skill_lines = self._skill_evidence(question)
         prompt = self._build_prompt(question, hits, live, skill_lines)
         res = self.llm.complete(prompt, system=_COPILOT_SYSTEM, tier=tier, max_tokens=400)
+        # 8.13 co-pilot self-check: prepend a warning if the answer has retrievable
+        # memories but fails to cite any of them. No LLM call — pure text scan.
+        answer = res.text
+        if hits and _is_uncited(answer):
+            answer = "Some claims could not be grounded in retrieved memory.  " + answer
         return {
             "question": question,
-            "answer": res.text,
+            "answer": answer,
             "sources": [{"id": h.id, "kind": h.metadata.get("kind"),
                          "score": round(h.score, 3), "text": h.text} for h in hits],
             "skills": skill_lines,
@@ -147,6 +152,15 @@ class CoPilot:
         return (f"MEMORY:\n{mem}\n\nLIVE STATE:\n{live_block}\n\n"
                 f"LIVE CMC SKILLS:\n{skills_block}\n\n"
                 f"QUESTION: {question}\n\nAnswer:")
+
+
+def _is_uncited(answer: str) -> bool:
+    """True if the answer is substantive but contains no source citation markers.
+    The co-pilot prompt instructs the LLM to use [kind] notation or 'source:' refs;
+    absence of these in a non-trivial answer indicates the LLM didn't ground its reply."""
+    if len(answer.split()) < 20:
+        return False   # short answers don't require citations
+    return "[" not in answer and "source" not in answer.lower()
 
 
 def main(argv: list[str] | None = None) -> None:

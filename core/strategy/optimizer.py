@@ -17,8 +17,8 @@ from strategy.combined import StrategyParams, make_strategy
 # ── Parameter grid ────────────────────────────────────────────────────────────
 
 PARAM_GRID: dict[str, list] = {
-    "s1_fast":          [5, 8, 13],
-    "s1_slow":          [21, 34],
+    "ema_fast":         [5, 8, 13],
+    "ema_slow":         [21, 34],
     "entry_threshold":  [0.20, 0.30, 0.40],
 }
 
@@ -46,14 +46,14 @@ def optimize(
     results: list[tuple[dict, float]] = []
 
     for fast, slow, entry in product(
-        PARAM_GRID["s1_fast"],
-        PARAM_GRID["s1_slow"],
+        PARAM_GRID["ema_fast"],
+        PARAM_GRID["ema_slow"],
         PARAM_GRID["entry_threshold"],
     ):
         if fast >= slow:
             continue   # invalid pair
 
-        params = StrategyParams(s1_fast=fast, s1_slow=slow, entry_threshold=entry)
+        params = StrategyParams(ema_fast=fast, ema_slow=slow, entry_threshold=entry)
         strategy = make_strategy(params)
         result = run_backtest(
             train_bars, strategy,
@@ -90,8 +90,8 @@ def optimize(
 
     # Return only the optimised keys (don't override weights/sizing)
     return {
-        "s1_fast": best_params["s1_fast"],
-        "s1_slow": best_params["s1_slow"],
+        "ema_fast":        best_params["ema_fast"],
+        "ema_slow":        best_params["ema_slow"],
         "entry_threshold": best_params["entry_threshold"],
     }
 

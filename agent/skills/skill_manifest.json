@@ -1,0 +1,147 @@
+{
+  "unique_name": "alien_trade_multi_signal_score",
+  "name": "Alien-Trade Multi-Signal Score",
+  "version": "1.0.0",
+  "description": "Returns a structured multi-signal trading score for BSC-eligible tokens (ETH, CAKE, UNI, LINK, AAVE). Combines four orthogonal signals: S1 momentum (EMA cross + ROC), S2 derivatives (funding rate + open interest), S3 social sentiment, S4 on-chain exchange flow. Strategy is walk-forward validated on 2 years of daily data, optimized for Sortino - 2*maxDD (drawdown-first). Regime-gated: full size in trend, half in chop, 30% in high-vol, exit in crash.",
+  "category": "trading_signals",
+  "tags": ["bsc", "defi", "multi-signal", "derivatives", "sentiment", "on-chain", "regime", "walk-forward"],
+  "author": "alien-trade",
+  "license": "MIT",
+  "endpoint": {
+    "method": "POST",
+    "path": "/skill/signal_score"
+  },
+  "input_schema": {
+    "type": "object",
+    "required": ["symbol"],
+    "properties": {
+      "symbol": {
+        "type": "string",
+        "description": "BSC-eligible token symbol.",
+        "enum": ["ETH", "CAKE", "UNI", "LINK", "AAVE"]
+      },
+      "lookback_bars": {
+        "type": "integer",
+        "description": "Recent daily bars for signal computation. Signals need at least 30; more bars give a more stable regime read.",
+        "default": 60,
+        "minimum": 30,
+        "maximum": 200
+      }
+    }
+  },
+  "output_schema": {
+    "type": "object",
+    "properties": {
+      "symbol": {
+        "type": "string",
+        "description": "Token symbol echoed from input."
+      },
+      "timestamp": {
+        "type": "string",
+        "description": "ISO-8601 UTC timestamp of computation."
+      },
+      "regime": {
+        "type": "string",
+        "description": "Detected market regime.",
+        "enum": ["trend", "chop", "high_vol", "crash", "unknown"]
+      },
+      "regime_gate": {
+        "type": "number",
+        "description": "Position size multiplier from regime: trend=1.0, chop=0.5, high_vol=0.3, crash=0.0."
+      },
+      "momentum_score": {
+        "type": "number",
+        "description": "S1: EMA cross + ROC signal, range [-1, 1]. Positive = bullish trend."
+      },
+      "derivatives_score": {
+        "type": "number",
+        "description": "S2: Funding rate + OI contrarian signal, range [-1, 1]. Positive = healthy funding, confirms trend."
+      },
+      "sentiment_score": {
+        "type": "number",
+        "description": "S3: Social sentiment rate-of-change, range [-1, 1]. 0 when social data unavailable."
+      },
+      "flow_score": {
+        "type": "number",
+        "description": "S4: On-chain exchange flow signal, range [-1, 1]. 0 when flow data unavailable."
+      },
+      "composite_score": {
+        "type": "number",
+        "description": "Weighted composite (S1*0.65 + S2*0.35) * regime_gate, range [-1, 1]."
+      },
+      "verdict": {
+        "type": "string",
+        "description": "Signal verdict based on entry/exit thresholds.",
+        "enum": ["buy", "sell", "hold"]
+      },
+      "signal_strength": {
+        "type": "string",
+        "description": "Absolute composite score bucket: strong (>=0.6), moderate (>=0.3), weak (<0.3).",
+        "enum": ["strong", "moderate", "weak"]
+      },
+      "bars_used": {
+        "type": "integer",
+        "description": "Number of daily bars used in signal computation."
+      },
+      "error": {
+        "type": "string",
+        "description": "Present only when computation failed. verdict will be 'hold', all scores 0."
+      }
+    }
+  },
+  "examples": [
+    {
+      "description": "ETH signal score using last 60 daily bars",
+      "input": {"symbol": "ETH", "lookback_bars": 60},
+      "output": {
+        "symbol": "ETH",
+        "timestamp": "2026-06-10T12:00:00+00:00",
+        "regime": "trend",
+        "regime_gate": 1.0,
+        "momentum_score": 0.42,
+        "derivatives_score": 0.18,
+        "sentiment_score": 0.0,
+        "flow_score": 0.0,
+        "composite_score": 0.3398,
+        "verdict": "buy",
+        "signal_strength": "moderate",
+        "bars_used": 60
+      }
+    },
+    {
+      "description": "LINK signal with extended lookback",
+      "input": {"symbol": "LINK", "lookback_bars": 90},
+      "output": {
+        "symbol": "LINK",
+        "timestamp": "2026-06-10T12:00:00+00:00",
+        "regime": "chop",
+        "regime_gate": 0.5,
+        "momentum_score": 0.11,
+        "derivatives_score": -0.04,
+        "sentiment_score": 0.0,
+        "flow_score": 0.0,
+        "composite_score": 0.0577,
+        "verdict": "hold",
+        "signal_strength": "weak",
+        "bars_used": 90
+      }
+    }
+  ],
+  "strategy_details": {
+    "objective": "maximize Sortino_oos - 2 * max_drawdown_oos",
+    "validation": "walk-forward, 2-year daily OHLCV + Binance Futures funding/OI",
+    "signals": {
+      "S1_momentum": "EMA(8)/EMA(21) cross + ROC(10), ATR-normalized",
+      "S2_derivatives": "Funding rate contrarian + OI trend confirmation",
+      "S3_sentiment": "Social attention rate-of-change (requires CMC Pro data)",
+      "S4_flow": "Exchange net-outflow = accumulation proxy (requires CMC Pro data)"
+    },
+    "weights": {"S1": 0.65, "S2": 0.35, "S3": 0.0, "S4": 0.0},
+    "regime_gates": {"trend": 1.0, "chop": 0.5, "high_vol": 0.3, "crash": 0.0},
+    "entry_threshold": 0.30,
+    "exit_threshold": -0.10,
+    "data_source": "Binance public klines (OHLCV) + Binance Futures fapi (funding/OI)",
+    "eligible_symbols": ["ETH", "CAKE", "UNI", "LINK", "AAVE"],
+    "note": "S3/S4 scores are 0 in the current build. Full CMC Pro data will enable these signals, improving OOS Sortino."
+  }
+}

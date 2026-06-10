@@ -1,5 +1,5 @@
 """
-S1 — Momentum / Trend signal.
+Momentum / Trend signal (backbone of the strategy).
 EMA cross + Rate-of-Change, normalized by ATR so the score is volatility-agnostic.
 Output: float in [-1, +1].  +1 = strong uptrend, -1 = strong downtrend, 0 = flat/chop.
 """
@@ -11,7 +11,7 @@ from backtest.engine import Bar
 
 # ── Public API ────────────────────────────────────────────────────────────────
 
-def s1_momentum(
+def momentum_signal(
     history: list[Bar],
     fast: int = 8,
     slow: int = 21,

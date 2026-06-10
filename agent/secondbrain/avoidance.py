@@ -42,7 +42,7 @@ class VectorMistakeAvoidance:
     def check(self, history: list[Bar], order: Order, regime: str) -> AvoidanceVerdict:
         try:
             breakdown = score_breakdown(history, self.params)
-            signals = {k: breakdown.get(k) for k in ("s1", "s2", "s3", "s4")}
+            signals = {k: breakdown.get(k) for k in ("momentum", "derivatives", "sentiment", "flow")}
             key = setup_key(regime, signals, order.side)
 
             hits = self.vector.query(key, top_k=TOP_K, kind=KIND_REFLECTION)

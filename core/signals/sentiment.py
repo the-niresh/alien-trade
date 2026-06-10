@@ -1,5 +1,5 @@
 """
-S3 — Social / Sentiment signal.
+Social / Sentiment signal.
 Rate-of-change of CMC social attention score, not the absolute level.
 Spike in social volume + improving sentiment precedes retail flow.
 Euphoric extreme (very high score, still rising fast) = blow-off → fade.
@@ -13,12 +13,12 @@ import numpy as np
 from backtest.engine import Bar
 
 
-def s3_sentiment(history: list[Bar], period: int = 7) -> float:
+def sentiment_signal(history: list[Bar], period: int = 7) -> float:
     """
     Social attention momentum score in [-1, 1].
     Positive when attention is accelerating constructively.
     Negative on euphoric blow-off tops or sharply declining attention.
-    Returns 0.0 when social_score is all zeros (CMC not yet wired).
+    Returns 0.0 when social_score is all zeros (social data not yet available).
     """
     if len(history) < period + 1:
         return 0.0

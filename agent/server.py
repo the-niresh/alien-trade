@@ -73,6 +73,11 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="Alien-Trade Agent", version="0.1.0", lifespan=lifespan)
 
+# TWAK native x402 provider: meters POST /skill/signal_score at $0.01/call.
+# No-op when X402_WALLET_ADDRESS is absent — endpoint stays free.
+from agent.x402_provider import register as _x402_register  # noqa: E402
+_x402_register(app)
+
 
 def _cycle_to_dict(res: CycleResult | None) -> dict:
     if res is None:
@@ -234,6 +239,30 @@ def supervisor_event(body: dict) -> dict:
         return {"ok": False, "reason": str(exc)}
 
 
+@app.post("/dreamer")
+def dreamer() -> dict:
+    """Run one Dreamer nightly consolidation: dedupe reflections, score forecast
+    calibration, age stale research, write nightly digest."""
+    sb = _second_brain()
+    if sb is None:
+        return {"ok": False, "reason": "Second Brain disabled or offline."}
+    try:
+        from agent.secondbrain.dreamer import Dreamer
+        d = Dreamer(vector=sb.vector, llm=sb.llm, bridge=get_loop().bridge)
+        res = d.run()
+        return {
+            "ok": True,
+            "reflections_checked": res.reflections_checked,
+            "reflections_deduped": res.reflections_deduped,
+            "research_aged": res.research_aged,
+            "forecast_summary": res.forecast_summary,
+            "nightly_digest_id": res.nightly_digest_id,
+            "errors": res.errors,
+        }
+    except Exception as e:  # noqa: BLE001 — dreamer must never break the server
+        return {"ok": False, "reason": str(e)}
+
+
 @app.get("/telemetry")
 def telemetry() -> dict:
     """LLM cost telemetry: tokens, cost, cache-hit rate, $ saved vs naive Opus."""
@@ -241,3 +270,35 @@ def telemetry() -> dict:
     if sb is None:
         return {"enabled": False}
     return {"enabled": True, **sb.telemetry.snapshot()}
+
+
+# ── Track-2 CMC Skill endpoint ────────────────────────────────────────────────
+
+@app.post("/skill/signal_score")
+def skill_signal_score(body: dict) -> dict:
+    """Track-2 CMC Skill — multi-signal score for a BSC-eligible token.
+
+    POST {"symbol": "ETH", "lookback_bars": 60}
+    Returns structured score: regime, momentum/derivatives/sentiment/flow scores,
+    composite, verdict, signal_strength. Described in agent/skills/skill_manifest.json.
+    """
+    symbol = str(body.get("symbol", "ETH"))
+    lookback_bars = int(body.get("lookback_bars", 60))
+    try:
+        from agent.skills.track2 import SignalScoreSkill
+        return SignalScoreSkill().compute(symbol, lookback_bars).as_dict()
+    except Exception as exc:  # noqa: BLE001
+        return {"symbol": symbol, "error": str(exc), "verdict": "hold",
+                "signal_strength": "weak", "bars_used": 0}
+
+
+@app.get("/skill/manifest")
+def skill_manifest() -> dict:
+    """Return the CMC Skills Marketplace manifest for the Track-2 strategy skill."""
+    import json
+    from pathlib import Path
+    manifest_path = Path(__file__).parent / "skills" / "skill_manifest.json"
+    try:
+        return json.loads(manifest_path.read_text(encoding="utf-8"))
+    except Exception as exc:  # noqa: BLE001
+        return {"error": str(exc)}

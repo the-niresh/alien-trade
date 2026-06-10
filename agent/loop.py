@@ -104,6 +104,7 @@ class DecisionLoop:
         self._fills: list[Fill] = []
         self._trades: list[Trade] = []
         self._entry_fill: Optional[Fill] = None
+        self._entry_forecast_confidence: float = 1.0  # snapshot at buy fill for calibration
         # Passthrough facts the curve can't reveal (autonomy + rule adherence).
         self._cycles_total = 0
         self._blocks_fired = 0
@@ -498,6 +499,32 @@ class DecisionLoop:
         except Exception:  # noqa: BLE001 — Tier-1; must never crash a trading cycle
             return exec_order
 
+    def _current_forecast_confidence(self) -> float:
+        """Read the live forecast confidence (for calibration snapshot at entry).
+        Returns NEUTRAL (1.0) on any error — never blocks a trade."""
+        from risk.forecast import NEUTRAL
+        try:
+            fs = self.bridge.get_forecast_state(self.symbol)
+            if fs is None:
+                return NEUTRAL
+            return float(fs.get("confidence", NEUTRAL))
+        except Exception:  # noqa: BLE001
+            return NEUTRAL
+
+    def _record_forecast_calibration(self, cycle_id: str, bar, regime: str,
+                                     realized_pnl: float) -> None:
+        """Write a forecast_calibration row: entry-time confidence + realized PnL.
+        Off the hot path — any failure is silently swallowed."""
+        try:
+            self.bridge.record_forecast_calibration(
+                cycle_id=cycle_id, symbol=self.symbol,
+                forecast_confidence=self._entry_forecast_confidence,
+                regime=regime, realized_pnl=realized_pnl,
+                ts_ms=bar.timestamp,
+            )
+        except Exception:  # noqa: BLE001 — calibration is observability
+            pass
+
     # ── execution → ledger → trade/ledger rows ──────────────────────────────
 
     def _handle_execution(self, execution: ExecutionReport, bar: Bar, cycle_id: str,
@@ -510,10 +537,13 @@ class DecisionLoop:
             if execution.fill.order.side == "buy":
                 if self._entry_fill is None:
                     self._entry_fill = execution.fill
+                    # Snapshot the current forecast confidence at entry for calibration.
+                    self._entry_forecast_confidence = self._current_forecast_confidence()
             elif self._entry_fill is not None:
                 self._trades.append(
                     Trade(entry=self._entry_fill, exit=execution.fill, pnl_usd=realized))
                 self._entry_fill = None
+                self._record_forecast_calibration(cycle_id, bar, regime, realized)
             trade_id = self.bridge.record_trade(
                 symbol=execution.order.symbol,
                 side=execution.order.side,
@@ -698,8 +728,8 @@ class DecisionLoop:
 def _signals_obj(breakdown: dict) -> dict:
     """Map score_breakdown → the Convex decisions.signals object shape."""
     return {
-        "s1_momentum": breakdown.get("s1"),
-        "s2_funding": breakdown.get("s2"),
-        "s3_sentiment": breakdown.get("s3"),
-        "s4_flow": breakdown.get("s4"),
+        "momentum":    breakdown.get("momentum"),
+        "derivatives": breakdown.get("derivatives"),
+        "sentiment":   breakdown.get("sentiment"),
+        "flow":        breakdown.get("flow"),
     }

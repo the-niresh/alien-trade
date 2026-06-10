@@ -54,7 +54,7 @@ def _bars(n: int, start: float = 300.0, trend: float = 1.004, vol: float = 0.012
 def _seed_setup(vector: VectorStore, history, side: str, pnls: list[float]):
     """Seed the vector with reflections for the setup `history`/`side` produces."""
     bd = score_breakdown(history, StrategyParams())
-    signals = {k: bd.get(k) for k in ("s1", "s2", "s3", "s4")}
+    signals = {k: bd.get(k) for k in ("momentum", "derivatives", "sentiment", "flow")}
     key = setup_key(bd["regime"], signals, side)
     for i, p in enumerate(pnls):
         vector.upsert(id=f"refl-seed-{i}", text=key, metadata={
@@ -68,11 +68,11 @@ def _seed_setup(vector: VectorStore, history, side: str, pnls: list[float]):
 
 class TestSetupKey:
     def test_dominant_signal_picks_largest_abs(self):
-        assert dominant_signal({"s1": 0.1, "s2": -0.9, "s3": 0.0}) == "derivatives"
-        assert dominant_signal({"s1_momentum": 0.8, "s2_funding": 0.2}) == "momentum"
+        assert dominant_signal({"momentum": 0.1, "derivatives": -0.9, "sentiment": 0.0}) == "derivatives"
+        assert dominant_signal({"momentum": 0.8, "derivatives": 0.2}) == "momentum"
 
     def test_setup_key_is_deterministic(self):
-        s = {"s1": 0.7, "s2": 0.1}
+        s = {"momentum": 0.7, "derivatives": 0.1}
         assert setup_key("trend", s, "buy") == setup_key("trend", s, "buy")
         assert "trend" in setup_key("trend", s, "buy")
         assert "momentum" in setup_key("trend", s, "buy")
@@ -166,7 +166,7 @@ class TestReflectionWriter:
         w = ReflectionWriter(vector=v, llm=ClaudeClient(api_key=""), bridge=bridge)
         r = w.reflect(cycle_id="BNB-1", trade_id="trade_1", timestamp_ms=1,
                       regime="trend", side="sell",
-                      signals={"s1": 0.8, "s2": 0.1}, realized_pnl=-42.0)
+                      signals={"momentum": 0.8, "derivatives": 0.1}, realized_pnl=-42.0)
         assert r is not None and r.outcome_label == "loss"
         # vector got a reflection-kind memory keyed on the setup
         assert v._mem and v._mem[0]["metadata"]["kind"] == KIND_REFLECTION
@@ -282,15 +282,16 @@ class TestAutoResearch:
     def test_cycle_produces_and_stores_digests(self):
         v = VectorStore()
         sup = ResearchSupervisor(vector=v, llm=ClaudeClient(api_key=""), symbol="BNB")
-        sup.agent.gather_context = lambda history: "ctx: flat market"   # bypass network
+        # Bypass network: override _fetch_history to return synthetic bars
+        sup._fetch_history = lambda symbol=None: _bars(60)
         digests = sup.run_cycle(history=_bars(60), max_questions=2)
         assert len(digests) >= 1
         assert all(d.findings for d in digests)
         assert any(m["metadata"]["kind"] == KIND_RESEARCH for m in v._mem)
 
     def test_identify_unknowns_always_returns_baseline_question(self):
-        agent = ResearchSupervisor(vector=VectorStore(), llm=ClaudeClient(api_key=""),
-                                   symbol="BNB").agent
+        from agent.secondbrain.research import ResearchAgent
+        agent = ResearchAgent(llm=ClaudeClient(api_key=""), symbol="BNB")
         assert len(agent.identify_unknowns([])) >= 1
 
 

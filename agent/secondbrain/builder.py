@@ -47,7 +47,11 @@ class SecondBrain:
     def research(self, symbol: str = "BNB"):
         from agent.secondbrain.research import ResearchSupervisor
         return ResearchSupervisor(vector=self.vector, llm=self.llm, symbol=symbol,
-                                  skills=self.skills)
+                                  skills=self.skills, bridge=self.bridge)
+
+    def dreamer(self):
+        from agent.secondbrain.dreamer import Dreamer
+        return Dreamer(vector=self.vector, llm=self.llm, bridge=self.bridge)
 
     def close(self) -> None:
         for c in (self.vector, self.cache, self.llm):

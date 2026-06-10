@@ -131,7 +131,7 @@ class TestGuardrails:
 
 class TestRiskEngine:
     def _make(self, **cfg_kw):
-        params = StrategyParams(s1_fast=8, s1_slow=21, position_size_usd=1_000.0)
+        params = StrategyParams(ema_fast=8, ema_slow=21, position_size_usd=1_000.0)
         inner = make_strategy(params)
         cfg = RiskConfig(**cfg_kw)
         return make_risk_strategy(inner, cfg, initial_capital=10_000.0)
@@ -144,7 +144,7 @@ class TestRiskEngine:
 
     def test_daily_loss_kill_halts_trading(self):
         """Simulate a bad day: inject daily_loss > limit → engine must stop issuing orders."""
-        params = StrategyParams(s1_fast=5, s1_slow=21, entry_threshold=0.05,
+        params = StrategyParams(ema_fast=5, ema_slow=21, entry_threshold=0.05,
                                 position_size_usd=1_000.0)
         inner = make_strategy(params)
         cfg = RiskConfig(daily_loss_limit_pct=0.03)   # 3% daily limit
@@ -160,7 +160,7 @@ class TestRiskEngine:
 
     def test_high_vol_shrinks_order_size(self):
         """In volatile market, risk engine should issue smaller orders than base size."""
-        params = StrategyParams(s1_fast=5, s1_slow=21, entry_threshold=0.05,
+        params = StrategyParams(ema_fast=5, ema_slow=21, entry_threshold=0.05,
                                 position_size_usd=1_000.0)
         inner = make_strategy(params)
         cfg = RiskConfig(base_position_usd=1_000.0, target_vol_ann=0.15)
@@ -186,7 +186,7 @@ class TestRiskEngine:
 
     def test_per_trade_cap_enforced(self):
         """No fill should exceed max_trade_usd."""
-        params = StrategyParams(s1_fast=5, s1_slow=21, entry_threshold=0.05,
+        params = StrategyParams(ema_fast=5, ema_slow=21, entry_threshold=0.05,
                                 position_size_usd=5_000.0)   # wants big size
         inner = make_strategy(params)
         cfg = RiskConfig(max_trade_usd=1_000.0)
@@ -264,7 +264,7 @@ class TestMaxExposureInvariant:
     def test_real_strategy_unaffected_single_position(self):
         """The real single-position strategy never trips the cap (regression guard
         that the new check doesn't change normal behaviour)."""
-        params = StrategyParams(s1_fast=5, s1_slow=21, entry_threshold=0.05,
+        params = StrategyParams(ema_fast=5, ema_slow=21, entry_threshold=0.05,
                                 position_size_usd=1_000.0)
         engine = make_risk_strategy(make_strategy(params), RiskConfig(),
                                     initial_capital=10_000.0)

@@ -73,7 +73,7 @@ class TestSimLiveParity:
     def test_paper_loop_reproduces_backtest_fills(self):
         bars = _bars(150, trend=1.004)
         cost = BSCCostModel()
-        params = StrategyParams(s1_fast=5, s1_slow=21, entry_threshold=0.10,
+        params = StrategyParams(ema_fast=5, ema_slow=21, entry_threshold=0.10,
                                 position_size_usd=1_000.0)
         risk = RiskConfig()
 
@@ -100,7 +100,7 @@ class TestSimLiveParity:
     def test_paper_loop_equity_matches_backtest(self):
         bars = _bars(150, trend=1.004)
         cost = BSCCostModel()
-        params = StrategyParams(s1_fast=5, s1_slow=21, entry_threshold=0.10,
+        params = StrategyParams(ema_fast=5, ema_slow=21, entry_threshold=0.10,
                                 position_size_usd=1_000.0)
         risk = RiskConfig()
 
@@ -125,7 +125,7 @@ class TestSimLiveParity:
 class TestKillSwitch:
     def test_halt_blocks_all_trades_within_one_cycle(self):
         bars = _bars(120, trend=1.006)
-        params = StrategyParams(s1_fast=5, s1_slow=21, entry_threshold=0.05)
+        params = StrategyParams(ema_fast=5, ema_slow=21, entry_threshold=0.05)
         bridge = _CountingBridge(halted=True)
         loop = DecisionLoop(
             feed=ReplayFeed(bars),
@@ -142,7 +142,7 @@ class TestKillSwitch:
 
     def test_unhalt_resumes_trading(self):
         bars = _bars(120, trend=1.006)
-        params = StrategyParams(s1_fast=5, s1_slow=21, entry_threshold=0.05)
+        params = StrategyParams(ema_fast=5, ema_slow=21, entry_threshold=0.05)
         bridge = _CountingBridge(halted=False)
         loop = DecisionLoop(
             feed=ReplayFeed(bars),
@@ -315,7 +315,7 @@ class TestExecutionChaos:
 class TestMistakeAvoidance:
     def test_brain_block_prevents_trade(self):
         bars = _bars(120, trend=1.006)
-        params = StrategyParams(s1_fast=5, s1_slow=21, entry_threshold=0.05)
+        params = StrategyParams(ema_fast=5, ema_slow=21, entry_threshold=0.05)
         bridge = _CountingBridge()
         loop = DecisionLoop(
             feed=ReplayFeed(bars),
@@ -449,7 +449,7 @@ class _InMemoryBridge(ConvexBridge):
 class TestCrashRecovery:
     def _run_once(self, bridge):
         bars = _bars(150, trend=1.004)
-        params = StrategyParams(s1_fast=5, s1_slow=21, entry_threshold=0.10,
+        params = StrategyParams(ema_fast=5, ema_slow=21, entry_threshold=0.10,
                                 position_size_usd=1_000.0)
         loop = DecisionLoop(
             feed=ReplayFeed(bars),
@@ -515,7 +515,7 @@ class TestRehearsal:
         bars = _bars(150, trend=1.004)
         cfg = AgentConfig(symbol="BNB")
         cfg.convex_url = ""                                   # offline bridge
-        cfg.strategy = StrategyParams(s1_fast=5, s1_slow=21, entry_threshold=0.10,
+        cfg.strategy = StrategyParams(ema_fast=5, ema_slow=21, entry_threshold=0.10,
                                       position_size_usd=1_000.0)
         rep = reconcile(cfg, bars)
 

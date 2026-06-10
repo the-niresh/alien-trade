@@ -66,7 +66,7 @@ def _label_symbol(vector, symbol, bars: list[Bar], params, horizon, stride) -> i
         history = bars[: i + 1]
         regime = detect_regime(history).value
         breakdown = score_breakdown(history, params)
-        signals = {k: breakdown.get(k) for k in ("s1", "s2", "s3", "s4")}
+        signals = {k: breakdown.get(k) for k in ("momentum", "derivatives", "sentiment", "flow")}
         target = breakdown.get("target", 0.0)
         side = "buy" if target >= 0 else "sell"
 

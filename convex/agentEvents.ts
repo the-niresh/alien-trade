@@ -24,6 +24,31 @@ export const append = mutation({
   },
 });
 
+/**
+ * Latest event per agent — drives the animated agent roster in the glass cockpit.
+ * Scans the last 200 events and returns one row per unique agent name.
+ */
+export const latestPerAgent = query({
+  args: {},
+  returns: v.array(v.any()),
+  handler: async (ctx) => {
+    const events = await ctx.db
+      .query("agent_events")
+      .withIndex("by_ts")
+      .order("desc")
+      .take(200);
+    const seen = new Set<string>();
+    const result: (typeof events)[number][] = [];
+    for (const e of events) {
+      if (!seen.has(e.agent)) {
+        seen.add(e.agent);
+        result.push(e);
+      }
+    }
+    return result;
+  },
+});
+
 // Newest-first slice for the channel view.
 export const recent = query({
   args: { limit: v.optional(v.number()) },

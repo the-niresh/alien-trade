@@ -1,0 +1,33 @@
+# Alien-Trade agent — Fly.io deployment config
+# Deploy: fly launch --name alien-trade-agent
+#         fly secrets set CMC_API_KEY=... CONVEX_URL=... (etc.)
+#         fly deploy
+
+app = "alien-trade-agent"
+primary_region = "iad"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  EXECUTION_BACKEND = "paper"
+  TRADING_MODE      = "paper"
+  SECOND_BRAIN      = "1"
+  PORT              = "8000"
+
+[http_service]
+  internal_port        = 8000
+  force_https          = true
+  auto_stop_machines   = "stop"
+  auto_start_machines  = true
+  min_machines_running = 0
+
+  [http_service.concurrency]
+    type       = "requests"
+    soft_limit = 10
+    hard_limit = 20
+
+[[vm]]
+  memory   = "512mb"
+  cpu_kind = "shared"
+  cpus     = 1

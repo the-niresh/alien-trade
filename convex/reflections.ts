@@ -23,6 +23,8 @@ export const record = mutation({
     outcome_label: outcome,
     lesson: v.string(),
     vector_id: v.optional(v.string()),
+    quality: v.optional(v.string()),
+    source_cycle_id: v.optional(v.string()),
   },
   returns: v.id("reflections"),
   handler: async (ctx, args) => {
@@ -35,6 +37,7 @@ export const record = mutation({
       await ctx.db.patch(dup._id, {
         lesson: args.lesson,
         vector_id: args.vector_id,
+        quality: args.quality,
       });
       return dup._id;
     }
@@ -50,6 +53,16 @@ export const recent = query({
   },
 });
 
+/** Dreamer calls this to mark a duplicate reflection as stale (soft-delete). */
+export const softDelete = mutation({
+  args: { id: v.id("reflections") },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.id, { stale: true });
+    return null;
+  },
+});
+
 export const byOutcome = query({
   args: { outcome_label: outcome, limit: v.optional(v.number()) },
   handler: async (ctx, args) => {
@@ -58,5 +71,22 @@ export const byOutcome = query({
       .withIndex("by_outcome", (q) => q.eq("outcome_label", args.outcome_label))
       .order("desc")
       .take(args.limit ?? 50);
+  },
+});
+
+/** Winning trades for the Wins Feed panel. Optionally filter by mode. */
+export const wins = query({
+  args: {
+    limit: v.optional(v.number()),
+    mode: v.optional(v.string()),
+  },
+  returns: v.array(v.any()),
+  handler: async (ctx, args) => {
+    const rows = await ctx.db
+      .query("reflections")
+      .withIndex("by_outcome", (q) => q.eq("outcome_label", "win"))
+      .order("desc")
+      .take(args.limit ?? 20);
+    return args.mode ? rows.filter((r) => r.mode === args.mode) : rows;
   },
 });

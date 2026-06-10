@@ -179,31 +179,51 @@ class Supervisor:
             ))
             return {"route": "researcher", "digests": [], "confidence": 1.0,
                     "events": [evt], "hops": 1}
+        # 8.15: get all eligible symbols from Convex config, filter per-symbol dedupe
+        symbols_to_research = self._filter_dedupe(symbol, state)
+
         digests = []
         confidence = 1.0
         try:
-            sup = self.sb.research(symbol)
-            history = sup._fetch_history()
-            digests = sup.run_cycle(history=history)
-            from agent.secondbrain.research import confidence_from_history
-            confidence = confidence_from_history(history)
-            self._write_forecast(symbol, confidence, history)
-            self._last_research_ts[symbol] = time.time()  # update only on success
+            sup = self.sb.research(symbol)  # primary symbol for compat
+            if len(symbols_to_research) > 1:
+                digests = sup.run_cycle(symbols=symbols_to_research)
+            else:
+                history = sup._fetch_history()
+                digests = sup.run_cycle(history=history)
+                from agent.secondbrain.research import confidence_from_history
+                confidence = confidence_from_history(history)
+                self._write_forecast(symbol, confidence, history)
+            # Mark all processed symbols as recently researched
+            now = time.time()
+            for sym in symbols_to_research:
+                self._last_research_ts[sym] = now
         except Exception as exc:  # noqa: BLE001
             evt_fail = self._emit_failure(state, RESEARCHER, exc)
             return {"route": "researcher", "digests": [], "confidence": 1.0,
                     "events": [evt_fail], "hops": 1}
         headline = (f"AutoResearch produced {len(digests)} digest(s), confidence={confidence:.2f}"
                     if digests else "AutoResearch cycle produced no digests")
-        evt = self._emit(AgentEvent(
+        evts = [self._emit(AgentEvent(
             agent=RESEARCHER, kind=KIND_OBSERVATION, headline=_one_line(headline),
             cycle_id=state.get("cycle_id"),
             detail={"n_digests": len(digests), "confidence": round(confidence, 4),
                     "questions": [getattr(d, "question", "") for d in digests[:3]]},
             refs=[getattr(d, "id", "") for d in digests[:3]],
-        ))
+        ))]
+        # 8.13: emit a visible observation for each low-confidence digest
+        for d in digests:
+            if getattr(d, "low_confidence", False):
+                evts.append(self._emit(AgentEvent(
+                    agent=RESEARCHER, kind=KIND_OBSERVATION,
+                    headline=f"Researcher: low-confidence digest flagged for {symbol}",
+                    cycle_id=state.get("cycle_id"),
+                    detail={"digest_id": getattr(d, "id", ""),
+                            "question": getattr(d, "question", "")[:100]},
+                    refs=[getattr(d, "id", "")],
+                )))
         return {"route": "researcher", "digests": [getattr(d, "id", "") for d in digests],
-                "confidence": confidence, "events": [evt], "hops": 1}
+                "confidence": confidence, "events": evts, "hops": 1}
 
     def _reflector_node(self, state: SupervisorState) -> dict:
         if state.get("paused"):
@@ -291,6 +311,25 @@ class Supervisor:
         return {"route": "historian", "analysis": analysis, "events": [evt], "hops": 1}
 
     # ── helpers ────────────────────────────────────────────────────────────────
+
+    def _filter_dedupe(self, primary: str, state: SupervisorState) -> list[str]:
+        """8.15: build the per-symbol research list, filtering out symbols whose
+        last research run was within the 90-min dedupe window. The primary symbol
+        (loop's active token) is always included first. Falls back to [primary]
+        when the bridge is unavailable."""
+        now = time.time()
+        try:
+            allowlist = (self.bridge.get_token_allowlist()
+                         if self.bridge is not None else [primary])
+        except Exception:  # noqa: BLE001
+            allowlist = [primary]
+        # Deduplicate: skip symbols already researched within the window
+        result = []
+        for sym in ([primary] + [s for s in allowlist if s != primary]):
+            last = self._last_research_ts.get(sym, 0.0)
+            if now - last >= _RESEARCH_DEDUPE_SECS:
+                result.append(sym)
+        return result or [primary]   # always research at least the primary
 
     def _write_forecast(self, symbol: str, confidence: float, history: list) -> None:
         """Write the Researcher's deterministic confidence to forecast_state.

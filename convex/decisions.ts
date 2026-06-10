@@ -2,11 +2,10 @@ import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 
 const signals = v.object({
-  s1_momentum: v.optional(v.number()),
-  s2_funding: v.optional(v.number()),
-  s2_oi: v.optional(v.number()),
-  s3_sentiment: v.optional(v.number()),
-  s4_flow: v.optional(v.number()),
+  momentum:    v.optional(v.number()),
+  derivatives: v.optional(v.number()),
+  sentiment:   v.optional(v.number()),
+  flow:        v.optional(v.number()),
 });
 
 const verdict = v.union(

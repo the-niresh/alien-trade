@@ -79,6 +79,18 @@ class ConvexBridge:
         cfg = self.get_config()
         return float(cfg.get("equity_floor") or 0) if cfg else 0.0
 
+    def get_token_allowlist(self) -> list[str]:
+        """Read the eligible-token allowlist from Convex config.
+        Falls back to the core/risk default when offline or unseeded."""
+        if not self.enabled:
+            from risk.guardrails import TOKEN_ALLOWLIST
+            return sorted(TOKEN_ALLOWLIST)
+        cfg = self.get_config()
+        if cfg and cfg.get("token_allowlist"):
+            return list(cfg["token_allowlist"])
+        from risk.guardrails import TOKEN_ALLOWLIST
+        return sorted(TOKEN_ALLOWLIST)
+
     def get_trading_mode(self) -> Optional[str]:
         """Live trading-mode read (the UI toggle writes config.trading_mode).
         Offline or unseeded → None, so the loop keeps the mode it booted with."""
@@ -169,6 +181,39 @@ class ConvexBridge:
 
     def recent_reflections(self, limit: int = 50) -> list[dict]:
         return self._call("query", "reflections:recent", {"limit": limit}) or []
+
+    def soft_delete_reflection(self, convex_id: str) -> None:
+        """Dreamer: mark a duplicate reflection as stale (soft-delete)."""
+        self._call("mutation", "reflections:softDelete", {"id": convex_id})
+
+    def record_forecast_calibration(
+        self,
+        *,
+        cycle_id: str,
+        symbol: str,
+        forecast_confidence: float,
+        regime: str,
+        realized_pnl: float,
+        ts_ms: int,
+    ) -> Optional[str]:
+        return self._call("mutation", "forecastCalibration:record", {
+            "cycle_id": cycle_id, "symbol": symbol,
+            "forecast_confidence": forecast_confidence,
+            "regime": regime, "realized_pnl": realized_pnl, "ts_ms": ts_ms,
+        })
+
+    def recent_forecast_calibration(self, symbol: Optional[str] = None,
+                                    limit: int = 200) -> list[dict]:
+        args: dict = {"limit": limit}
+        if symbol:
+            args["symbol"] = symbol
+        return self._call("query", "forecastCalibration:recent", args) or []
+
+    def get_forecast_calibration_summary(self, symbol: Optional[str] = None) -> dict:
+        args: dict = {}
+        if symbol:
+            args["symbol"] = symbol
+        return self._call("query", "forecastCalibration:getSummary", args) or {}
 
     def update_risk_state(self, **kw) -> None:
         self._call("mutation", "riskState:update", kw)

@@ -36,6 +36,21 @@ def apply_forecast_multiplier(size_usd: float, confidence: float) -> float:
     return size_usd * mult
 
 
+def brier_score(buckets: list[tuple[float, float]]) -> float:
+    """Calibration quality for the forecast confidence.
+
+    Given a list of (confidence, realized_win_rate) bucket pairs, returns the
+    mean squared error between predicted confidence and observed win rate.
+    Lower is better; 0.0 is perfect calibration; 0.25 is the uninformed baseline
+    (constant 0.5 prediction on a balanced outcome).
+
+    Dreamer logs this nightly after collecting enough fills per bucket.
+    """
+    if not buckets:
+        return 0.25  # uninformed baseline — no data yet
+    return sum((conf - wr) ** 2 for conf, wr in buckets) / len(buckets)
+
+
 def confidence_from_regime(regime: str) -> float:
     """Deterministic confidence from regime for a long-only spot strategy.
     Downtrends and high-vol shrink size; uptrends leave it at neutral."""

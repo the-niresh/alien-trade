@@ -116,4 +116,4 @@ def test_score_breakdown_reads_injected_score():
     assert augmented[-1].social_score == pytest.approx(0.7)
     # score_breakdown must run without error on augmented history
     bd = score_breakdown(augmented, StrategyParams())
-    assert "s3" in bd
+    assert "sentiment" in bd

@@ -10,10 +10,10 @@ import numpy as np
 from backtest.engine import Bar, Order, run_backtest
 from backtest.costs import BSCCostModel
 from backtest.walk_forward import WalkForwardConfig, run_walk_forward
-from signals.momentum import s1_momentum, ema_cross_score, roc_score
-from signals.derivatives import s2_derivatives, funding_signal, oi_signal
-from signals.sentiment import s3_sentiment
-from signals.onchain import s4_onchain
+from signals.momentum import momentum_signal, ema_cross_score, roc_score
+from signals.derivatives import derivatives_signal, funding_signal, oi_signal
+from signals.sentiment import sentiment_signal
+from signals.onchain import flow_signal
 from strategy.combined import StrategyParams, make_strategy, score_breakdown, REGIME_GATES
 from strategy.optimizer import optimize, make_strategy_from_dict, walk_forward_optimize_fn, walk_forward_strategy_factory
 
@@ -63,27 +63,27 @@ def _bars_with_flow(n: int, flow: float = -1_000_000.0) -> list[Bar]:
 class TestS1Momentum:
     def test_returns_zero_insufficient_bars(self):
         bars = _bars(10)
-        assert s1_momentum(bars, fast=8, slow=21) == 0.0
+        assert momentum_signal(bars, fast=8, slow=21) == 0.0
 
     def test_bounded_output(self):
         bars = _bars(100, trend=1.005)
         for i in range(25, 100):
-            score = s1_momentum(bars[:i])
+            score = momentum_signal(bars[:i])
             assert -1.0 <= score <= 1.0, f"out of bounds at bar {i}: {score}"
 
     def test_uptrend_positive(self):
         bars = _bars(100, trend=1.005, vol=0.001)  # strong clean trend
-        score = s1_momentum(bars)
+        score = momentum_signal(bars)
         assert score > 0.0, f"expected positive momentum, got {score}"
 
     def test_downtrend_negative(self):
         bars = _bars(100, trend=0.995, vol=0.001)
-        score = s1_momentum(bars)
+        score = momentum_signal(bars)
         assert score < 0.0, f"expected negative momentum, got {score}"
 
     def test_flat_market_near_zero(self):
         bars = _bars(60, trend=1.0, vol=0.0001)
-        score = s1_momentum(bars)
+        score = momentum_signal(bars)
         assert abs(score) < 0.3, f"expected near-zero for flat market, got {score}"
 
     def test_ema_cross_score_direction(self):
@@ -98,8 +98,8 @@ class TestS1Momentum:
         """Same trend strength → similar S1 score regardless of price level."""
         low_price = _bars(60, start=10.0, trend=1.003, vol=0.01)
         high_price = _bars(60, start=10000.0, trend=1.003, vol=0.01)
-        s_low = s1_momentum(low_price)
-        s_high = s1_momentum(high_price)
+        s_low = momentum_signal(low_price)
+        s_high = momentum_signal(high_price)
         assert abs(s_low - s_high) < 0.5, "ATR normalisation broken"
 
 
@@ -108,28 +108,28 @@ class TestS1Momentum:
 class TestS2Derivatives:
     def test_zeros_when_no_cmc_data(self):
         bars = _bars(30)   # all extended fields = 0.0
-        assert s2_derivatives(bars) == 0.0
+        assert derivatives_signal(bars) == 0.0
 
     def test_bounded_output(self):
         bars = _bars_with_funding(50, funding_rate=0.001)
-        score = s2_derivatives(bars)
+        score = derivatives_signal(bars)
         assert -1.0 <= score <= 1.0
 
     def test_high_positive_funding_is_bearish(self):
         """Crowded longs → contrarian → negative score."""
         bars = _bars_with_funding(30, funding_rate=0.001)   # very high
-        score = s2_derivatives(bars)
+        score = derivatives_signal(bars)
         assert score < 0.0, f"expected negative for crowded longs, got {score}"
 
     def test_high_negative_funding_is_bullish(self):
         """Crowded shorts → contrarian → positive score."""
         bars = _bars_with_funding(30, funding_rate=-0.0003)
-        score = s2_derivatives(bars)
+        score = derivatives_signal(bars)
         assert score > 0.0, f"expected positive for crowded shorts, got {score}"
 
     def test_neutral_funding_near_zero(self):
         bars = _bars_with_funding(30, funding_rate=0.00001)
-        score = s2_derivatives(bars)
+        score = derivatives_signal(bars)
         assert abs(score) < 0.2
 
     def test_funding_signal_isolated(self):
@@ -142,21 +142,21 @@ class TestS2Derivatives:
 class TestS3Sentiment:
     def test_zeros_when_no_cmc_data(self):
         bars = _bars(20)
-        assert s3_sentiment(bars) == 0.0
+        assert sentiment_signal(bars) == 0.0
 
     def test_bounded_output(self):
         bars = _bars_with_social(50, roc=0.05)
-        score = s3_sentiment(bars)
+        score = sentiment_signal(bars)
         assert -1.0 <= score <= 1.0
 
     def test_rising_attention_positive(self):
         # roc=0.02 (2%/bar) — steady growth that doesn't trigger blow-off detection
         bars = _bars_with_social(20, score=50.0, roc=0.02)
-        assert s3_sentiment(bars) > 0.0
+        assert sentiment_signal(bars) > 0.0
 
     def test_falling_attention_negative(self):
         bars = _bars_with_social(20, score=100.0, roc=-0.05)
-        assert s3_sentiment(bars) < 0.0
+        assert sentiment_signal(bars) < 0.0
 
 
 # ── S4 On-chain ───────────────────────────────────────────────────────────────
@@ -164,11 +164,11 @@ class TestS3Sentiment:
 class TestS4Onchain:
     def test_zeros_when_no_cmc_data(self):
         bars = _bars(20)
-        assert s4_onchain(bars) == 0.0
+        assert flow_signal(bars) == 0.0
 
     def test_bounded_output(self):
         bars = _bars_with_flow(30, flow=-500_000.0)
-        score = s4_onchain(bars)
+        score = flow_signal(bars)
         assert -1.0 <= score <= 1.0
 
     def test_outflow_bullish(self):
@@ -178,7 +178,7 @@ class TestS4Onchain:
         for b in bars[:-1]:
             b.net_flow = 0.0     # baseline near zero
         bars[-1].net_flow = -5_000_000.0  # sudden large outflow
-        score = s4_onchain(bars)
+        score = flow_signal(bars)
         assert score > 0.0, f"expected outflow to be bullish, got {score}"
 
     def test_inflow_bearish(self):
@@ -186,7 +186,7 @@ class TestS4Onchain:
         for b in bars[:-1]:
             b.net_flow = 0.0
         bars[-1].net_flow = 5_000_000.0   # large inflow → bearish
-        score = s4_onchain(bars)
+        score = flow_signal(bars)
         assert score < 0.0, f"expected inflow to be bearish, got {score}"
 
 
@@ -226,7 +226,7 @@ class TestCombinedStrategy:
     def test_score_breakdown_keys(self):
         bars = _bars(50, trend=1.003)
         bd = score_breakdown(bars, StrategyParams())
-        for key in ("regime", "gate", "s1", "s2", "s3", "s4", "raw", "target"):
+        for key in ("regime", "gate", "momentum", "derivatives", "sentiment", "flow", "raw", "target"):
             assert key in bd, f"missing key in score_breakdown: {key}"
 
     def test_composite_bounded(self):
@@ -266,14 +266,14 @@ class TestOptimizer:
     def test_returns_dict_with_expected_keys(self):
         bars = _bars(200)
         params = optimize(bars)
-        assert "s1_fast" in params
-        assert "s1_slow" in params
+        assert "ema_fast" in params
+        assert "ema_slow" in params
         assert "entry_threshold" in params
 
     def test_fast_less_than_slow(self):
         bars = _bars(200)
         params = optimize(bars)
-        assert params["s1_fast"] < params["s1_slow"]
+        assert params["ema_fast"] < params["ema_slow"]
 
     def test_valid_threshold(self):
         bars = _bars(200)
@@ -335,7 +335,7 @@ class TestWalkForwardOnRealData:
         # Not all window params must be identical (would suggest optimizer is broken)
         if len(result.window_params) >= 2:
             combos = set(
-                (p["s1_fast"], p["s1_slow"], p["entry_threshold"])
+                (p["ema_fast"], p["ema_slow"], p["entry_threshold"])
                 for p in result.window_params
             )
             # At least 1 unique combo found — optimizer is searching

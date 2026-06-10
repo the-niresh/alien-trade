@@ -13,9 +13,11 @@ DATA SOURCES:
   cmc      — CMCClient (needs CMC_API_KEY); the competition-aligned source. NOTE:
              the historical extended fields (funding_rate/open_interest/social_score/
              net_flow) are currently STUBBED to 0.0 in cmc_client._parse_ohlcv until
-             the Agent Hub derivatives/social/flow endpoints are wired — so S2/S3/S4
-             are still flat and this tunes the S1 momentum backbone until then.
-  binance  — public OHLCV, no key. Also OHLCV-only (same S2/S3/S4 caveat).
+             the Agent Hub derivatives/social/flow endpoints are wired.
+  binance  — public Binance spot klines (no key) enriched with real funding_rate
+             and open_interest from the Binance Futures API (fapi, also free/public).
+             This gives a live S1+S2 tune. social_score/net_flow remain 0.0 until
+             the CMC Pro plan is available.
 
 The script DETECTS whether the orthogonal signals are present and prints the caveat
 when they're all zero, so the report never overstates what was actually tuned.
@@ -45,7 +47,10 @@ def _load_bars(source: str, symbol: str, interval: str, days: int):
     if source == "binance":
         from data.binance_client import BinanceClient
         with BinanceClient() as c:
-            df = c.fetch_ohlcv_historical(symbol, days_back=days, interval=interval)
+            # enrich_s2=True populates funding_rate + open_interest from Binance Futures
+            # public endpoints (fapi, no key). Falls back gracefully on failure.
+            df = c.fetch_ohlcv_historical(symbol, days_back=days, interval=interval,
+                                           enrich_s2=True)
             return c.bars_from_df(df)
     raise ValueError(f"unknown --source {source!r} (use 'cmc' or 'binance')")
 
@@ -113,7 +118,7 @@ def main(argv=None) -> None:
         oos, initial_capital=args.capital, timestamps=[b.timestamp for b in test])
 
     print("  -- 70/30 OPTIMISE -> HOLD-OUT (out-of-sample) --------------")
-    print(f"  chosen params : s1_fast={best['s1_fast']}  s1_slow={best['s1_slow']}  "
+    print(f"  chosen params : ema_fast={best['ema_fast']}  ema_slow={best['ema_slow']}  "
           f"entry_threshold={best['entry_threshold']}")
     print(f"  objective     : {card.objective:.4f}   (sortino - 2*|maxDD|)")
     print(f"  sortino       : {card.sortino:.3f}")

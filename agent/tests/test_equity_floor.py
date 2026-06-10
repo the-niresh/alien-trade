@@ -108,8 +108,8 @@ def test_floor_above_equity_returns_halted_cycle():
     """_check_equity_floor returning True causes run_cycle to return halted result."""
     loop, bridge = _make_loop(equity_floor=50.0, equity=40.0)
     bar = _bar()
-    fake_bd = {"target": 0.0, "s1": 0.0, "s2_funding": 0.0, "s2_oi": 0.0,
-               "s3_sentiment": 0.0, "s4_flow": 0.0, "composite": 0.0}
+    fake_bd = {"target": 0.0, "momentum": 0.0, "derivatives": 0.0,
+               "sentiment": 0.0, "flow": 0.0, "composite": 0.0}
     with patch.object(loop, "_finalise") as mock_fin, \
          patch.object(loop, "_sync_trading_mode"), \
          patch("agent.loop.detect_regime", return_value=SimpleNamespace(value="chop")), \

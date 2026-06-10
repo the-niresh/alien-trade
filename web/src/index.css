@@ -7,7 +7,40 @@
 * { box-sizing: border-box; }
 body { margin: 0; padding: 0; }
 
-.wrap { max-width: 860px; margin: 0 auto; padding: 20px 16px 60px; }
+.wrap { max-width: 1200px; margin: 0 auto; padding: 20px 16px 60px; }
+
+/* ── Cockpit 3-panel grid ── */
+.cockpit-grid {
+  display: grid;
+  grid-template-columns: 260px 1fr 240px;
+  grid-template-areas: "left center right";
+  gap: 12px;
+  margin: 12px 0;
+  align-items: start;
+}
+.cockpit-left   { grid-area: left;   display: flex; flex-direction: column; gap: 0; }
+.cockpit-center { grid-area: center; }
+.cockpit-right  { grid-area: right;  }
+
+@media (max-width: 900px) {
+  .cockpit-grid {
+    grid-template-columns: 1fr;
+    grid-template-areas: "right" "left" "center";
+  }
+}
+
+/* ── Win cards ── */
+.win-card {
+  background: #081a0f;
+  border: 1px solid #1a4028;
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #1e2937; border-radius: 2px; }
 .title { font-size: 20px; font-weight: 700; letter-spacing: 0.5px; }
 .sub { color: #8b98a5; font-size: 13px; margin-top: 2px; }
 

@@ -1,6 +1,6 @@
-from signals.momentum import s1_momentum
-from signals.derivatives import s2_derivatives
-from signals.sentiment import s3_sentiment
-from signals.onchain import s4_onchain
+from signals.momentum import momentum_signal
+from signals.derivatives import derivatives_signal
+from signals.sentiment import sentiment_signal
+from signals.onchain import flow_signal
 
-__all__ = ["s1_momentum", "s2_derivatives", "s3_sentiment", "s4_onchain"]
+__all__ = ["momentum_signal", "derivatives_signal", "sentiment_signal", "flow_signal"]

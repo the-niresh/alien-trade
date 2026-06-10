@@ -25,11 +25,10 @@ export default defineSchema({
     timestamp_ms: v.number(),
     regime: v.string(),              // "trend" | "chop" | "high_vol" | "crash"
     signals: v.object({
-      s1_momentum: v.optional(v.number()),
-      s2_funding: v.optional(v.number()),
-      s2_oi: v.optional(v.number()),
-      s3_sentiment: v.optional(v.number()),
-      s4_flow: v.optional(v.number()),
+      momentum:    v.optional(v.number()),
+      derivatives: v.optional(v.number()),
+      sentiment:   v.optional(v.number()),
+      flow:        v.optional(v.number()),
     }),
     target_position_usd: v.number(),
     risk_verdict: v.union(v.literal("allow"), v.literal("reduce"), v.literal("block")),
@@ -39,6 +38,15 @@ export default defineSchema({
   })
     .index("by_cycle", ["cycle_id"])
     .index("by_timestamp", ["timestamp_ms"]),
+
+  // Co-pilot chat thread — persists the human↔agent conversation across devices.
+  copilot_messages: defineTable({
+    role: v.union(v.literal("user"), v.literal("assistant")),
+    content: v.string(),
+    sources_json: v.string(),   // JSON array of {id, kind, score, text} hits
+    ts_ms: v.number(),
+  })
+    .index("by_ts", ["ts_ms"]),
 
   // Hermes self-learning: post-trade reflections stored for mistake-avoidance
   reflections: defineTable({
@@ -51,6 +59,9 @@ export default defineSchema({
     outcome_label: v.union(v.literal("win"), v.literal("loss"), v.literal("scratch")),
     lesson: v.string(),              // compressed lesson for Vector store
     vector_id: v.optional(v.string()), // Upstash Vector doc ID after upsert
+    stale: v.optional(v.boolean()),  // true = soft-deleted by Dreamer (duplicate lesson)
+    quality: v.optional(v.string()), // "low" when reflector self-eval rubric failed (8.13)
+    mode: v.optional(v.union(v.literal("testnet"), v.literal("paper"), v.literal("mainnet"))),
   })
     .index("by_trade", ["trade_id"])
     .index("by_outcome", ["outcome_label"]),
@@ -110,15 +121,15 @@ export default defineSchema({
     cycle_id: v.string(),
     symbol: v.string(),
     timestamp_ms: v.number(),
-    s1_ema_fast: v.optional(v.number()),
-    s1_ema_slow: v.optional(v.number()),
-    s1_roc: v.optional(v.number()),
-    s1_atr: v.optional(v.number()),
-    s2_funding_rate: v.optional(v.number()),
-    s2_open_interest: v.optional(v.number()),
-    s3_social_score: v.optional(v.number()),
-    s3_social_roc: v.optional(v.number()),
-    s4_net_flow_usd: v.optional(v.number()),
+    momentum_ema_fast: v.optional(v.number()),
+    momentum_ema_slow: v.optional(v.number()),
+    momentum_roc:      v.optional(v.number()),
+    momentum_atr:      v.optional(v.number()),
+    funding_rate:      v.optional(v.number()),
+    open_interest:     v.optional(v.number()),
+    social_score:      v.optional(v.number()),
+    social_roc:        v.optional(v.number()),
+    net_flow_usd:      v.optional(v.number()),
     composite_score: v.optional(v.number()),
   })
     .index("by_cycle", ["cycle_id"])
@@ -246,6 +257,19 @@ export default defineSchema({
     updated_at_ms: v.number(),
   })
     .index("by_key", ["key"]),
+
+  // Forecast calibration: one row per closed trade — entry-time confidence snapshot
+  // + realized PnL. Dreamer buckets these nightly to score forecast quality.
+  forecast_calibration: defineTable({
+    cycle_id: v.string(),
+    symbol: v.string(),
+    forecast_confidence: v.number(),  // [0, 1]; 1.0 = neutral/no forecast
+    regime: v.string(),
+    realized_pnl: v.number(),
+    ts_ms: v.number(),
+  })
+    .index("by_symbol", ["symbol"])
+    .index("by_ts", ["ts_ms"]),
 
   // The single user-writable control doc — three graduated stops (§7). The PWA
   // is the ONLY writer; the supervisor + DecisionLoop are reactive readers.

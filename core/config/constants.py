@@ -120,6 +120,18 @@ BINANCE_INTERVAL_MAP: dict[str, str] = {
     "15m":   "15m",
 }
 
+# Binance Futures (fapi) — free public endpoints for S2 signal enrichment.
+# CAKE omitted: the token is on BNB Chain and lacks a liquid Binance perp.
+BINANCE_FUTURES_BASE_URL = "https://fapi.binance.com"
+BINANCE_FUTURES_PAIRS: dict[str, str] = {
+    "ETH":  "ETHUSDT",
+    "UNI":  "UNIUSDT",
+    "LINK": "LINKUSDT",
+    "AAVE": "AAVEUSDT",
+    "BNB":  "BNBUSDT",
+    "BTC":  "BTCUSDT",
+}
+
 # ── TWAK (Trust Wallet Agent Kit) ─────────────────────────────────────────────
 # Base URL confirmed. Override at runtime via TWAK_API_BASE env var.
 

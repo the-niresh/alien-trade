@@ -36,7 +36,7 @@ def _bars(n: int, start: float = 300.0, trend: float = 1.004, vol: float = 0.012
 
 def _run_loop():
     bars = _bars(150)
-    params = StrategyParams(s1_fast=5, s1_slow=21, entry_threshold=0.10,
+    params = StrategyParams(ema_fast=5, ema_slow=21, entry_threshold=0.10,
                             position_size_usd=1_000.0)
     risk = RiskConfig()
     strat = make_risk_strategy(make_strategy(params), risk, initial_capital=10_000.0)

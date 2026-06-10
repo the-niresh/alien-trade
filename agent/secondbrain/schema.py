@@ -38,6 +38,8 @@ class Reflection:
     outcome_pnl_usd: float
     setup_key: str
     lesson: str = ""
+    quality: str = ""              # "" = normal, "low" = rubric failed twice (8.13)
+    source_cycle_id: Optional[str] = None  # closing cycle that triggered this reflection (8.12)
 
     @property
     def outcome_label(self) -> str:
@@ -55,6 +57,8 @@ class ResearchDigest:
     question: str
     findings: str
     tags: list[str] = field(default_factory=list)
+    low_confidence: bool = False           # rubric self-check failed twice (8.13)
+    source_cycle_id: Optional[str] = None  # research-tick cycle that produced this digest (8.12)
 
 
 @dataclass
@@ -74,22 +78,21 @@ class LLMResult:
 
 def dominant_signal(signals: dict) -> str:
     """Name the signal with the largest absolute contribution."""
+    # Accept both the canonical names and any legacy keys that may appear in
+    # older stored reflections.
     keys = {
-        "s1": "momentum",
-        "s2": "derivatives",
-        "s3": "sentiment",
-        "s4": "flow",
-        "s1_momentum": "momentum",
-        "s2_funding": "derivatives",
-        "s3_sentiment": "sentiment",
-        "s4_flow": "flow",
+        "momentum":    "momentum",
+        "derivatives": "derivatives",
+        "sentiment":   "sentiment",
+        "flow":        "flow",
     }
     best_name, best_abs = "none", 0.0
     for k, v in signals.items():
-        if v is None or k not in keys:
+        canonical = keys.get(k)
+        if canonical is None or v is None:
             continue
         if abs(float(v)) > best_abs:
-            best_abs, best_name = abs(float(v)), keys[k]
+            best_abs, best_name = abs(float(v)), canonical
     return best_name
 
 

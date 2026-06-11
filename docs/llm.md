@@ -143,3 +143,60 @@ I'd lean toward 8.2 — it converts the already-live social ingestion into somet
 ✻ Cooked for 6m 14s
 
 ※ recap: Goal: ship the agent-team layer for the BSCone: contracts.py plus three Convex tables built,tested (196 passing), and deployed live. Next action: STEP 8.2, write convex/social.ts watchlist CRUD and the sentiment_state to core S3 bridge. (disable recaps in /config)
+Here's the full picture, grouped by what's blocking each item:
+
+---
+Operator/wallet-gated (you do these, not code)
+
+┌──────────┬─────────────────────────────────────────────────────────────────┬───────────────┐
+│ Priority │                              Item                               │   Deadline    │
+├──────────┼─────────────────────────────────────────────────────────────────┼───────────────┤
+│ 🔴       │ On-chain competition registration — run twak compete register   │ Before Jun 22 │
+├──────────┼─────────────────────────────────────────────────────────────────┼───────────────┤
+│ 🔴       │ DoraHacks submission — wallet address + strategy writeup        │ Before Jun 29 │
+├──────────┼─────────────────────────────────────────────────────────────────┼───────────────┤
+│ 🔴       │ Mainnet sanity trade — fund wallet, flip to live, one real swap │ Before Jun 22 │
+├──────────┼─────────────────────────────────────────────────────────────────┼───────────────┤
+│ 🔴       │ Demo video (~3 min screen recording)                            │ Before Jul 5  │
+└──────────┴─────────────────────────────────────────────────────────────────┴───────────────┘
+
+---
+Funding-gated (needs USDC on Base)
+
+┌──────────┬────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+│ Priority │                                                        Item                                                        │
+├──────────┼────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ 🔴       │ x402 live path — fix CMC client to use /x402/v3/ routes, fund 15 USDC on Base, verify one live 402 → sign → 200 →  │
+│          │ settle                                                                                                             │
+└──────────┴────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+
+---
+Buildable now (code work)
+
+High value (🟡 important):
+
+┌────────────────────────┬─────────────────────────────────────────────────────────────────────────────────────────────────────┐
+│          Item          │                                                What                                                 │
+├────────────────────────┼─────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ 8.8 Dreamer checkboxes │ The RESUME section says done but several [ ] items still show — these may already be implemented    │
+│                        │ (files exist), just the checkboxes weren't ticked                                                   │
+├────────────────────────┼─────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ 8.10/8.11/8.13/8.14    │ Same situation — marked done in RESUME but body checkboxes unchecked                                │
+│ same                   │                                                                                                     │
+├────────────────────────┼─────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ 8.16 frontend shell    │ Tailwind/shadcn dark theme, co-pilot chat, wins feed, equity chart, risk sliders, live log console  │
+└────────────────────────┴─────────────────────────────────────────────────────────────────────────────────────────────────────┘
+
+Lower value (🟢 polish):
+- Optional async LLM enrichment for social (pump/manipulation detection)
+- recovery field on RiskGuard auto-halt events
+- failure_count badge on Signal Health row
+- Onboarding wizard Telegram prompts
+- PWA polish pass (animations, sounds, push notifications)
+
+---
+Summary
+
+Nothing is blocking Track 1 — the agent is ready to trade once you fund the wallet and register on-chain. The 🔴 operator items are the only hard gates before Jun 22.
+
+The most useful buildable work right now would be the 8.16 frontend (co-pilot chat + equity chart + risk sliders) if you want the glass cockpit polished for the demo video. Everything else is polish.

@@ -99,6 +99,39 @@ class ConvexBridge:
         cfg = self.get_config()
         return cfg.get("trading_mode") if cfg else None
 
+    def get_autopilot_config(self) -> Optional[dict]:
+        """Live autopilot overrides set from the cockpit (config.autopilot).
+        Offline / unseeded → None, so the loop keeps its env-built config."""
+        if not self.enabled:
+            return None
+        cfg = self.get_config()
+        return cfg.get("autopilot") if cfg else None
+
+    def get_strategy_choice(self) -> Optional[str]:
+        """Live strategy pick from the cockpit (config.strategy_name).
+        Offline / unseeded → None, so the loop keeps its boot strategy."""
+        if not self.enabled:
+            return None
+        cfg = self.get_config()
+        return cfg.get("strategy_name") if cfg else None
+
+    def set_autopilot_state(self, state_row: dict) -> None:
+        """Persist the autopilot ratchet (protected_floor etc.) so a restart keeps
+        the banked floor. Best-effort: offline or before the mutation exists → no-op."""
+        if not self.enabled:
+            return
+        try:
+            self._call("mutation", "config:setAutopilotState", {"state": state_row})
+        except Exception:  # noqa: BLE001 — persistence is best-effort, never fatal
+            pass
+
+    def get_autopilot_state(self) -> Optional[dict]:
+        """Read the persisted autopilot ratchet on restart. None → start fresh."""
+        if not self.enabled:
+            return None
+        cfg = self.get_config()
+        return cfg.get("autopilot_state") if cfg else None
+
     def recent_trades(self, limit: int = 200) -> list[dict]:
         """Trades newest-first (for crash recovery, reverse to replay)."""
         return self._call("query", "trades:recent", {"limit": limit}) or []
@@ -131,6 +164,7 @@ class ConvexBridge:
         risk_reason: str,
         final_size_usd: float,
         trade_id: Optional[str] = None,
+        setup_key: Optional[str] = None,
     ) -> Optional[str]:
         args: dict = {
             "cycle_id": cycle_id,
@@ -145,7 +179,26 @@ class ConvexBridge:
         }
         if trade_id:
             args["trade_id"] = trade_id
+        if setup_key:
+            args["setup_key"] = setup_key
         return self._call("mutation", "decisions:record", args)
+
+    def get_feedback(self, setup_key: str) -> list[dict]:
+        """Human good/bad labels for a setup_key (the feedback gate reads this before
+        trading the setup). Offline → [] so there is no behaviour change (parity)."""
+        if not self.enabled:
+            return []
+        return self._call("query", "feedback:bySetup", {"setup_key": setup_key}) or []
+
+    def record_feedback(self, *, cycle_id: str, setup_key: str, symbol: str,
+                        label: str, note: Optional[str] = None) -> Optional[str]:
+        """Write a human label (cockpit normally writes this directly; exposed for
+        the agent/CLI too)."""
+        args = {"cycle_id": cycle_id, "setup_key": setup_key,
+                "symbol": symbol, "label": label}
+        if note:
+            args["note"] = note
+        return self._call("mutation", "feedback:record", args)
 
     def record_trade(
         self,

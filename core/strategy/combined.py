@@ -23,7 +23,7 @@ from backtest.engine import Bar, Order, StrategyFn
 from backtest.regime import Regime, detect_regime
 from signals.momentum import momentum_signal
 from signals.derivatives import derivatives_signal
-from signals.sentiment import sentiment_signal
+from signals.sentiment import fear_greed_signal
 from signals.onchain import flow_signal
 
 
@@ -94,7 +94,7 @@ def make_strategy(params: StrategyParams) -> StrategyFn:
         # ── Signal scores ─────────────────────────────────────────────────────
         mom  = momentum_signal(history, params.ema_fast, params.ema_slow, params.roc_period)
         deriv = derivatives_signal(history)
-        sent = sentiment_signal(history) if params.w_sentiment > 0.0 else 0.0
+        sent = fear_greed_signal(history) if params.w_sentiment > 0.0 else 0.0
         flow = flow_signal(history)      if params.w_flow > 0.0 else 0.0
 
         raw = (params.w_momentum    * mom

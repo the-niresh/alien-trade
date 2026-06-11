@@ -44,3 +44,40 @@ def sentiment_signal(history: list[Bar], period: int = 7) -> float:
     # Normal: accelerating attention = bullish; collapsing attention = bearish
     # 50% increase over period → full bullish signal
     return float(np.clip(roc * 2.0, -1.0, 1.0))
+
+
+# ── Fear & Greed Index (free historical S3 — contrarian level) ────────────────
+
+_FG_NEUTRAL = 50.0   # F&G midpoint
+_FG_SPAN = 40.0      # value 10 -> +1.0 (buy fear), value 90 -> -1.0 (fade greed)
+_FG_DEADZONE = 10.0  # |value - 50| <= 10 -> no edge (sentiment is unremarkable)
+
+
+def fear_greed_signal(history: list[Bar], smooth: int = 3) -> float:
+    """Contrarian market-sentiment signal from the Fear & Greed Index in [-1, 1].
+
+    social_score here carries the raw F&G value in [0, 100] (see
+    data/sentiment_history.py). Classic contrarian edge: extreme fear precedes
+    bounces (bullish), extreme greed precedes pullbacks (bearish). A deadzone
+    around neutral keeps the signal quiet when sentiment is unremarkable, so it
+    only speaks at the extremes where the index actually carries information.
+
+    Returns 0.0 when F&G data is absent (all zeros) — graceful degradation,
+    identical to sentiment_signal so sim/live parity holds with no feed.
+    """
+    if not history:
+        return 0.0
+    scores = [b.social_score for b in history[-max(smooth, 1):]]
+    if all(s == 0.0 for s in scores):
+        return 0.0
+
+    nonzero = [s for s in scores if s > 0.0]
+    if not nonzero:
+        return 0.0
+    current = float(np.mean(nonzero))  # short average smooths the daily step
+
+    deviation = current - _FG_NEUTRAL
+    if abs(deviation) <= _FG_DEADZONE:
+        return 0.0
+    # Contrarian: positive deviation (greed) -> negative signal, and vice versa.
+    return float(np.clip(-deviation / _FG_SPAN, -1.0, 1.0))

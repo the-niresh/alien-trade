@@ -31,6 +31,7 @@ export const record = mutation({
     risk_reason: v.optional(v.string()),
     final_size_usd: v.number(),
     trade_id: v.optional(v.id("trades")),
+    setup_key: v.optional(v.string()),
   },
   returns: v.id("decisions"),
   handler: async (ctx, args) => {
@@ -65,6 +66,7 @@ export const recent = query({
       risk_reason: v.optional(v.string()),
       final_size_usd: v.number(),
       trade_id: v.optional(v.id("trades")),
+      setup_key: v.optional(v.string()),
     }),
   ),
   handler: async (ctx, args) => {

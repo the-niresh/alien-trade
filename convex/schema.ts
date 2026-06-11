@@ -35,9 +35,23 @@ export default defineSchema({
     risk_reason: v.optional(v.string()),
     final_size_usd: v.number(),
     trade_id: v.optional(v.id("trades")),
+    setup_key: v.optional(v.string()),   // regime+dominant-signal, for human feedback
   })
     .index("by_cycle", ["cycle_id"])
     .index("by_timestamp", ["timestamp_ms"]),
+
+  // Human-in-the-loop: operator marks a setup good/bad from the cockpit. Consulted
+  // before the next trade on the same setup_key (core/risk/feedback.py).
+  trade_feedback: defineTable({
+    cycle_id: v.string(),
+    setup_key: v.string(),               // regime+dominant-signal this label applies to
+    symbol: v.string(),
+    label: v.union(v.literal("good"), v.literal("bad")),
+    note: v.optional(v.string()),
+    ts_ms: v.number(),
+  })
+    .index("by_setup", ["setup_key"])
+    .index("by_ts", ["ts_ms"]),
 
   // Co-pilot chat thread — persists the human↔agent conversation across devices.
   copilot_messages: defineTable({
@@ -100,6 +114,30 @@ export default defineSchema({
     max_drawdown_pct: v.number(),
     token_allowlist: v.array(v.string()),
     equity_floor: v.optional(v.number()),   // halt if portfolio drops below this USD value (0 = disabled)
+    // Strategy pick from the registry (momentum|contrarian|balanced|defensive)
+    strategy_name: v.optional(v.string()),
+    // Autopilot capital manager — user-set targets (cockpit). enabled=false -> off.
+    autopilot: v.optional(v.object({
+      enabled: v.boolean(),
+      profit_target_pct: v.optional(v.number()),
+      profit_target_abs: v.optional(v.number()),
+      protect_principal: v.optional(v.boolean()),
+      min_recycle_confidence: v.optional(v.number()),
+      recycle_blocked_regimes: v.optional(v.array(v.string())),
+      trailing_giveback_pct: v.optional(v.number()),
+      daily_profit_target_pct: v.optional(v.number()),
+      loss_cooldown_hours: v.optional(v.number()),
+    })),
+    // Persisted autopilot ratchet (protected floor etc.) — survives restarts.
+    autopilot_state: v.optional(v.object({
+      protected_floor: v.number(),
+      cycle_start_equity: v.number(),
+      peak_equity: v.number(),
+      day_start_equity: v.number(),
+      day_key: v.string(),
+      halted_for_day: v.boolean(),
+      cooldown_until_ms: v.number(),
+    })),
     updated_at_ms: v.number(),
   })
     .index("by_key", ["key"]),

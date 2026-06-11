@@ -1,12 +1,12 @@
-"""S2 enrichment — unit tests for funding rate + OI merge (offline, no network)."""
+"""Derivatives enrichment — unit tests for funding rate + OI merge (offline, no network)."""
 from __future__ import annotations
 import polars as pl
 import pytest
 
 
-def _merge_s2_fn():
-    from data.binance_client import _merge_s2
-    return _merge_s2
+def _merge_derivatives_fn():
+    from data.binance_client import _merge_derivatives
+    return _merge_derivatives
 
 
 def _df(n: int = 10, start_ms: int = 0, step_ms: int = 3_600_000) -> pl.DataFrame:
@@ -35,7 +35,7 @@ def test_funding_rate_forward_filled():
         {"fundingTime": 0,          "fundingRate": 0.0001},
         {"fundingTime": 28_800_000, "fundingRate": -0.0002},
     ]
-    result = _merge_s2_fn()(df, funding, [])
+    result = _merge_derivatives_fn()(df, funding, [])
     rates = result["funding_rate"].to_list()
     # Bars 0–7 (t=0h to t=7h) should carry the first settlement rate 0.0001
     assert all(abs(r - 0.0001) < 1e-9 for r in rates[:8]), rates[:8]
@@ -45,7 +45,7 @@ def test_funding_rate_forward_filled():
 
 def test_funding_rate_no_data_stays_zero():
     df = _df(n=5)
-    result = _merge_s2_fn()(df, [], [])
+    result = _merge_derivatives_fn()(df, [], [])
     assert result["funding_rate"].to_list() == [0.0] * 5
 
 
@@ -53,7 +53,7 @@ def test_funding_rate_before_first_settlement_is_zero():
     df = _df(n=3, start_ms=0, step_ms=3_600_000)
     # Settlement is at t=7200000 (bar index 2); bars 0 and 1 have no settlement yet
     funding = [{"fundingTime": 7_200_000, "fundingRate": 0.0005}]
-    result = _merge_s2_fn()(df, funding, [])
+    result = _merge_derivatives_fn()(df, funding, [])
     rates = result["funding_rate"].to_list()
     assert rates[0] == 0.0  # no settlement yet
     assert rates[1] == 0.0
@@ -71,7 +71,7 @@ def test_oi_aligned_to_nearest_hourly():
         {"timestamp": step * 2, "sumOpenInterest": 120_000.0},
         {"timestamp": step * 3, "sumOpenInterest": 130_000.0},
     ]
-    result = _merge_s2_fn()(df, [], oi)
+    result = _merge_derivatives_fn()(df, [], oi)
     vals = result["open_interest"].to_list()
     assert vals == [100_000.0, 110_000.0, 120_000.0, 130_000.0]
 
@@ -81,7 +81,7 @@ def test_oi_skips_stale_snapshot_beyond_1h():
     df = _df(n=3, start_ms=2 * step, step_ms=step)  # bars at 2h, 3h, 4h
     # OI snapshot only at t=0h — more than 1h away from bar at t=2h
     oi = [{"timestamp": 0, "sumOpenInterest": 99_000.0}]
-    result = _merge_s2_fn()(df, [], oi)
+    result = _merge_derivatives_fn()(df, [], oi)
     vals = result["open_interest"].to_list()
     assert vals == [0.0, 0.0, 0.0]   # too stale, not applied
 
@@ -93,7 +93,7 @@ def test_oi_uses_most_recent_snapshot_before_bar():
         {"timestamp": 0,    "sumOpenInterest": 50_000.0},
         {"timestamp": step, "sumOpenInterest": 60_000.0},
     ]
-    result = _merge_s2_fn()(df, [], oi)
+    result = _merge_derivatives_fn()(df, [], oi)
     vals = result["open_interest"].to_list()
     # Bar at 1h matches snapshot at 1h exactly
     # Bar at 2h: most recent snapshot at 1h (within 1h)
@@ -111,7 +111,7 @@ def test_both_signals_merged_independently():
         {"timestamp": 0,    "sumOpenInterest": 200_000.0},
         {"timestamp": step, "sumOpenInterest": 210_000.0},
     ]
-    result = _merge_s2_fn()(df, funding, oi)
+    result = _merge_derivatives_fn()(df, funding, oi)
     assert all(abs(r - 0.0003) < 1e-9 for r in result["funding_rate"].to_list())
     assert result["open_interest"].to_list()[0] == 200_000.0
     assert result["open_interest"].to_list()[1] == 210_000.0
@@ -119,7 +119,7 @@ def test_both_signals_merged_independently():
 
 def test_empty_both_returns_unchanged_df():
     df = _df(n=4)
-    result = _merge_s2_fn()(df, [], [])
+    result = _merge_derivatives_fn()(df, [], [])
     assert result["funding_rate"].to_list() == [0.0] * 4
     assert result["open_interest"].to_list() == [0.0] * 4
 
@@ -127,7 +127,7 @@ def test_empty_both_returns_unchanged_df():
 def test_schema_preserved_after_merge():
     df = _df(n=3)
     funding = [{"fundingTime": 0, "fundingRate": 0.001}]
-    result = _merge_s2_fn()(df, funding, [])
+    result = _merge_derivatives_fn()(df, funding, [])
     expected_cols = {"timestamp_ms", "open", "high", "low", "close", "volume",
                      "funding_rate", "open_interest", "social_score", "net_flow"}
     assert set(result.columns) == expected_cols

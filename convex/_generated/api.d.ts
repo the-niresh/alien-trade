@@ -14,6 +14,7 @@ import type * as audit from "../audit.js";
 import type * as config from "../config.js";
 import type * as copilot from "../copilot.js";
 import type * as decisions from "../decisions.js";
+import type * as feedback from "../feedback.js";
 import type * as forecastCalibration from "../forecastCalibration.js";
 import type * as forecastState from "../forecastState.js";
 import type * as ledger from "../ledger.js";
@@ -36,6 +37,7 @@ declare const fullApi: ApiFromModules<{
   config: typeof config;
   copilot: typeof copilot;
   decisions: typeof decisions;
+  feedback: typeof feedback;
   forecastCalibration: typeof forecastCalibration;
   forecastState: typeof forecastState;
   ledger: typeof ledger;

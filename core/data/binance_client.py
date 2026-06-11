@@ -56,14 +56,18 @@ class BinanceClient:
         days_back: int = 730,
         interval: str = "daily",
         force_refresh: bool = False,
-        enrich_s2: bool = True,
+        enrich_derivatives: bool = True,
+        enrich_sentiment: bool = True,
     ) -> pl.DataFrame:
         """Pull OHLCV for `symbol` going back `days_back` days.
 
-        When `enrich_s2=True` (default) and the symbol has a Binance futures pair,
-        funding_rate and open_interest are populated from the public fapi endpoints
-        (free, no key). Falls back gracefully when the futures API is unreachable.
-        Returns polars DataFrame with the same 10-column schema as CMCClient.
+        When `enrich_derivatives=True` (default) and the symbol has a Binance
+        futures pair, funding_rate and open_interest are populated from the public
+        fapi endpoints (free, no key). When `enrich_sentiment=True`, social_score
+        is filled from the free Fear & Greed Index (alternative.me, point-in-time).
+        Both fall back gracefully when their source is unreachable (the field
+        stays 0.0). Returns polars DataFrame with the same 10-column schema as
+        CMCClient.
         """
         if symbol not in SYMBOL_PAIRS:
             raise ValueError(f"No Binance pair for {symbol!r}. Add it to SYMBOL_PAIRS.")
@@ -71,9 +75,15 @@ class BinanceClient:
         cache = _cache_path(symbol, days_back, interval)
         if cache.exists() and not force_refresh:
             df = pl.read_parquet(cache)
-            # Re-enrich on cache hit only if S2 is still all-zero (old cache)
-            if enrich_s2 and df["funding_rate"].max() == 0.0:
-                df = self.enrich_s2(df, symbol)
+            dirty = False
+            # Re-enrich on cache hit only if the field is still all-zero (old cache)
+            if enrich_derivatives and df["funding_rate"].max() == 0.0:
+                df = self.enrich_derivatives(df, symbol)
+                dirty = True
+            if enrich_sentiment and df["social_score"].max() == 0.0:
+                df = self._enrich_sentiment(df)
+                dirty = True
+            if dirty:
                 df.write_parquet(cache)
             return df
 
@@ -86,8 +96,10 @@ class BinanceClient:
         klines = self._fetch_klines(pair, binance_interval, start_ms, end_ms)
         df = _parse_klines(klines)
 
-        if enrich_s2:
-            df = self.enrich_s2(df, symbol)
+        if enrich_derivatives:
+            df = self.enrich_derivatives(df, symbol)
+        if enrich_sentiment:
+            df = self._enrich_sentiment(df)
 
         CACHE_DIR.mkdir(parents=True, exist_ok=True)
         df.write_parquet(cache)
@@ -151,9 +163,9 @@ class BinanceClient:
             klines = klines[:-1]  # drop the in-progress candle
         return self.bars_from_df(_parse_klines(klines))
 
-    # ── S2 enrichment (free Binance Futures API) ────────────────────────────
+    # ── Derivatives enrichment (free Binance Futures API: funding + OI) ──────
 
-    def enrich_s2(self, df: pl.DataFrame, symbol: str) -> pl.DataFrame:
+    def enrich_derivatives(self, df: pl.DataFrame, symbol: str) -> pl.DataFrame:
         """Add real funding_rate + open_interest to an OHLCV dataframe using
         Binance Futures public endpoints (no key required).
 
@@ -178,7 +190,17 @@ class BinanceClient:
         # OI history (only available for hourly and above)
         oi_data = self._load_or_fetch_oi(futures_pair, start_ms, end_ms)
 
-        return _merge_s2(df, fr_data, oi_data)
+        return _merge_derivatives(df, fr_data, oi_data)
+
+    def _enrich_sentiment(self, df: pl.DataFrame) -> pl.DataFrame:
+        """Fill social_score from the free Fear & Greed Index (point-in-time).
+        Market-wide, so symbol-independent. Fails open (zeros stay zeros)."""
+        try:
+            from data.sentiment_history import enrich_sentiment as _fg_enrich
+            return _fg_enrich(df)
+        except Exception as e:  # noqa: BLE001
+            print(f"[fear-greed] sentiment enrichment failed: {e}")
+            return df
 
     def _load_or_fetch_funding(
         self, pair: str, start_ms: int, end_ms: int
@@ -307,12 +329,12 @@ class BinanceClient:
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
-def _merge_s2(
+def _merge_derivatives(
     df: pl.DataFrame,
     funding_rows: list[dict],
     oi_rows: list[dict],
 ) -> pl.DataFrame:
-    """Merge futures S2 signals into an OHLCV dataframe.
+    """Merge futures derivatives signals (funding + OI) into an OHLCV dataframe.
 
     Funding rate: forward-filled from each 8h settlement.
     Open interest: aligned by nearest hourly snapshot (within ±1h).

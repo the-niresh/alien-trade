@@ -132,6 +132,11 @@ BINANCE_FUTURES_PAIRS: dict[str, str] = {
     "BTC":  "BTCUSDT",
 }
 
+# Fear & Greed Index (alternative.me) — free, no key, full daily history back to
+# 2018. Market-wide crypto sentiment; used as the free historical S3 source until
+# CMC Agent Hub social data is available. Same series applies to every symbol.
+FEAR_GREED_BASE_URL = "https://api.alternative.me"
+
 # ── TWAK (Trust Wallet Agent Kit) ─────────────────────────────────────────────
 # Base URL confirmed. Override at runtime via TWAK_API_BASE env var.
 

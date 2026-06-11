@@ -10,6 +10,29 @@ const tradingMode = v.union(
   v.literal("mainnet"),
 );
 
+// Autopilot config (user-set targets) + persisted ratchet state.
+const autopilotConfig = v.object({
+  enabled: v.boolean(),
+  profit_target_pct: v.optional(v.number()),
+  profit_target_abs: v.optional(v.number()),
+  protect_principal: v.optional(v.boolean()),
+  min_recycle_confidence: v.optional(v.number()),
+  recycle_blocked_regimes: v.optional(v.array(v.string())),
+  trailing_giveback_pct: v.optional(v.number()),
+  daily_profit_target_pct: v.optional(v.number()),
+  loss_cooldown_hours: v.optional(v.number()),
+});
+
+const autopilotState = v.object({
+  protected_floor: v.number(),
+  cycle_start_equity: v.number(),
+  peak_equity: v.number(),
+  day_start_equity: v.number(),
+  day_key: v.string(),
+  halted_for_day: v.boolean(),
+  cooldown_until_ms: v.number(),
+});
+
 /**
  * Read the live config (kill switch + caps). The agent calls this every cycle.
  * Returns null when not yet seeded — the agent treats that as "not halted".
@@ -29,6 +52,9 @@ export const get = query({
       max_drawdown_pct: v.number(),
       token_allowlist: v.array(v.string()),
       equity_floor: v.optional(v.number()),
+      strategy_name: v.optional(v.string()),
+      autopilot: v.optional(autopilotConfig),
+      autopilot_state: v.optional(autopilotState),
       updated_at_ms: v.number(),
     }),
   ),
@@ -178,6 +204,63 @@ export const updateLimits = mutation({
       if (args[k] !== undefined) patch[k] = args[k];
     }
     await ctx.db.patch(row._id, patch);
+    return null;
+  },
+});
+
+/** Cockpit: pick the active strategy (momentum|contrarian|balanced|defensive).
+ * The agent reads `config.strategy_name` and rebuilds its strategy while flat. */
+export const setStrategy = mutation({
+  args: { strategy_name: v.string() },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const row = await ctx.db
+      .query("config")
+      .withIndex("by_key", (q) => q.eq("key", KEY))
+      .unique();
+    if (!row) throw new Error("config not seeded — call config:ensure first");
+    await ctx.db.patch(row._id, {
+      strategy_name: args.strategy_name,
+      updated_at_ms: Date.now(),
+    });
+    return null;
+  },
+});
+
+/** Cockpit: set the Autopilot capital-manager targets (profit-lock, ratchet,
+ * trailing, daily target, recycle gate). The agent reads these live. */
+export const setAutopilot = mutation({
+  args: { autopilot: autopilotConfig },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const row = await ctx.db
+      .query("config")
+      .withIndex("by_key", (q) => q.eq("key", KEY))
+      .unique();
+    if (!row) throw new Error("config not seeded — call config:ensure first");
+    await ctx.db.patch(row._id, {
+      autopilot: args.autopilot,
+      updated_at_ms: Date.now(),
+    });
+    return null;
+  },
+});
+
+/** Agent: persist the autopilot ratchet (protected floor etc.) each cycle so a
+ * restart keeps the banked floor. Off the cockpit; written by the loop. */
+export const setAutopilotState = mutation({
+  args: { state: autopilotState },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const row = await ctx.db
+      .query("config")
+      .withIndex("by_key", (q) => q.eq("key", KEY))
+      .unique();
+    if (!row) return null;
+    await ctx.db.patch(row._id, {
+      autopilot_state: args.state,
+      updated_at_ms: Date.now(),
+    });
     return null;
   },
 });

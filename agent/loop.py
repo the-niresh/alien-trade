@@ -31,6 +31,7 @@ from agent.ledger import LedgerState
 
 if TYPE_CHECKING:
     from agent.notify import TelegramNotifier
+    from risk.autopilot import AutopilotConfig
 
 
 @dataclass
@@ -69,6 +70,7 @@ class DecisionLoop:
         activity_deadline_hour: int = 23,
         activity_trade_usd: float = 15.0,
         notifier: Optional["TelegramNotifier"] = None,
+        autopilot_config: Optional["AutopilotConfig"] = None,
     ):
         self.feed = feed
         self.strategy = strategy            # the SAME risk-wrapped /core strategy
@@ -140,6 +142,30 @@ class DecisionLoop:
         # (stale → fresh, fresh → stale) rather than every cycle.
         self._stale_sources: set = set()
 
+        # ── Autopilot capital manager (profit-lock + ratchet + trailing) ────
+        # Live-only overlay (default None → disabled → sim/paper parity holds).
+        # State (the protected-floor ratchet) is rebuilt from Convex on restart.
+        from risk.autopilot import AutopilotState
+        self._autopilot_config = autopilot_config
+        self._autopilot_state = AutopilotState()
+        self._block_entry = False           # set by the recycle gate / cooldown
+        self._current_setup_key = ""        # regime+dominant-signal, for human feedback
+        if autopilot_config is not None and autopilot_config.enabled:
+            try:
+                saved = self.bridge.get_autopilot_state()
+                if saved:
+                    self._autopilot_state = AutopilotState(
+                        protected_floor=float(saved.get("protected_floor", 0.0)),
+                        cycle_start_equity=float(saved.get("cycle_start_equity", 0.0)),
+                        peak_equity=float(saved.get("peak_equity", 0.0)),
+                        day_start_equity=float(saved.get("day_start_equity", 0.0)),
+                        day_key=str(saved.get("day_key", "")),
+                        halted_for_day=bool(saved.get("halted_for_day", False)),
+                        cooldown_until_ms=int(saved.get("cooldown_until_ms", 0)),
+                    )
+            except Exception:  # noqa: BLE001 — fresh state is a safe fallback
+                pass
+
     # ── notify helper (Telegram 8.9) ─────────────────────────────────────────
 
     def _notify(self, text: str) -> None:
@@ -184,6 +210,8 @@ class DecisionLoop:
 
         # ── Live trading-mode toggle: align the executor with the UI ─────────
         self._sync_trading_mode(bar, cycle_id)
+        # ── Live autopilot config: pick up cockpit changes (offline → keep env) ─
+        self._sync_autopilot_config()
 
         # Social S3 bridge: inject live sentiment into the last bar (point-in-time,
         # live-only overlay — offline/sim bridge returns None → history unchanged).
@@ -192,6 +220,9 @@ class DecisionLoop:
         breakdown = score_breakdown(history, self.params)
         signals = _signals_obj(breakdown)
         target_usd = breakdown["target"] * self.base_position_usd
+        # Setup key for the human-feedback loop (regime + dominant signal).
+        from risk.feedback import setup_key as _setup_key
+        self._current_setup_key = _setup_key(regime.value, signals)
 
         # 8.11 — emit RiskGuard observation when advisory signals go stale
         self._check_staleness(bar, cycle_id)
@@ -212,10 +243,32 @@ class DecisionLoop:
                 None, None, target_usd, 0.0, None, breakdown, signals, halted=True,
             )
 
+        # ── Autopilot capital manager: bank / trail-exit / halt-for-day ─────
+        # Runs before the strategy so a profit-lock or daily target can pre-empt a
+        # fresh entry. Returns a finalised result when it intervened this cycle;
+        # otherwise it only sets self._block_entry (recycle gate / cooldown).
+        ap_intervention = self._apply_autopilot(bar, cycle_id, regime.value)
+        if ap_intervention is not None:
+            return ap_intervention
+
         # ── Decision (same code as the sim) ─────────────────────────────────
         order = self.strategy(history)
 
         verdict, reason, execution, trade_id, final_size = "block", "no signal / risk veto", None, None, 0.0
+
+        if order is not None and self._block_entry and order.side == "buy":
+            # Recycle gate / cooldown: a fresh long is suppressed, but exits proceed.
+            order = None
+            verdict, reason = "block", "autopilot: recycle gate / cooldown — staying in cash"
+
+        if order is not None:
+            order = self._cap_to_deployable(order, bar, cycle_id)
+
+        # ── Human-feedback gate: operator's good/bad marks on this setup ─────
+        if order is not None and order.side == "buy":
+            order, fb_block_reason = self._apply_feedback_gate(order, cycle_id)
+            if order is None:
+                verdict, reason = "block", fb_block_reason
 
         if order is not None:
             ma = self.brain.check(history, order, regime.value)
@@ -525,6 +578,172 @@ class DecisionLoop:
         except Exception:  # noqa: BLE001 — calibration is observability
             pass
 
+    # ── autopilot capital manager ────────────────────────────────────────────
+
+    def _apply_autopilot(self, bar: Bar, cycle_id: str, regime: str):
+        """Evaluate the autopilot each cycle. Returns a finalised CycleResult when it
+        intervenes (BANK / TRAIL_EXIT flatten the position; HALT_DAY stops for the
+        day); otherwise returns None and sets self._block_entry for the recycle gate.
+        Disabled / offline → no-op (self._block_entry cleared) so parity holds."""
+        cfg = self._autopilot_config
+        if cfg is None or not cfg.enabled:
+            self._block_entry = False
+            return None
+        from risk.autopilot import AutopilotAction, evaluate
+
+        equity = self.ledger.mark(bar.close)
+        open_exp = self.ledger.open_exposure(bar.close)
+        in_position = open_exp > self._exposure_epsilon
+        day_key = _day_key(bar.timestamp)
+        last_loss = self.ledger.consecutive_losses > 0
+        try:
+            decision = evaluate(
+                cfg, self._autopilot_state,
+                equity=equity, in_position=in_position, regime=regime,
+                forecast_confidence=self._current_forecast_confidence(),
+                day_key=day_key, now_ms=bar.timestamp, last_close_was_loss=last_loss,
+            )
+        except Exception:  # noqa: BLE001 — autopilot must never crash a trading cycle
+            self._block_entry = False
+            return None
+
+        self._autopilot_state = decision.state
+        self._persist_autopilot_state()
+        self._block_entry = decision.action is AutopilotAction.BLOCK_ENTRY
+
+        if decision.action in (AutopilotAction.BANK, AutopilotAction.TRAIL_EXIT) and in_position:
+            order = Order(side="sell", size_usd=open_exp, symbol=self.symbol,
+                          timestamp=bar.timestamp)
+            execution = self.executor.execute(order, bar, idempotency_key=f"{cycle_id}-autopilot")
+            verdict, reason, trade_id = self._handle_execution(
+                execution, bar, cycle_id, regime, None)
+            self._emit_autopilot(decision, bar, cycle_id, equity)
+            self.bridge.audit("autopilot", cycle_id, {
+                "action": decision.action.value, "reason": decision.reason,
+                "banked": round(decision.banked, 2),
+                "protected_floor": round(self._autopilot_state.protected_floor, 2),
+            }, "info")
+            return self._finalise(
+                cycle_id, bar, regime, "allow", f"autopilot: {decision.reason}",
+                order, execution, 0.0, order.size_usd, trade_id, {}, {}, halted=False,
+            )
+
+        if decision.action is AutopilotAction.HALT_DAY:
+            self._emit_autopilot(decision, bar, cycle_id, equity)
+            self.bridge.audit("autopilot", cycle_id, {
+                "action": "halt_day", "reason": decision.reason,
+            }, "info")
+            return self._finalise(
+                cycle_id, bar, regime, "block", f"autopilot: {decision.reason}",
+                None, None, 0.0, 0.0, None, {}, {}, halted=False,
+            )
+        return None
+
+    def _sync_autopilot_config(self) -> None:
+        """Pick up cockpit autopilot changes live (config.autopilot). Offline /
+        unseeded → bridge returns None → keep the env-built config. Fail-safe:
+        any parse error leaves the current config untouched."""
+        try:
+            raw = self.bridge.get_autopilot_config()
+        except Exception:  # noqa: BLE001
+            return
+        if not raw:
+            return
+        try:
+            from risk.autopilot import AutopilotConfig
+            self._autopilot_config = AutopilotConfig(
+                enabled=bool(raw.get("enabled", False)),
+                profit_target_pct=raw.get("profit_target_pct"),
+                profit_target_abs=raw.get("profit_target_abs"),
+                protect_principal=bool(raw.get("protect_principal", True)),
+                min_recycle_confidence=float(raw.get("min_recycle_confidence") or 0.0),
+                recycle_blocked_regimes=tuple(raw.get("recycle_blocked_regimes") or ()),
+                trailing_giveback_pct=raw.get("trailing_giveback_pct"),
+                daily_profit_target_pct=raw.get("daily_profit_target_pct"),
+                loss_cooldown_hours=float(raw.get("loss_cooldown_hours") or 0.0),
+            )
+        except Exception:  # noqa: BLE001 — a bad cockpit value must not crash the loop
+            pass
+
+    def _cap_to_deployable(self, order: Order, bar: Bar, cycle_id: str) -> Optional[Order]:
+        """Shrink a buy to the capital above the protected floor (capital ratchet).
+        Banked gains are never re-risked. Sells pass through untouched. Returns None
+        if there is no deployable capital left for a buy."""
+        cfg = self._autopilot_config
+        if cfg is None or not cfg.enabled or order.side != "buy":
+            return order
+        from risk.autopilot import deployable_capital
+        cap = deployable_capital(self.ledger.mark(bar.close), self._autopilot_state)
+        if cap <= self._exposure_epsilon:
+            self.bridge.audit("autopilot", cycle_id, {
+                "action": "block_buy", "reason": "no capital above protected floor",
+                "protected_floor": round(self._autopilot_state.protected_floor, 2),
+            }, "info")
+            return None
+        if order.size_usd > cap:
+            return Order(side="buy", size_usd=cap, symbol=order.symbol,
+                         timestamp=order.timestamp)
+        return order
+
+    def _apply_feedback_gate(self, order: Order, cycle_id: str):
+        """Consult the operator's good/bad marks on this setup (human-in-the-loop).
+        Returns (order, reason): a blocked setup → (None, reason); a net-bad setup →
+        (shrunk order, ''); clear → (order, ''). Offline → no records → (order, '')
+        so parity holds. Never raises."""
+        try:
+            from risk.feedback import evaluate_feedback
+            records = self.bridge.get_feedback(self._current_setup_key)
+            if not records:
+                return order, ""
+            fb = evaluate_feedback(records)
+            if fb.block:
+                self.bridge.audit("risk_veto", cycle_id, {
+                    "reason": fb.reason, "source": "human", "setup": self._current_setup_key,
+                }, "warn")
+                return None, f"human feedback: {fb.reason}"
+            if fb.size_penalty > 0.0:
+                self.bridge.audit("risk_veto", cycle_id, {
+                    "reason": fb.reason, "size_penalty": fb.size_penalty,
+                    "source": "human", "setup": self._current_setup_key,
+                }, "warn")
+                return Order(side=order.side, size_usd=order.size_usd * (1.0 - fb.size_penalty),
+                             symbol=order.symbol, timestamp=order.timestamp), ""
+            return order, ""
+        except Exception:  # noqa: BLE001 — feedback is advisory; never crash a cycle
+            return order, ""
+
+    def _persist_autopilot_state(self) -> None:
+        try:
+            s = self._autopilot_state
+            self.bridge.set_autopilot_state({
+                "protected_floor": s.protected_floor,
+                "cycle_start_equity": s.cycle_start_equity,
+                "peak_equity": s.peak_equity,
+                "day_start_equity": s.day_start_equity,
+                "day_key": s.day_key,
+                "halted_for_day": s.halted_for_day,
+                "cooldown_until_ms": s.cooldown_until_ms,
+            })
+        except Exception:  # noqa: BLE001 — persistence is best-effort
+            pass
+
+    def _emit_autopilot(self, decision, bar: Bar, cycle_id: str, equity: float) -> None:
+        from risk.autopilot import AutopilotAction
+        headline = f"Autopilot {decision.action.value.upper()}: {decision.reason}"
+        try:
+            from agent.graph.contracts import AgentEvent, KIND_CONTROL
+            self.bridge.emit_event(AgentEvent(
+                agent="Autopilot", kind=KIND_CONTROL, headline=headline, cycle_id=cycle_id,
+                detail={"action": decision.action.value, "equity": round(equity, 2),
+                        "protected_floor": round(self._autopilot_state.protected_floor, 2),
+                        "banked": round(decision.banked, 2)},
+            ))
+        except Exception:  # noqa: BLE001
+            pass
+        if decision.action in (AutopilotAction.BANK, AutopilotAction.HALT_DAY):
+            self._notify(f"🤖 {headline} (equity ${equity:.2f}, "
+                         f"floor ${self._autopilot_state.protected_floor:.2f})")
+
     # ── execution → ledger → trade/ledger rows ──────────────────────────────
 
     def _handle_execution(self, execution: ExecutionReport, bar: Bar, cycle_id: str,
@@ -539,6 +758,12 @@ class DecisionLoop:
                     self._entry_fill = execution.fill
                     # Snapshot the current forecast confidence at entry for calibration.
                     self._entry_forecast_confidence = self._current_forecast_confidence()
+                    # Anchor the autopilot cycle: profit-lock + trailing measure
+                    # gains from this fresh deployment's equity.
+                    if self._autopilot_config is not None and self._autopilot_config.enabled:
+                        from risk.autopilot import start_cycle
+                        self._autopilot_state = start_cycle(
+                            self._autopilot_state, self.ledger.mark(bar.close))
             elif self._entry_fill is not None:
                 self._trades.append(
                     Trade(entry=self._entry_fill, exit=execution.fill, pnl_usd=realized))
@@ -607,7 +832,7 @@ class DecisionLoop:
             cycle_id=cycle_id, symbol=self.symbol, timestamp_ms=bar.timestamp,
             regime=regime, signals=signals, target_position_usd=target_usd,
             risk_verdict=verdict, risk_reason=reason, final_size_usd=final_size,
-            trade_id=trade_id,
+            trade_id=trade_id, setup_key=self._current_setup_key,
         )
         self.bridge.update_risk_state(
             daily_loss_usd=self.ledger.daily_loss_usd(bar.close),
@@ -724,6 +949,12 @@ class DecisionLoop:
 
 
 # ── helpers ────────────────────────────────────────────────────────────────
+
+def _day_key(timestamp_ms: int) -> str:
+    """UTC calendar-day key (YYYY-MM-DD) for the autopilot daily target/reset."""
+    import datetime
+    return datetime.datetime.utcfromtimestamp(timestamp_ms / 1000).strftime("%Y-%m-%d")
+
 
 def _signals_obj(breakdown: dict) -> dict:
     """Map score_breakdown → the Convex decisions.signals object shape."""

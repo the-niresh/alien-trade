@@ -47,10 +47,11 @@ def _load_bars(source: str, symbol: str, interval: str, days: int):
     if source == "binance":
         from data.binance_client import BinanceClient
         with BinanceClient() as c:
-            # enrich_s2=True populates funding_rate + open_interest from Binance Futures
-            # public endpoints (fapi, no key). Falls back gracefully on failure.
+            # enrich_derivatives populates funding_rate + open_interest from Binance
+            # Futures public endpoints (fapi, no key); enrich_sentiment fills
+            # social_score from the free Fear & Greed Index. Both fall back gracefully.
             df = c.fetch_ohlcv_historical(symbol, days_back=days, interval=interval,
-                                           enrich_s2=True)
+                                           enrich_derivatives=True, enrich_sentiment=True)
             return c.bars_from_df(df)
     raise ValueError(f"unknown --source {source!r} (use 'cmc' or 'binance')")
 
@@ -120,6 +121,10 @@ def main(argv=None) -> None:
     print("  -- 70/30 OPTIMISE -> HOLD-OUT (out-of-sample) --------------")
     print(f"  chosen params : ema_fast={best['ema_fast']}  ema_slow={best['ema_slow']}  "
           f"entry_threshold={best['entry_threshold']}")
+    print(f"  signal weights: w_mom={best.get('w_momentum', 0.65)}  "
+          f"w_deriv={best.get('w_derivatives', 0.35)}  "
+          f"w_sent={best.get('w_sentiment', 0.0)}  "
+          f"{'<- S3 ON' if best.get('w_sentiment', 0.0) > 0 else '(S3 off)'}")
     print(f"  objective     : {card.objective:.4f}   (sortino - 2*|maxDD|)")
     print(f"  sortino       : {card.sortino:.3f}")
     print(f"  total_return  : {card.total_return:.2%}")

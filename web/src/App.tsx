@@ -281,6 +281,7 @@ export default function App() {
   const risk      = useQuery(api.riskState.get);
   const config    = useQuery(api.config.get);
   const decisions = useQuery(api.decisions.recent, { limit: 6 });
+  const auditLog  = useQuery(api.audit.recent, { limit: 40 });
   const events    = useQuery(api.agentEvents.recent, { limit: 30 });
   const roster    = useQuery(api.agentEvents.latestPerAgent);
   const control   = useQuery(api.agentControl.get);
@@ -290,6 +291,9 @@ export default function App() {
   const setTradingMode = useMutation(api.config.setTradingMode);
   const updateLimits   = useMutation(api.config.updateLimits);
   const setControl     = useMutation(api.agentControl.set);
+  const setStrategy    = useMutation(api.config.setStrategy);
+  const setAutopilot   = useMutation(api.config.setAutopilot);
+  const recordFeedback = useMutation(api.feedback.record);
 
   const [floorInput, setFloorInput]       = useState("");
   const [copilotPrefill, setCopilotPrefill] = useState("");
@@ -458,7 +462,7 @@ export default function App() {
             <div className="label" style={{ marginBottom: 8 }}>Recent decisions</div>
             <table>
               <thead>
-                <tr><th>Time</th><th>Symbol</th><th>Regime</th><th>Verdict</th><th>Size</th></tr>
+                <tr><th>Time</th><th>Symbol</th><th>Regime</th><th>Verdict</th><th>Size</th><th>Rate</th></tr>
               </thead>
               <tbody>
                 {(decisions ?? []).map((d) => (
@@ -470,10 +474,24 @@ export default function App() {
                       <span className={`tag tag-${d.risk_verdict}`}>{d.risk_verdict}</span>
                     </td>
                     <td>{usd(d.final_size_usd)}</td>
+                    <td>
+                      {d.setup_key ? (
+                        <span style={{ display: "inline-flex", gap: 4 }}>
+                          <button className="btn-rate" title={`Good setup (${d.setup_key})`}
+                            onClick={() => recordFeedback({
+                              cycle_id: d.cycle_id, setup_key: d.setup_key!,
+                              symbol: d.symbol, label: "good" })}>👍</button>
+                          <button className="btn-rate" title={`Bad setup (${d.setup_key}) — agent will avoid it`}
+                            onClick={() => recordFeedback({
+                              cycle_id: d.cycle_id, setup_key: d.setup_key!,
+                              symbol: d.symbol, label: "bad" })}>👎</button>
+                        </span>
+                      ) : <span className="sub">—</span>}
+                    </td>
                   </tr>
                 ))}
                 {decisions?.length === 0 && (
-                  <tr><td colSpan={5} className="sub">No decisions yet.</td></tr>
+                  <tr><td colSpan={6} className="sub">No decisions yet.</td></tr>
                 )}
               </tbody>
             </table>
@@ -617,6 +635,13 @@ export default function App() {
             </div>
           </div>
 
+          {/* Strategy + Autopilot */}
+          <StrategyAutopilotPanel
+            config={config}
+            setStrategy={setStrategy}
+            setAutopilot={setAutopilot}
+          />
+
           {/* Risk cap sliders */}
           <div className="panel">
             <div style={{ display: "flex", justifyContent: "space-between",
@@ -683,6 +708,154 @@ export default function App() {
           </div>
         )}
       </div>
+
+      {/* ── Live log console (spectate the agent) ── */}
+      <div className="card" style={{ marginTop: 12 }}>
+        <div className="label" style={{ marginBottom: 8 }}>Live log console</div>
+        {(auditLog ?? []).length === 0 ? (
+          <div className="sub">No log entries yet — the agent writes one row per event.</div>
+        ) : (
+          <div className="logconsole">
+            {(auditLog ?? []).map((a) => (
+              <div key={a._id} className={`logline log-${a.severity}`}>
+                <span className="log-time">{ts(a.timestamp_ms)}</span>
+                <span className="log-type">{a.event_type}</span>
+                {a.cycle_id && <span className="log-cycle">{String(a.cycle_id).slice(-8)}</span>}
+                <span className="log-payload">{a.payload}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── Strategy picker + Autopilot capital manager ───────────────────────────────
+
+const STRATEGIES = [
+  { name: "momentum",   label: "Momentum",   blurb: "Rides confirmed uptrends." },
+  { name: "contrarian", label: "Contrarian", blurb: "Buys fear, trims greed. Best in down/choppy markets." },
+  { name: "balanced",   label: "Balanced",   blurb: "Momentum + derivatives + fear." },
+  { name: "defensive",  label: "Defensive",  blurb: "Rare high-conviction longs. Minimises drawdown." },
+];
+
+type AutopilotCfg = {
+  enabled: boolean;
+  profit_target_pct?: number;
+  profit_target_abs?: number;
+  protect_principal?: boolean;
+  trailing_giveback_pct?: number;
+  daily_profit_target_pct?: number;
+  min_recycle_confidence?: number;
+  recycle_blocked_regimes?: string[];
+  loss_cooldown_hours?: number;
+};
+
+function StrategyAutopilotPanel({
+  config,
+  setStrategy,
+  setAutopilot,
+}: {
+  config: { strategy_name?: string; autopilot?: AutopilotCfg } | null | undefined;
+  setStrategy: (args: { strategy_name: string }) => void;
+  setAutopilot: (args: { autopilot: AutopilotCfg }) => void;
+}) {
+  const ap = config?.autopilot;
+  const active = config?.strategy_name ?? "balanced";
+  // Local draft for the numeric target fields (commit on blur).
+  const [pct, setPct]   = useState("");
+  const [abs, setAbs]   = useState("");
+  const [trail, setTrail] = useState("");
+  const [daily, setDaily] = useState("");
+
+  const num = (s: string) => (s.trim() === "" ? undefined : Number(s));
+  const patch = (over: Partial<AutopilotCfg>) =>
+    setAutopilot({
+      autopilot: {
+        enabled: ap?.enabled ?? false,
+        profit_target_pct: ap?.profit_target_pct,
+        profit_target_abs: ap?.profit_target_abs,
+        protect_principal: ap?.protect_principal ?? true,
+        trailing_giveback_pct: ap?.trailing_giveback_pct,
+        daily_profit_target_pct: ap?.daily_profit_target_pct,
+        min_recycle_confidence: ap?.min_recycle_confidence,
+        recycle_blocked_regimes: ap?.recycle_blocked_regimes ?? ["crash", "high_vol"],
+        loss_cooldown_hours: ap?.loss_cooldown_hours,
+        ...over,
+      },
+    });
+
+  return (
+    <div className="panel" style={{ marginBottom: 12 }}>
+      <div className="panel-title" style={{ marginBottom: 8 }}>Strategy</div>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, marginBottom: 6 }}>
+        {STRATEGIES.map((s) => (
+          <button key={s.name}
+            className={`btn ${active === s.name ? "btn-set" : "btn-stop"}`}
+            style={{ padding: "6px 8px", fontSize: 12 }}
+            title={s.blurb}
+            onClick={() => setStrategy({ strategy_name: s.name })}>
+            {s.label}
+          </button>
+        ))}
+      </div>
+      <div className="sub" style={{ marginBottom: 12 }}>
+        {STRATEGIES.find((s) => s.name === active)?.blurb}
+      </div>
+
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+        <div className="panel-title">Autopilot</div>
+        <button
+          className={`btn ${ap?.enabled ? "btn-set" : "btn-stop"}`}
+          style={{ padding: "4px 12px", fontSize: 11 }}
+          onClick={() => patch({ enabled: !(ap?.enabled ?? false) })}>
+          {ap?.enabled ? "ON" : "OFF"}
+        </button>
+      </div>
+
+      {ap?.enabled && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          <APRow label="Take profit %" placeholder={pctStr(ap?.profit_target_pct)}
+            value={pct} onChange={setPct}
+            onCommit={() => patch({ profit_target_pct: num(pct) === undefined ? undefined : Number(pct) / 100 })} />
+          <APRow label="Take profit $" placeholder={ap?.profit_target_abs?.toString() ?? "—"}
+            value={abs} onChange={setAbs}
+            onCommit={() => patch({ profit_target_abs: num(abs) })} />
+          <APRow label="Trailing give-back %" placeholder={pctStr(ap?.trailing_giveback_pct)}
+            value={trail} onChange={setTrail}
+            onCommit={() => patch({ trailing_giveback_pct: num(trail) === undefined ? undefined : Number(trail) / 100 })} />
+          <APRow label="Daily target %" placeholder={pctStr(ap?.daily_profit_target_pct)}
+            value={daily} onChange={setDaily}
+            onCommit={() => patch({ daily_profit_target_pct: num(daily) === undefined ? undefined : Number(daily) / 100 })} />
+          <label className="sub" style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
+            <input type="checkbox" checked={ap?.protect_principal ?? true}
+              onChange={(e) => patch({ protect_principal: e.target.checked })} />
+            Protect principal (ratchet the whole balance, not just profit)
+          </label>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function pctStr(v?: number) {
+  return v === undefined ? "—" : `${(v * 100).toFixed(1)}`;
+}
+
+function APRow({
+  label, value, placeholder, onChange, onCommit,
+}: {
+  label: string; value: string; placeholder: string;
+  onChange: (v: string) => void; onCommit: () => void;
+}) {
+  return (
+    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
+      <span className="sub">{label}</span>
+      <input className="floor-input" style={{ width: 70 }} type="number" min="0"
+        placeholder={placeholder} value={value}
+        onChange={(e) => onChange(e.target.value)}
+        onBlur={onCommit} />
     </div>
   );
 }

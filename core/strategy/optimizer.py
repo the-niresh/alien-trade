@@ -22,6 +22,16 @@ PARAM_GRID: dict[str, list] = {
     "entry_threshold":  [0.20, 0.30, 0.40],
 }
 
+# Signal-weight presets (w_momentum, w_derivatives, w_sentiment). Kept to a tiny
+# set — the optimizer turns S3 (Fear & Greed contrarian) on only if it improves
+# the OOS objective; otherwise the S3-off preset wins. Anti-overfit: 3 presets,
+# not a free weight sweep. Each sums to ~1.0.
+WEIGHT_PRESETS: list[tuple[float, float, float]] = [
+    (0.65, 0.35, 0.00),   # S1+S2 only (baseline)
+    (0.55, 0.30, 0.15),   # light S3 overlay
+    (0.50, 0.25, 0.25),   # heavier S3 overlay
+]
+
 # Objective weighting: λ penalises drawdown
 _LAMBDA = 2.0
 _DEFAULT_COST = BSCCostModel()
@@ -45,15 +55,19 @@ def optimize(
     """
     results: list[tuple[dict, float]] = []
 
-    for fast, slow, entry in product(
+    for fast, slow, entry, (w_mom, w_deriv, w_sent) in product(
         PARAM_GRID["ema_fast"],
         PARAM_GRID["ema_slow"],
         PARAM_GRID["entry_threshold"],
+        WEIGHT_PRESETS,
     ):
         if fast >= slow:
             continue   # invalid pair
 
-        params = StrategyParams(ema_fast=fast, ema_slow=slow, entry_threshold=entry)
+        params = StrategyParams(
+            ema_fast=fast, ema_slow=slow, entry_threshold=entry,
+            w_momentum=w_mom, w_derivatives=w_deriv, w_sentiment=w_sent,
+        )
         strategy = make_strategy(params)
         result = run_backtest(
             train_bars, strategy,
@@ -88,11 +102,15 @@ def optimize(
     else:
         best_params = max(results, key=lambda x: x[1])[0]
 
-    # Return only the optimised keys (don't override weights/sizing)
+    # Return the optimised keys (incl. signal weights so a winning S3 overlay
+    # carries through; sizing/threshold defaults are left untouched).
     return {
         "ema_fast":        best_params["ema_fast"],
         "ema_slow":        best_params["ema_slow"],
         "entry_threshold": best_params["entry_threshold"],
+        "w_momentum":      best_params["w_momentum"],
+        "w_derivatives":   best_params["w_derivatives"],
+        "w_sentiment":     best_params["w_sentiment"],
     }
 
 

@@ -109,6 +109,7 @@ def build_loop(cfg: AgentConfig, *, feed=None, dry_run: bool = False,
         executor_factory=executor_factory,
         enforce_activity_floor=cfg.enforce_activity_floor,
         notifier=notifier,
+        autopilot_config=cfg.autopilot,
     )
     loop.second_brain = sb   # co-pilot / research / telemetry access (may be None)
     if recover:

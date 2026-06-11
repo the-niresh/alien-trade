@@ -13,12 +13,43 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
+from risk.autopilot import AutopilotConfig
 from risk.guardrails import RiskConfig
 from strategy.combined import StrategyParams
+from strategy.registry import get_strategy_params
 
 load_dotenv(Path(__file__).resolve().parent.parent / ".env.local")
 
 VALID_MODES = ("paper", "testnet", "mainnet")
+
+
+def _env_float(name: str):
+    raw = os.environ.get(name, "").strip()
+    try:
+        return float(raw) if raw else None
+    except ValueError:
+        return None
+
+
+def _autopilot_from_env() -> AutopilotConfig:
+    """Build the Autopilot capital-manager config from env. Disabled by default so
+    sim/paper parity holds; the operator turns it on for the live/testnet run."""
+    blocked = tuple(
+        s.strip() for s in os.environ.get("AUTOPILOT_BLOCK_REGIMES", "crash,high_vol").split(",")
+        if s.strip()
+    )
+    return AutopilotConfig(
+        enabled=os.environ.get("AUTOPILOT", "").lower() in ("1", "true", "yes"),
+        profit_target_pct=_env_float("AUTOPILOT_PROFIT_TARGET_PCT"),
+        profit_target_abs=_env_float("AUTOPILOT_PROFIT_TARGET_ABS"),
+        protect_principal=os.environ.get("AUTOPILOT_PROTECT_PRINCIPAL", "1").lower()
+        not in ("0", "false", "no"),
+        min_recycle_confidence=_env_float("AUTOPILOT_MIN_RECYCLE_CONF") or 0.0,
+        recycle_blocked_regimes=blocked,
+        trailing_giveback_pct=_env_float("AUTOPILOT_TRAIL_GIVEBACK_PCT"),
+        daily_profit_target_pct=_env_float("AUTOPILOT_DAILY_TARGET_PCT"),
+        loss_cooldown_hours=_env_float("AUTOPILOT_LOSS_COOLDOWN_HOURS") or 0.0,
+    )
 
 
 @dataclass
@@ -63,10 +94,21 @@ class AgentConfig:
         default_factory=lambda: os.environ.get("SECOND_BRAIN", "1").lower()
         not in ("0", "false", "no"))
 
+    # Named strategy from the registry (momentum|contrarian|balanced|defensive).
+    # Resolved into `strategy` params below, carrying the chosen symbol.
+    strategy_name: str = field(default_factory=lambda: os.environ.get("STRATEGY_NAME", ""))
+
     # Sub-configs from /core (shared with the sim)
     risk: RiskConfig = field(default_factory=RiskConfig)
     strategy: StrategyParams = field(default_factory=StrategyParams)
 
+    # Autopilot capital manager (profit-lock + ratchet + trailing + daily target).
+    # Off by default (sim/paper parity); operator enables via AUTOPILOT=1 env.
+    autopilot: AutopilotConfig = field(default_factory=_autopilot_from_env)
+
     def __post_init__(self) -> None:
         if self.mode not in VALID_MODES:
             raise ValueError(f"mode must be one of {VALID_MODES}, got {self.mode!r}")
+        # A named strategy overrides the default params (keeping the chosen symbol).
+        if self.strategy_name:
+            self.strategy = get_strategy_params(self.strategy_name, symbol=self.symbol)

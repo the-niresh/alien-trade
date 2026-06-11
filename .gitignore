@@ -52,3 +52,6 @@ index.ts
 
 # TS incremental build cache
 *.tsbuildinfo
+
+# gstack local artifacts (security reports, analytics)
+.gstack/

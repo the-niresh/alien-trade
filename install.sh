@@ -155,6 +155,7 @@ UPSTASH_REDIS_REST_TOKEN=$(_prompt_secret "UPSTASH_REDIS_REST_TOKEN"      "${UPS
 UPSTASH_VECTOR_REST_URL=$(_prompt_secret  "UPSTASH_VECTOR_REST_URL"       "${UPSTASH_VECTOR_REST_URL:-}")
 UPSTASH_VECTOR_REST_TOKEN=$(_prompt_secret "UPSTASH_VECTOR_REST_TOKEN"    "${UPSTASH_VECTOR_REST_TOKEN:-}")
 ANTHROPIC_API_KEY=$(_prompt_secret "ANTHROPIC_API_KEY"                    "${ANTHROPIC_API_KEY:-}")
+OPENAI_API_KEY=$(_prompt_secret "OPENAI_API_KEY (optional — LLM fallback if Claude is down)" "${OPENAI_API_KEY:-}")
 
 echo ""
 echo -e "  ${BOLD}Required — TWAK self-custody signing${NC}"
@@ -202,6 +203,8 @@ UPSTASH_VECTOR_REST_TOKEN=${UPSTASH_VECTOR_REST_TOKEN}
 
 # ── LLM ───────────────────────────────────────────────────────────────────────
 ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+# Optional OpenAI fallback — used ONLY when the Anthropic API is unreachable.
+OPENAI_API_KEY=${OPENAI_API_KEY}
 
 # ── TWAK (Trust Wallet Agent Kit) ─────────────────────────────────────────────
 TW_ACCESS_ID=${TW_ACCESS_ID}

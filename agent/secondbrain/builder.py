@@ -81,6 +81,8 @@ def build_second_brain(
     telemetry = CostTelemetry()
     llm = ClaudeClient(
         api_key=e.get("ANTHROPIC_API_KEY", ""),
+        openai_api_key=e.get("OPENAI_API_KEY", ""),
+        openai_model=e.get("OPENAI_FALLBACK_MODEL", "") or "gpt-4o-mini",
         cache=cache, telemetry=telemetry,
     )
     reflection_writer = ReflectionWriter(vector=vector, llm=llm, bridge=bridge)

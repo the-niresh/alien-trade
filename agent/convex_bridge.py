@@ -33,6 +33,7 @@ _GUARDED_MUTATIONS = frozenset({
     "config:setAutopilot",
     "config:setAutopilotState",
     "agentControl:set",
+    "thesisLedger:record",
 })
 
 
@@ -164,6 +165,41 @@ class ConvexBridge:
     def set_halted(self, halted: bool) -> None:
         """Flip the kill switch (used by the API /halt and /resume routes)."""
         self._call("mutation", "config:setHalted", {"halted": halted})
+
+    # ── thesis ledger (AWAKE_SPRINT §4.6) ───────────────────────────────────────
+
+    def record_thesis(
+        self,
+        *,
+        thesis_id: str,
+        claim: str,
+        source: str,
+        regime: str = "",
+        status: str = "untested",
+        oos_objective: Optional[float] = None,
+        deflated_sharpe: Optional[float] = None,
+        asset_results: str = "{}",
+        trial_n: int = 0,
+        ts_ms: Optional[int] = None,
+    ) -> None:
+        """Log/update a thesis card (trial registry + cockpit feed)."""
+        import time
+
+        self._call("mutation", "thesisLedger:record", {
+            "thesis_id": thesis_id,
+            "claim": claim,
+            "source": source,
+            "regime": regime,
+            "status": status,
+            "oos_objective": oos_objective,
+            "deflated_sharpe": deflated_sharpe,
+            "asset_results": asset_results,
+            "trial_n": trial_n,
+            "ts_ms": ts_ms if ts_ms is not None else int(time.time() * 1000),
+        })
+
+    def recent_theses(self, limit: int = 20) -> list:
+        return self._call("query", "thesisLedger:recent", {"limit": limit}) or []
 
     # ── writes ─────────────────────────────────────────────────────────────────
 

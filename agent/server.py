@@ -292,6 +292,22 @@ def skill_signal_score(body: dict) -> dict:
                 "signal_strength": "weak", "bars_used": 0}
 
 
+@app.post("/skill/thesis_check")
+def skill_thesis_check(body: dict) -> dict:
+    """CMC Skill — falsification-as-a-service over the thesis ledger.
+
+    POST {"idea_text": "momentum works in uptrends"}
+    Returns {status, verdict, oos_objective, deflated_sharpe, source, matched_claim}.
+    Described in agent/skills/thesis_check_manifest.json.
+    """
+    idea_text = str(body.get("idea_text", ""))
+    try:
+        from agent.skills.thesis_check import ThesisCheckSkill
+        return ThesisCheckSkill().compute(idea_text)
+    except Exception as exc:  # noqa: BLE001
+        return {"status": "untested", "verdict": "unknown", "error": str(exc)}
+
+
 @app.get("/skill/manifest")
 def skill_manifest() -> dict:
     """Return the CMC Skills Marketplace manifest for the Track-2 strategy skill."""
@@ -302,3 +318,18 @@ def skill_manifest() -> dict:
         return json.loads(manifest_path.read_text(encoding="utf-8"))
     except Exception as exc:  # noqa: BLE001
         return {"error": str(exc)}
+
+
+@app.get("/skill/manifests")
+def skill_manifests() -> list:
+    """Return all published CMC Skills Marketplace manifests (Track-2 score + thesis-check)."""
+    import json
+    from pathlib import Path
+    out = []
+    skills_dir = Path(__file__).parent / "skills"
+    for name in ("skill_manifest.json", "thesis_check_manifest.json"):
+        try:
+            out.append(json.loads((skills_dir / name).read_text(encoding="utf-8")))
+        except Exception:  # noqa: BLE001
+            pass
+    return out

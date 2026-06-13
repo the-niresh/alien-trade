@@ -1,5 +1,6 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import { assertControlToken } from "./control";
 
 const KEY = "global";
 
@@ -37,9 +38,11 @@ export const set = mutation({
     trading_halted: v.optional(v.boolean()),
     stop_response_id: v.optional(v.string()),
     updated_by: v.optional(v.string()),
+    control_token: v.optional(v.string()),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
+    assertControlToken(args.control_token);
     const row = await ctx.db
       .query("agent_control")
       .withIndex("by_key", (q) => q.eq("key", KEY))

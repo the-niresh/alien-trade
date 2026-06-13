@@ -16,16 +16,31 @@ but audited).
 from __future__ import annotations
 
 import json
+import os
 from dataclasses import dataclass, field
 from typing import Any, Optional
 
 import httpx
+
+# State-changing mutations gated by the shared CONTROL_TOKEN (convex/control.ts).
+# Only these get the token injected — unguarded mutations (e.g. config:ensure)
+# would have Convex reject an unexpected `control_token` arg.
+_GUARDED_MUTATIONS = frozenset({
+    "config:setHalted",
+    "config:setTradingMode",
+    "config:updateLimits",
+    "config:setStrategy",
+    "config:setAutopilot",
+    "config:setAutopilotState",
+    "agentControl:set",
+})
 
 
 @dataclass
 class ConvexBridge:
     url: str = ""
     timeout: float = 15.0
+    control_token: str = field(default_factory=lambda: os.environ.get("CONTROL_TOKEN", ""))
     _http: Optional[httpx.Client] = field(default=None, init=False, repr=False)
     _offline_log: list[dict] = field(default_factory=list, init=False, repr=False)
 
@@ -45,6 +60,10 @@ class ConvexBridge:
 
     def _call(self, kind: str, path: str, args: dict) -> Any:
         """kind = 'query' | 'mutation'. Returns the function's value or None."""
+        # Attach the shared control token to guarded state-changing mutations.
+        if kind == "mutation" and path in _GUARDED_MUTATIONS and self.control_token \
+                and "control_token" not in args:
+            args = {**args, "control_token": self.control_token}
         if not self.enabled:
             self._offline_log.append({"kind": kind, "path": path, "args": args})
             return None

@@ -1,0 +1,16 @@
+# docs/FROZEN_ALLOWLIST.txt — globs the ralph loop may Edit/Write. One per line.
+# Everything else is BLOCKED by scripts/freeze_guard.py (PreToolUse hook) during the
+# optimization days. To touch a file outside this set the loop must request approval
+# (AT-REQ via the alien-trade Telegram bot). Comments (#) and blank lines are ignored.
+core/strategy/**
+core/signals/**
+core/backtest/**
+core/data/corpus/**
+core/risk/forecast.py
+research/**
+docs/VALIDATION_1H.md
+docs/AUTONOMY.md
+docs/THESIS_LEDGER.md
+agent/secondbrain/**
+core/tests/**
+agent/tests/**

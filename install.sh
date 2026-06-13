@@ -275,52 +275,19 @@ else
   fi
 fi
 
-# ── Step 7: Start agent in paper mode ─────────────────────────────────────────
-hdr "Step 7 — Ready to launch"
+# ── Step 7: Hand off to the interactive onboarding wizard ─────────────────────
+# Dependencies are installed; the Textual TUI now drives keys, trading mode, risk
+# caps, Telegram, the pairing token + QR, and writes .env.local. `exec` replaces
+# this shell so the wizard owns the terminal.
+hdr "Step 7 — Launching onboarding wizard"
 
-echo ""
-echo -e "  ${BOLD}To start the trading agent in paper mode:${NC}"
-echo ""
-echo -e "  ${CYAN}cd core${NC}"
-echo -e "  ${CYAN}./.venv/Scripts/python.exe -m uvicorn agent.server:app --port 8000${NC}"
-echo -e "  (or on Linux/Mac: ${CYAN}./.venv/bin/python -m uvicorn agent.server:app --port 8000${NC})"
-echo ""
-echo -e "  ${BOLD}To open the glass cockpit (PWA):${NC}"
-echo -e "  ${CYAN}cd web && bun run dev${NC}   →   http://localhost:5173"
-echo ""
-echo -e "  ${BOLD}To run the full test suite:${NC}"
-echo -e "  ${CYAN}core/.venv/Scripts/python.exe -m pytest agent/tests core/tests -q${NC}"
-echo ""
-echo -e "  ${BOLD}To run the walk-forward strategy retune:${NC}"
-echo -e "  ${CYAN}cd core && .venv/Scripts/python.exe -m retune --symbol ETH --source binance --interval 1h${NC}"
-echo ""
+ONBOARD_PY="$REPO_ROOT/core/.venv/bin/python"
+[ -x "$ONBOARD_PY" ] || ONBOARD_PY="$REPO_ROOT/core/.venv/Scripts/python.exe"  # Windows
 
-# ── Step 8: Print QR ──────────────────────────────────────────────────────────
-if [ -n "$PWA_URL" ]; then
-  hdr "Step 8 — Dashboard QR"
-  # Try Python qrcode lib; graceful fallback
-  "$PYTHON_CMD" - <<PYEOF 2>/dev/null || echo -e "  Dashboard: ${CYAN}${PWA_URL}${NC}"
-import sys
-url = "${PWA_URL}"
-try:
-    import qrcode
-    qr = qrcode.QRCode(border=1)
-    qr.add_data(url)
-    qr.make(fit=True)
-    print("\n  Scan to open the Alien-Trade glass cockpit:\n")
-    qr.print_ascii(invert=True)
-    print(f"\n  {url}\n")
-except ImportError:
-    print(f"\n  Dashboard: {url}")
-    print("  (pip install qrcode for a scannable QR code)\n")
-PYEOF
+if [ -x "$ONBOARD_PY" ]; then
+  cd "$REPO_ROOT"
+  exec "$ONBOARD_PY" -m onboard
+else
+  warn "venv python not found — run the wizard manually:"
+  echo -e "  ${CYAN}core/.venv/bin/python -m onboard${NC}"
 fi
-
-echo ""
-ok "Alien-Trade onboarding complete."
-echo -e "  ${BOLD}Next steps:${NC}"
-echo "  1. Start the agent:  cd core && .venv/bin/python -m uvicorn agent.server:app --port 8000"
-echo "  2. Open cockpit:     cd web && bun run dev"
-echo "  3. Register on-chain before Jun 22: twak compete register"
-echo "  4. Submit to DoraHacks with your BSC wallet + strategy writeup"
-echo ""

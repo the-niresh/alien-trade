@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
 import { useAction, useMutation, useQuery } from "convex/react";
+import { loadToken, setToken, withToken } from "./lib/control";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   Area,
@@ -274,6 +275,36 @@ function EquityChart() {
   );
 }
 
+// ── Pairing gate ─────────────────────────────────────────────────────────────
+// Shown until a control token is present. Normally the onboarding QR deep-links
+// here with `#t=<token>` (auto-captured by loadToken); this is the manual fallback.
+function PairingScreen({ onPaired }: { onPaired: (t: string) => void }) {
+  const [val, setVal] = useState("");
+  const submit = () => { const t = val.trim(); if (t) onPaired(t); };
+  return (
+    <div className="wrap" style={{ display: "grid", placeItems: "center", minHeight: "100vh" }}>
+      <div style={{ maxWidth: 420, textAlign: "center", padding: 24 }}>
+        <h1 style={{ marginBottom: 8 }}>Alien-Trade</h1>
+        <p style={{ opacity: 0.7, marginBottom: 20 }}>
+          Pair this cockpit to control the agent. Scan the QR from onboarding, or paste
+          your control token below.
+        </p>
+        <input
+          type="password"
+          value={val}
+          placeholder="control token"
+          onChange={(e) => setVal(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter") submit(); }}
+          style={{ width: "100%", padding: "10px 12px", marginBottom: 12,
+                   background: "#111", color: "#eee", border: "1px solid #333", borderRadius: 8 }}
+        />
+        <button className="btn" onClick={submit} disabled={!val.trim()}
+                style={{ width: "100%" }}>Pair cockpit</button>
+      </div>
+    </div>
+  );
+}
+
 // ── Main cockpit ─────────────────────────────────────────────────────────────
 
 export default function App() {
@@ -287,17 +318,28 @@ export default function App() {
   const control   = useQuery(api.agentControl.get);
   const wins      = useQuery(api.reflections.wins, { limit: 5 });
 
-  const setHalted      = useMutation(api.config.setHalted);
-  const setTradingMode = useMutation(api.config.setTradingMode);
-  const updateLimits   = useMutation(api.config.updateLimits);
-  const setControl     = useMutation(api.agentControl.set);
-  const setStrategy    = useMutation(api.config.setStrategy);
-  const setAutopilot   = useMutation(api.config.setAutopilot);
-  const recordFeedback = useMutation(api.feedback.record);
+  // Guarded control mutations — wrapped so the shared control token is attached at
+  // the definition site. No call site can forget it; new ones are covered for free.
+  const _setHalted      = useMutation(api.config.setHalted);
+  const _setTradingMode = useMutation(api.config.setTradingMode);
+  const _updateLimits   = useMutation(api.config.updateLimits);
+  const _setControl     = useMutation(api.agentControl.set);
+  const _setStrategy    = useMutation(api.config.setStrategy);
+  const _setAutopilot   = useMutation(api.config.setAutopilot);
+  const setHalted      = (a: Parameters<typeof _setHalted>[0]) => _setHalted(withToken(a));
+  const setTradingMode = (a: Parameters<typeof _setTradingMode>[0]) => _setTradingMode(withToken(a));
+  const updateLimits   = (a: Parameters<typeof _updateLimits>[0]) => _updateLimits(withToken(a));
+  const setControl     = (a: Parameters<typeof _setControl>[0]) => _setControl(withToken(a));
+  const setStrategy    = (a: Parameters<typeof _setStrategy>[0]) => _setStrategy(withToken(a));
+  const setAutopilot   = (a: Parameters<typeof _setAutopilot>[0]) => _setAutopilot(withToken(a));
+  const recordFeedback = useMutation(api.feedback.record); // not a control mutation — ungated
 
   const [floorInput, setFloorInput]       = useState("");
   const [copilotPrefill, setCopilotPrefill] = useState("");
   const [showSliders, setShowSliders]     = useState(false);
+  // Pairing: the control token arrives via the onboarding QR deep-link (#t=…) or is
+  // pasted on the gate below. Read-only queries render regardless; controls need it.
+  const [token, setTokenState] = useState<string | null>(loadToken());
 
   const mode   = config?.trading_mode;
   const halted = config?.halted ?? false;
@@ -344,6 +386,10 @@ export default function App() {
     updateLimits({ equity_floor: val });
     setFloorInput("");
   };
+
+  if (!token) {
+    return <PairingScreen onPaired={(t) => { setToken(t); setTokenState(t); }} />;
+  }
 
   return (
     <div className="wrap">

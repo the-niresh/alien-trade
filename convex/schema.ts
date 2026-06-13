@@ -323,4 +323,23 @@ export default defineSchema({
     ts_ms: v.number(),
   })
     .index("by_key", ["key"]),
+
+  // Thesis ledger + trial registry (AWAKE_SPRINT §4.4/§4.6). Every thesis the loop
+  // distills/tests is logged here — for multiplicity accounting (DSR) and the cockpit
+  // "science in public" feed. status: untested | validated | FALSIFIED. asset_results
+  // is a JSON blob {asset: {objective, ...}}; source is the exact citation.
+  thesis_ledger: defineTable({
+    thesis_id: v.string(),
+    claim: v.string(),
+    source: v.string(),
+    regime: v.string(),
+    status: v.string(),
+    oos_objective: v.union(v.number(), v.null()),
+    deflated_sharpe: v.union(v.number(), v.null()),
+    asset_results: v.string(),       // JSON
+    trial_n: v.number(),
+    ts_ms: v.number(),
+  })
+    .index("by_status", ["status"])
+    .index("by_ts", ["ts_ms"]),
 });

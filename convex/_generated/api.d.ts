@@ -23,6 +23,7 @@ import type * as reflections from "../reflections.js";
 import type * as riskState from "../riskState.js";
 import type * as scorecard from "../scorecard.js";
 import type * as social from "../social.js";
+import type * as thesisLedger from "../thesisLedger.js";
 import type * as trades from "../trades.js";
 
 import type {
@@ -47,6 +48,7 @@ declare const fullApi: ApiFromModules<{
   riskState: typeof riskState;
   scorecard: typeof scorecard;
   social: typeof social;
+  thesisLedger: typeof thesisLedger;
   trades: typeof trades;
 }>;
 

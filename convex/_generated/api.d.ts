@@ -12,6 +12,7 @@ import type * as agentControl from "../agentControl.js";
 import type * as agentEvents from "../agentEvents.js";
 import type * as audit from "../audit.js";
 import type * as config from "../config.js";
+import type * as control from "../control.js";
 import type * as copilot from "../copilot.js";
 import type * as decisions from "../decisions.js";
 import type * as feedback from "../feedback.js";
@@ -35,6 +36,7 @@ declare const fullApi: ApiFromModules<{
   agentEvents: typeof agentEvents;
   audit: typeof audit;
   config: typeof config;
+  control: typeof control;
   copilot: typeof copilot;
   decisions: typeof decisions;
   feedback: typeof feedback;

@@ -9,7 +9,7 @@ HORIZON="2026-06-21T23:59:59"
 LOG=/var/log/alien-ralph.log
 
 while [ "$(date +%s)" -lt "$(date -d "$HORIZON" +%s)" ]; do
-  OUT=$(claude -p "$(cat RALPH.md)" --dangerously-skip-permissions 2>&1)
+  OUT=$(claude -p "$(cat RALPH.md)" --model sonnet --dangerously-skip-permissions 2>&1)
   echo "$OUT" >> "$LOG"
   if echo "$OUT" | grep -qiE "rate.?limit|usage limit|quota|429|overloaded"; then
     echo "[$(date -Is)] rate-limited -> sleep 3600" >> "$LOG"

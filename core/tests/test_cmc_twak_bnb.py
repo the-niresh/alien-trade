@@ -116,6 +116,22 @@ class TestTWAKSigner:
         assert TWAKClient is not None
         assert TWAKSigner is TWAKClient  # backward compat alias
 
+    def test_empty_api_base_env_falls_back_to_default(self, monkeypatch):
+        """A blank TWAK_API_BASE in .env.local must NOT win over the default.
+        os.environ.get(key, default) returns '' when the key is present-but-empty,
+        which silently broke the REST client (httpx UnsupportedProtocol on a
+        scheme-less base). Empty must fall back to the real endpoint."""
+        from exec.twak import TWAKClient
+        from config.constants import TWAK_API_BASE_DEFAULT
+
+        monkeypatch.setenv("TWAK_API_BASE", "")  # the real-world misconfig
+        c = TWAKClient()
+        try:
+            assert c._base == TWAK_API_BASE_DEFAULT.rstrip("/")
+            assert c._base.startswith("https://")
+        finally:
+            c.close()
+
     def test_hmac_headers_deterministic(self):
         """
         Inject fixed nonce + date → same inputs must produce same signature.

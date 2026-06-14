@@ -1,6 +1,6 @@
 :root {
   color-scheme: dark;
-  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  font-family: "IBM Plex Sans", ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
   background: #0b0f17;
   color: #e6edf3;
 }
@@ -132,7 +132,7 @@ th { color: #8b98a5; font-weight: 600; font-size: 11px; text-transform: uppercas
 /* ── Live log console (spectator) ── */
 .logconsole {
   max-height: 300px; overflow-y: auto;
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 11px; line-height: 1.5;
   background: #06090f; border: 1px solid #16202c; border-radius: 8px; padding: 8px;
 }

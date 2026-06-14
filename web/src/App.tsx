@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import { useAction, useMutation, useQuery } from "convex/react";
 import { loadToken, setToken, withToken } from "./lib/control";
+import ThesisLedger from "./components/ThesisLedger";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   Area,
@@ -451,6 +452,7 @@ export default function App() {
               Click an agent to ask the co-pilot about them
             </div>
           </div>
+          <ThesisLedger />
           <div className="panel" style={{ flex: 1 }}>
             <div className="panel-title" style={{ marginBottom: 8 }}>Co-pilot</div>
             <CoPilotChat

@@ -5,7 +5,9 @@
   color: #e6edf3;
 }
 * { box-sizing: border-box; }
-body { margin: 0; padding: 0; }
+/* tabular figures everywhere: a trading cockpit's numbers must align in columns
+   and not jitter in width as they tick (PnL, equity, table cells, log times). */
+body { margin: 0; padding: 0; font-variant-numeric: tabular-nums; }
 
 .wrap { max-width: 1200px; margin: 0 auto; padding: 20px 16px 60px; }
 
@@ -146,8 +148,27 @@ th { color: #8b98a5; font-weight: 600; font-size: 11px; text-transform: uppercas
 /* ── Feedback rate buttons (human-in-the-loop) ── */
 .btn-rate {
   background: #11202e; border: 1px solid #1d2c3a; border-radius: 6px;
-  cursor: pointer; font-size: 13px; line-height: 1; padding: 2px 5px;
+  cursor: pointer; font-size: 13px; line-height: 1; padding: 7px 10px;
+  min-width: 34px; min-height: 32px;
   transition: background .15s, transform .1s;
 }
 .btn-rate:hover { background: #1b3145; transform: translateY(-1px); }
 .btn-rate:active { transform: translateY(0); }
+
+/* ── Reduced-motion: honor the OS setting (count-up, hover lifts, transitions) ── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* On touch devices (the installed PWA), enforce the 44px minimum tap target so a
+   mis-tap can't send the wrong 👍/👎 to the learning loop or flip the live-mode
+   toggle. Desktop (fine pointer) keeps the compact sizes above. */
+@media (pointer: coarse) {
+  .btn-rate { min-width: 44px; min-height: 44px; }
+  .seg-btn { min-height: 44px; padding-top: 11px; padding-bottom: 11px; }
+}

@@ -396,7 +396,7 @@ export default function App() {
     <div className="wrap">
       {/* ── Header ── */}
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
-        <div className="title">ALIEN-TRADE</div>
+        <h1 className="title">ALIEN-TRADE</h1>
         <motion.span
           className={`badge ${halted ? "badge-on" : "badge-off"}`}
           animate={halted
@@ -441,7 +441,7 @@ export default function App() {
         {/* ── LEFT: Agent Roster + Co-pilot ── */}
         <div className="cockpit-left">
           <div className="panel" style={{ marginBottom: 12 }}>
-            <div className="panel-title" style={{ marginBottom: 10 }}>Agent team</div>
+            <h2 className="panel-title" style={{ marginBottom: 10 }}>Agent team</h2>
             <AgentRoster
               rosterMap={rosterMap}
               onAgentClick={(name) =>
@@ -454,7 +454,7 @@ export default function App() {
           </div>
           <ThesisLedger />
           <div className="panel" style={{ flex: 1 }}>
-            <div className="panel-title" style={{ marginBottom: 8 }}>Co-pilot</div>
+            <h2 className="panel-title" style={{ marginBottom: 8 }}>Co-pilot</h2>
             <CoPilotChat
               prefill={copilotPrefill}
               onPrefillUsed={() => setCopilotPrefill("")}
@@ -498,7 +498,7 @@ export default function App() {
 
           {/* Equity/Drawdown chart */}
           <div className="panel" style={{ marginBottom: 12 }}>
-            <div className="panel-title" style={{ marginBottom: 8 }}>Equity &amp; Drawdown</div>
+            <h2 className="panel-title" style={{ marginBottom: 8 }}>Equity &amp; Drawdown</h2>
             <div className="sub" style={{ marginBottom: 10 }}>
               Green = cumulative PnL · Red area = drawdown (right axis, inverted)
             </div>
@@ -548,9 +548,9 @@ export default function App() {
           {/* Wins feed */}
           {(wins ?? []).length > 0 && (
             <div className="panel">
-              <div className="panel-title" style={{ marginBottom: 8 }}>
+              <h2 className="panel-title" style={{ marginBottom: 8 }}>
                  Winning trades
-              </div>
+              </h2>
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 {(wins ?? []).map((w) => (
                   <motion.div
@@ -585,7 +585,7 @@ export default function App() {
         <div className="cockpit-right">
           {/* Kill switch + pause + stop */}
           <div className="panel" style={{ marginBottom: 12 }}>
-            <div className="panel-title" style={{ marginBottom: 10 }}>Controls</div>
+            <h2 className="panel-title" style={{ marginBottom: 10 }}>Controls</h2>
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               <div>
                 <button
@@ -617,7 +617,7 @@ export default function App() {
 
           {/* Trading mode */}
           <div className="panel" style={{ marginBottom: 12 }}>
-            <div className="panel-title" style={{ marginBottom: 8 }}>Trading mode</div>
+            <h2 className="panel-title" style={{ marginBottom: 8 }}>Trading mode</h2>
             <div className="seg" role="group" style={{ width: "100%", justifyContent: "stretch" }}>
               {(["testnet", "paper", "mainnet"] as const).map((m) => (
                 <button
@@ -636,7 +636,7 @@ export default function App() {
 
           {/* Signal health */}
           <div className="panel" style={{ marginBottom: 12 }}>
-            <div className="panel-title" style={{ marginBottom: 8 }}>Signal health</div>
+            <h2 className="panel-title" style={{ marginBottom: 8 }}>Signal health</h2>
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
               {(["forecast", "sentiment"] as const).map((src) => {
                 const related = (events ?? []).filter(
@@ -664,7 +664,7 @@ export default function App() {
 
           {/* Equity floor */}
           <div className="panel" style={{ marginBottom: 12 }}>
-            <div className="panel-title">Equity floor</div>
+            <h2 className="panel-title">Equity floor</h2>
             <div className="sub" style={{ marginBottom: 8 }}>
               {floor > 0 ? <strong>Floor: {usd(floor)}</strong> : "Disabled"}
             </div>
@@ -694,7 +694,7 @@ export default function App() {
           <div className="panel">
             <div style={{ display: "flex", justifyContent: "space-between",
               alignItems: "center", marginBottom: showSliders ? 12 : 0 }}>
-              <div className="panel-title">Risk caps</div>
+              <h2 className="panel-title">Risk caps</h2>
               <button className="btn btn-stop" style={{ padding: "4px 10px", fontSize: 11 }}
                 onClick={() => setShowSliders(!showSliders)}>
                 {showSliders ? "Hide" : "Edit"}
@@ -836,7 +836,7 @@ function StrategyAutopilotPanel({
 
   return (
     <div className="panel" style={{ marginBottom: 12 }}>
-      <div className="panel-title" style={{ marginBottom: 8 }}>Strategy</div>
+      <h2 className="panel-title" style={{ marginBottom: 8 }}>Strategy</h2>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, marginBottom: 6 }}>
         {STRATEGIES.map((s) => (
           <button key={s.name}
@@ -853,7 +853,7 @@ function StrategyAutopilotPanel({
       </div>
 
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-        <div className="panel-title">Autopilot</div>
+        <h2 className="panel-title">Autopilot</h2>
         <button
           className={`btn ${ap?.enabled ? "btn-set" : "btn-stop"}`}
           style={{ padding: "4px 12px", fontSize: 11 }}

@@ -27,9 +27,9 @@ export default function ThesisLedger() {
   const theses = useQuery(api.thesisLedger.recent, { limit: 12 });
   return (
     <div className="panel" style={{ marginBottom: 12 }}>
-      <div className="panel-title" style={{ marginBottom: 10 }}>
+      <h2 className="panel-title" style={{ marginBottom: 10 }}>
         Thesis ledger <span style={{ opacity: 0.5, fontWeight: 400 }}>· science in public</span>
-      </div>
+      </h2>
       {theses === undefined ? (
         <div style={{ opacity: 0.5, fontSize: 13 }}>loading…</div>
       ) : theses.length === 0 ? (

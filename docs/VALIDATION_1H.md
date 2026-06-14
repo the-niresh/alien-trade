@@ -102,6 +102,41 @@ a rotation book would concentrate there when it leads and avoid the dogs. Needs 
 **portfolio backtester** (current `run_backtest`/`walk_forward` are per-symbol) — a
 bigger build than the last two tweaks.
 
+## Thesis factory — harness online + first batch (2026-06-14)
+
+The thesis-evaluation harness (`research/evaluate.py`) is live: it compiles a thesis
+card's DSL `proposed_rule` to a long/flat position series and scores it across the
+eligible universe at 1h through the **shared `/core` engine + real BSC cost model**
+(no separate sim path — locked #2), reporting the rubric objective `sortino − 2·|maxDD|`
+per asset. Keep gate = beat the **cash bar (0.0)** on ≥4/5 assets; survivors are scored
+once on a reserved ~50d holdout and must clear a Deflated Sharpe gate. 8 unit tests
+(incl. a no-lookahead causality proof) green.
+
+**Calibration:** a deep-hysteresis trend rule lands at obj ≈ −0.28, inside this doc's
+documented OOS baseline band (−0.24…−0.34) — the harness agrees with the existing
+single-pass scorecard.
+
+**First batch (6 theses, all FALSIFIED — logged in `docs/THESIS_LEDGER.md`):**
+
+| thesis | rule (entry / exit) | total fills | best dev obj | verdict |
+|--------|---------------------|-------------|--------------|---------|
+| T-001 | `close>ema100 and roc>0` / `close<ema50` | ~2640 | −1.31 (CAKE) | FALSIFIED |
+| T-005 | `close>ema100*1.05` / `close<ema100*0.90` | 118 | −0.27 (UNI) | FALSIFIED |
+| T-006 | `close>ema100*1.05 and roc20>0.02` / `close<ema100*0.92` | ~156 | −0.22 (UNI) | FALSIFIED |
+
+Two reproduced findings, one new lead:
+1. **Costs dominate churn.** Single-line crossovers flip 400–800× → ≈ −0.85%/round-trip
+   × 700 ≈ −60% from costs alone. Hysteresis is mandatory (T-001→T-005 cut fills 700→118).
+2. **No long-only edge** beats cash anywhere — the alts fell ~57% near-uniformly; the
+   λ=2 drawdown penalty makes cash (0.0) the wall.
+3. **New:** T-006 shows *positive Sortino on ETH (+0.038) & CAKE (+0.008)* with 19 fills —
+   a faint real entry edge — but is FALSIFIED by a −14.7% open drawdown. **The binding
+   constraint is exit/drawdown control, not entry signal.** Next theses target ATR/stop
+   exits and regime-gated entries, not new entry signals.
+
+Reproduce a row: `core/.venv/bin/python -m research.run_thesis --id T-006 \
+  --entry "close>ema100*1.05 and roc20>0.02" --exit "close<ema100*0.92" --header`
+
 ## Reproduce
 
 ```bash

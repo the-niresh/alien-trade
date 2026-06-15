@@ -1,0 +1,207 @@
+<style>
+  :root {
+    --bg: #000000; --surface: #080d14; --elevated: #0d1520;
+    --border: #172030; --cyan: #00d4ff; --green: #00ff9d;
+    --red: #ff3060; --yellow: #ffd60a; --purple: #a855f7;
+    --text: #e8f0f8; --muted: #5878a0;
+    font-family: "Inter", system-ui, sans-serif;
+  }
+  body { background: var(--bg); color: var(--text); }
+  .q { font-family: "Space Grotesk", sans-serif; font-size: 18px; font-weight: 700; margin-bottom: 6px; }
+  .sub { color: var(--muted); font-size: 13px; margin-bottom: 28px; }
+  .cards { display: flex; gap: 20px; flex-wrap: wrap; }
+  .card {
+    background: var(--surface); border: 2px solid var(--border);
+    border-radius: 16px; padding: 20px; cursor: pointer;
+    transition: border-color .2s; flex: 1; min-width: 220px;
+  }
+  .card:hover { border-color: #243650; }
+  .card.selected { border-color: var(--cyan); background: #00d4ff0a; }
+  .card-label { font-family: "Space Grotesk", sans-serif; font-weight: 700; font-size: 14px; margin-bottom: 4px; }
+  .card-sub { font-size: 12px; color: var(--muted); margin-bottom: 16px; }
+
+  /* Phone frame */
+  .phone {
+    width: 200px; height: 140px; background: var(--elevated);
+    border: 1.5px solid var(--border); border-radius: 14px; overflow: hidden;
+    position: relative; margin: 0 auto;
+  }
+  .phone-screen { padding: 8px 8px 0; height: calc(100% - 36px); }
+  .screen-content {
+    background: var(--bg); border-radius: 8px; height: 100%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; color: var(--muted);
+  }
+
+  /* Option A: icon-only bottom bar */
+  .bottom-bar-a {
+    position: absolute; bottom: 0; left: 0; right: 0; height: 36px;
+    background: var(--surface); border-top: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-around; padding: 0 4px;
+  }
+  .tab-icon {
+    display: flex; flex-direction: column; align-items: center; gap: 2px;
+    padding: 4px 6px; border-radius: 8px; flex: 1;
+  }
+  .tab-icon svg { width: 16px; height: 16px; }
+  .tab-icon.active { background: #00d4ff12; }
+  .tab-icon.active svg { stroke: var(--cyan); }
+  .tab-icon:not(.active) svg { stroke: var(--muted); }
+  .tab-label { font-size: 8px; color: var(--cyan); font-weight: 700; display: none; }
+
+  /* Option B: icon + label bottom bar */
+  .bottom-bar-b {
+    position: absolute; bottom: 0; left: 0; right: 0; height: 44px;
+    background: var(--surface); border-top: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-around; padding: 0 4px;
+  }
+  .tab-icon-b {
+    display: flex; flex-direction: column; align-items: center; gap: 2px;
+    padding: 4px 2px; border-radius: 8px; flex: 1;
+  }
+  .tab-icon-b svg { width: 13px; height: 13px; }
+  .tab-icon-b.active svg { stroke: var(--cyan); }
+  .tab-icon-b:not(.active) svg { stroke: var(--muted); }
+  .tab-label-b { font-size: 7px; font-weight: 700; color: var(--cyan); }
+  .tab-label-b-muted { font-size: 7px; color: var(--muted); }
+
+  /* Option C: pill-shaped active indicator */
+  .bottom-bar-c {
+    position: absolute; bottom: 0; left: 0; right: 0; height: 40px;
+    background: var(--surface); border-top: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-around; padding: 0 6px;
+  }
+  .tab-pill {
+    display: flex; align-items: center; gap: 4px;
+    padding: 5px 10px; border-radius: 20px; flex-shrink: 0;
+  }
+  .tab-pill.active { background: var(--cyan); }
+  .tab-pill.active svg { stroke: #04080f; }
+  .tab-pill.active .pill-label { color: #04080f; font-size: 9px; font-weight: 800; display: block; }
+  .tab-pill:not(.active) { padding: 5px 8px; }
+  .tab-pill:not(.active) svg { stroke: var(--muted); }
+  .tab-pill svg { width: 14px; height: 14px; }
+  .pill-label { display: none; }
+
+  .pros-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+  .pro { font-size: 11px; background: #00ff9d12; color: var(--green); border-radius: 6px; padding: 3px 8px; }
+  .con { font-size: 11px; background: #ff306012; color: var(--red); border-radius: 6px; padding: 3px 8px; }
+
+  /* Shared SVG paths */
+  svg { fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+</style>
+
+<div class="q">Mobile nav: which bottom bar style?</div>
+<div class="sub">On screens &lt;640px, the 52px sidebar is replaced by a bottom nav. The 5 tabs are: Overview · Positions · Agents · Controls · Logs.</div>
+
+<div class="cards">
+
+  <!-- Option A -->
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="card-label">Icons only</div>
+    <div class="card-sub">Compact. More screen real estate.</div>
+    <div class="phone">
+      <div class="phone-screen">
+        <div class="screen-content">view content</div>
+      </div>
+      <div class="bottom-bar-a">
+        <div class="tab-icon active">
+          <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+        </div>
+        <div class="tab-icon">
+          <svg viewBox="0 0 24 24"><path d="M3 3h18M3 9h18M3 15h18M3 21h18"/></svg>
+        </div>
+        <div class="tab-icon">
+          <svg viewBox="0 0 24 24"><circle cx="9" cy="7" r="4"/><circle cx="17" cy="9" r="3"/><path d="M1 21v-2a4 4 0 0 1 4-4h8a4 4 0 0 1 4 4v2"/></svg>
+        </div>
+        <div class="tab-icon">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+        </div>
+        <div class="tab-icon">
+          <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/></svg>
+        </div>
+      </div>
+    </div>
+    <div class="pros-row">
+      <span class="pro">Max screen space</span>
+      <span class="pro">Clean</span>
+      <span class="con">No labels = guessing</span>
+    </div>
+  </div>
+
+  <!-- Option B -->
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="card-label">Icons + labels</div>
+    <div class="card-sub">Taller. Unambiguous navigation.</div>
+    <div class="phone">
+      <div class="phone-screen" style="height: calc(100% - 44px)">
+        <div class="screen-content">view content</div>
+      </div>
+      <div class="bottom-bar-b">
+        <div class="tab-icon-b active">
+          <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+          <span class="tab-label-b">Overview</span>
+        </div>
+        <div class="tab-icon-b">
+          <svg viewBox="0 0 24 24"><path d="M3 3h18M3 9h18M3 15h18M3 21h18"/></svg>
+          <span class="tab-label-b-muted">Positions</span>
+        </div>
+        <div class="tab-icon-b">
+          <svg viewBox="0 0 24 24"><circle cx="9" cy="7" r="4"/><circle cx="17" cy="9" r="3"/><path d="M1 21v-2a4 4 0 0 1 4-4h8a4 4 0 0 1 4 4v2"/></svg>
+          <span class="tab-label-b-muted">Agents</span>
+        </div>
+        <div class="tab-icon-b">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+          <span class="tab-label-b-muted">Controls</span>
+        </div>
+        <div class="tab-icon-b">
+          <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/></svg>
+          <span class="tab-label-b-muted">Logs</span>
+        </div>
+      </div>
+    </div>
+    <div class="pros-row">
+      <span class="pro">Clear labels</span>
+      <span class="pro">Familiar UX pattern</span>
+      <span class="con">Taller bar (44px)</span>
+    </div>
+  </div>
+
+  <!-- Option C -->
+  <div class="card" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="card-label">Pill active state</div>
+    <div class="card-sub">Active tab gets icon + label in a pill. Others are icon-only.</div>
+    <div class="phone">
+      <div class="phone-screen" style="height: calc(100% - 40px)">
+        <div class="screen-content">view content</div>
+      </div>
+      <div class="bottom-bar-c">
+        <div class="tab-pill active">
+          <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+          <span class="pill-label">Overview</span>
+        </div>
+        <div class="tab-pill">
+          <svg viewBox="0 0 24 24"><path d="M3 3h18M3 9h18M3 15h18M3 21h18"/></svg>
+        </div>
+        <div class="tab-pill">
+          <svg viewBox="0 0 24 24"><circle cx="9" cy="7" r="4"/><circle cx="17" cy="9" r="3"/><path d="M1 21v-2a4 4 0 0 1 4-4h8a4 4 0 0 1 4 4v2"/></svg>
+        </div>
+        <div class="tab-pill">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+        </div>
+        <div class="tab-pill">
+          <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/></svg>
+        </div>
+      </div>
+    </div>
+    <div class="pros-row">
+      <span class="pro">Compact + clear</span>
+      <span class="pro">Premium feel</span>
+      <span class="con">Shifts layout on tap</span>
+    </div>
+  </div>
+
+</div>

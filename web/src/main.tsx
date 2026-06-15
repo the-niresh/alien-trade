@@ -1,11 +1,14 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { ConvexProvider, ConvexReactClient } from "convex/react";
-// Self-hosted type identity (bundled by Vite — offline-ready, no CDN call).
-// IBM Plex Sans for UI/headings, IBM Plex Mono for the log console.
-import "@fontsource/ibm-plex-sans/400.css";
-import "@fontsource/ibm-plex-sans/600.css";
-import "@fontsource/ibm-plex-sans/700.css";
+// Self-hosted fonts (bundled by Vite — offline-ready, no CDN call).
+// Space Grotesk for headings/numbers, Inter for UI text, IBM Plex Mono for logs.
+import "@fontsource/space-grotesk/400.css";
+import "@fontsource/space-grotesk/600.css";
+import "@fontsource/space-grotesk/700.css";
+import "@fontsource/inter/400.css";
+import "@fontsource/inter/500.css";
+import "@fontsource/inter/600.css";
 import "@fontsource/ibm-plex-mono/400.css";
 import "@fontsource/ibm-plex-mono/500.css";
 import App from "./App";

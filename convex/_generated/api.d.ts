@@ -8,6 +8,7 @@
  * @module
  */
 
+import type * as admin from "../admin.js";
 import type * as agentControl from "../agentControl.js";
 import type * as agentEvents from "../agentEvents.js";
 import type * as audit from "../audit.js";
@@ -19,6 +20,7 @@ import type * as feedback from "../feedback.js";
 import type * as forecastCalibration from "../forecastCalibration.js";
 import type * as forecastState from "../forecastState.js";
 import type * as ledger from "../ledger.js";
+import type * as positions from "../positions.js";
 import type * as reflections from "../reflections.js";
 import type * as riskState from "../riskState.js";
 import type * as scorecard from "../scorecard.js";
@@ -33,6 +35,7 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  admin: typeof admin;
   agentControl: typeof agentControl;
   agentEvents: typeof agentEvents;
   audit: typeof audit;
@@ -44,6 +47,7 @@ declare const fullApi: ApiFromModules<{
   forecastCalibration: typeof forecastCalibration;
   forecastState: typeof forecastState;
   ledger: typeof ledger;
+  positions: typeof positions;
   reflections: typeof reflections;
   riskState: typeof riskState;
   scorecard: typeof scorecard;

@@ -1,5 +1,12 @@
 # VPS Deploy Runbook — paper-mode 24/7 on Hostinger
 
+> ✅ **DEPLOYED 2026-06-11 — see `CLAUDE.md` → "Live Ops".** Claude Code runs *on*
+> this VPS, so deploy was **local (no SSH)**, running in place from
+> `/root/claude/projects/alien-trade`. Steps 1 & 3 below (clone + scp secrets) were
+> unnecessary. Live now: `alien-trade.service` (24/7 paper), `alien-cockpit.service`
+> (UI :4173), `alien-digest.timer` (hourly Telegram). The SSH-based steps below are
+> kept for reference / a from-scratch redeploy on a *different* box.
+
 > Resume point for Task 8 (deploy to VPS). Self-contained: every fact needed is here.
 > Goal: run the agent in **paper mode** 24/7 on the VPS, writing to the live Convex
 > bus so the cockpit shows decisions/log/👍👎, gathering the 8-day testnet corpus.

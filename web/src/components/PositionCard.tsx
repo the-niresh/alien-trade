@@ -16,8 +16,7 @@ type Position = {
 };
 
 export function PositionCard({ position }: { position: Position }) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const rawTicks = useQuery((api as any).priceTicks?.forSymbol, { symbol: position.symbol, limit: 24 }) ?? [];
+  const rawTicks = useQuery(api.priceTicks.forSymbol, { symbol: position.symbol, limit: 24 }) ?? [];
   const ticks = [...rawTicks].reverse().map((t) => ({ t: t.timestamp_ms, p: t.price }));
 
   const positive = position.unrealized_pnl_usd >= 0;

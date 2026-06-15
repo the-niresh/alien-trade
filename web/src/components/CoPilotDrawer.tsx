@@ -1,7 +1,10 @@
 import { useRef, useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { useAction, useMutation, useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 const CHIPS = [
   "What's the current regime?",
@@ -42,76 +45,76 @@ export function CoPilotDrawer({ isOpen, onClose, prefill = "" }: Props) {
   };
 
   return (
-    <AnimatePresence>
-      {isOpen && (
-        <>
-          <motion.div className="copilot-overlay"
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            onClick={onClose}
-          />
-          <motion.div className="copilot-drawer"
-            initial={{ x: "100%" }} animate={{ x: 0 }} exit={{ x: "100%" }}
-            transition={{ type: "spring", stiffness: 320, damping: 32 }}
-          >
-            <div className="copilot-drawer__header">
-              <span className="copilot-drawer__title">Co-Pilot</span>
-              <button className="btn btn--ghost btn--sm" onClick={onClose}>✕ Close</button>
-            </div>
+    <Sheet open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
+      <SheetContent
+        side="right"
+        className="w-[420px] max-sm:w-full bg-surface border-l border-border p-0 flex flex-col gap-0"
+      >
+        <SheetHeader className="px-5 py-4 border-b border-border">
+          <SheetTitle className="font-grotesk text-[16px] font-bold text-purple">Co-Pilot</SheetTitle>
+        </SheetHeader>
 
-            <div className="copilot-drawer__chips">
-              {CHIPS.map((c) => (
-                <button key={c} className="chip" onClick={() => send(c)}>{c}</button>
-              ))}
-            </div>
+        {/* Quick chips */}
+        <div className="flex gap-1.5 px-5 pt-3 pb-0 flex-wrap">
+          {CHIPS.map((c) => (
+            <button key={c}
+              className="bg-elevated border border-border rounded-full px-3 py-1 text-[12px] text-muted-fg hover:text-text hover:border-border-hi transition-colors"
+              onClick={() => send(c)}
+            >{c}</button>
+          ))}
+        </div>
 
-            <div className="copilot-drawer__messages">
-              {msgs.length === 0 && (
-                <div style={{ color: "var(--muted)", fontSize: 13, fontStyle: "italic", padding: "8px 0" }}>
-                  Ask anything — regime, last trade, risk state…
+        {/* Messages */}
+        <div className="flex-1 overflow-y-auto px-5 py-4 flex flex-col gap-2.5">
+          {msgs.length === 0 && (
+            <p className="text-muted-fg text-[13px] italic py-2">Ask anything — regime, last trade, risk state…</p>
+          )}
+          <AnimatePresence initial={false}>
+            {msgs.map((m) => (
+              <motion.div key={m._id}
+                className={`px-3.5 py-2.5 rounded-xl text-[13px] leading-relaxed max-w-[92%] ${
+                  m.role === "user"
+                    ? "bg-cyan/5 border border-cyan/15 self-end"
+                    : "bg-elevated border border-border self-start"
+                }`}
+                initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
+              >
+                <div className={`text-[10px] font-bold mb-1 ${m.role === "user" ? "text-cyan" : "text-purple"}`}>
+                  {m.role === "user" ? "You" : "CoPilot"}
                 </div>
-              )}
-              <AnimatePresence initial={false}>
-                {msgs.map((m) => (
-                  <motion.div key={m._id}
-                    className={`chat-msg chat-msg--${m.role}`}
-                    initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
-                  >
-                    <div className="chat-msg__role">{m.role === "user" ? "You" : "CoPilot"}</div>
-                    <div>{m.content}</div>
-                  </motion.div>
-                ))}
-              </AnimatePresence>
-              {loading && (
-                <motion.div className="chat-msg chat-msg--assistant"
-                  initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-                >
-                  <div className="chat-msg__role">CoPilot</div>
-                  <motion.span animate={{ opacity: [0.4, 1, 0.4] }} transition={{ duration: 1.2, repeat: Infinity }}>
-                    thinking…
-                  </motion.span>
-                </motion.div>
-              )}
-              <div ref={bottomRef} />
-            </div>
+                <div>{m.content}</div>
+              </motion.div>
+            ))}
+          </AnimatePresence>
+          {loading && (
+            <motion.div className="bg-elevated border border-border rounded-xl px-3.5 py-2.5 self-start text-[13px]"
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+              <div className="text-[10px] font-bold text-purple mb-1">CoPilot</div>
+              <motion.span animate={{ opacity: [0.4, 1, 0.4] }} transition={{ duration: 1.2, repeat: Infinity }}>
+                thinking…
+              </motion.span>
+            </motion.div>
+          )}
+          <div ref={bottomRef} />
+        </div>
 
-            <div className="copilot-drawer__input-row">
-              <input
-                className="num-input"
-                style={{ flex: 1, width: "auto" }}
-                placeholder="Ask the co-pilot…"
-                value={question}
-                onChange={(e) => setQuestion(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && send()}
-                disabled={loading}
-              />
-              <button className="btn btn--primary btn--sm" onClick={() => send()}
-                disabled={loading || !question.trim()}>
-                {loading ? "…" : "Ask"}
-              </button>
-            </div>
-          </motion.div>
-        </>
-      )}
-    </AnimatePresence>
+        {/* Input row */}
+        <div className="flex gap-2 px-5 py-3 border-t border-border">
+          <Input
+            placeholder="Ask the co-pilot…"
+            value={question}
+            onChange={(e) => setQuestion(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && send()}
+            disabled={loading}
+            className="flex-1 bg-bg border-border text-text text-[13px] focus-visible:ring-cyan"
+          />
+          <Button size="sm"
+            className="bg-cyan text-[#040d14] font-bold hover:bg-cyan/80"
+            onClick={() => send()}
+            disabled={loading || !question.trim()}
+          >{loading ? "…" : "Ask"}</Button>
+        </div>
+      </SheetContent>
+    </Sheet>
   );
 }

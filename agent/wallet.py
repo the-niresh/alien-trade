@@ -14,6 +14,14 @@ password or mnemonic — wallet creation/funding is the operator's job.
 from __future__ import annotations
 
 import argparse
+from pathlib import Path
+
+from dotenv import load_dotenv
+
+# Load .env.local so the `twak` subprocess inherits TWAK_WALLET_PASSWORD (needed
+# to decrypt the keystore for `wallet address`/`balance`). Mirrors agent/config.py
+# so this standalone check sees exactly what the live runtime sees.
+load_dotenv(Path(__file__).resolve().parent.parent / ".env.local")
 
 from agent.twak_cli import TwakCli, TwakError
 

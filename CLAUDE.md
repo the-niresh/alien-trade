@@ -7,6 +7,27 @@ If not, complete the missing part first, then respond.
 
 ---
 
+## Self-check before every implementation (the win gate)
+
+Before writing any feature or logic, ask: **"Will this feature or logic win the hackathon?!"**
+Answer with exactly one of: **yes / no / maybe**.
+
+- **yes** or **maybe** → build it. (Necessary hygiene that protects the score counts as
+  **maybe** — e.g. the cockpit control-token gate: it doesn't score points, but shipping it
+  avoids losing them and feeds the TWAK self-custody story. Maybe ⇒ go.)
+- **no** → do **not** build it. Log the skip in one line.
+
+If you find yourself answering **"no" to many candidate items in a row**, stop building.
+That is the signal the current plan has run out of winning moves: **brainstorm** (use the
+brainstorming skill), then come back to Nire with a *different* winning strategy rather than
+grinding low-value work. Winning means one of: a validated, low-drawdown edge (Track 1
+rubric: returns / drawdown / risk-adjusted / rule-adherence) **or** depth that lands a
+stackable $2k special prize (CMC / TWAK / BNB SDK) **or** the honest falsification-log +
+capital-preservation submission. Map every "yes/maybe" to one of those; if it maps to none,
+it's a "no."
+
+---
+
 ## Project Overview
 
 **Alien-Trade** is an autonomous BSC trading agent built for **BNB Hack 2026 (DoraHacks)**.
@@ -198,6 +219,54 @@ Start with S1 + S2 + one of S3/S4. Add the third only if it improves out-of-samp
 | `bunx convex dev`                                           | repo root (`alien-trade/`) | Start Convex dev server — looks for `convex/` folder here |
 | `cd core && .\.venv\Scripts\python.exe -m pytest tests/ -v` | repo root                  | Run `/core` backtest tests                                |
 | `cd core && uv pip install -e .`                            | `core/`                    | Re-install after pyproject.toml changes                   |
+
+---
+
+## Live Ops — deployed on this VPS (2026-06-11)
+
+**Key fact:** Claude Code runs **ON the target VPS** (`76.13.243.12`, host `ai`,
+Ubuntu 24.04, root). Deploy is **local — no SSH**. The repo runs in place at
+`/root/claude/projects/alien-trade` with the `core/.venv` Python (`uv`-built).
+`.env.local` is loaded by `agent/config.py` via an absolute path, so cwd doesn't matter.
+
+### Running services (systemd, all `enabled` = survive reboot)
+
+| Unit                   | What it does                                                              | Logs |
+| ---------------------- | ------------------------------------------------------------------------ | ---- |
+| `alien-trade.service`  | 24/7 paper runtime, 1 h cadence, autopilot on, `Restart=always`          | `/var/log/alien-trade.log` |
+| `alien-cockpit.service`| Cockpit PWA (Vite) on `0.0.0.0:4173` → reads Convex `festive-newt-1`      | `/var/log/alien-cockpit.log` |
+| `alien-digest.timer`   | Fires `python -m agent.digest` hourly at `:07` → Telegram summary         | `/var/log/alien-digest.log` |
+
+### Operating commands
+
+```bash
+systemctl status alien-trade --no-pager        # is the agent running?
+tail -f /var/log/alien-trade.log               # live decision/audit lines (JSON)
+systemctl restart alien-trade                   # after a git pull / .env.local change
+core/.venv/bin/python -m agent.digest --stdout  # preview the hourly digest now
+systemctl list-timers alien-digest --no-pager   # when does the next digest fire?
+```
+
+### Cockpit + alerts
+
+- **UI:** http://76.13.243.12:4173/ (VPS). Production build is `vite build` only
+  (`bun run build`); `tsc -b` moved to `bun run typecheck` (was blocking on non-fatal
+  `noImplicitAny`). Vercel-ready (`web/vercel.json`) — deploy needs `vercel login`.
+- **Telegram:** the agent's built-in two-way bot (`agent/notify.py`, wired in
+  `runtime.py`) sends per-event alerts (equity-floor / kill-switch / autopilot-bank)
+  and accepts `/status /halt /resume /pause`. Set `TELEGRAM_BOT_TOKEN` +
+  `TELEGRAM_CHAT_ID` in `.env.local`, then `systemctl restart alien-trade`. The hourly
+  `agent/digest.py` uses the same creds. Absent creds → both no-op (digest prints to log).
+
+### Known follow-ups
+
+- Stale ledger rows from earlier local runs are still in Convex (equity ≈ $9,831,
+  drawdown −1.92%). Reset before the clean 8-day corpus if a fresh start is wanted.
+- Second Brain (Hermes reflection / co-pilot) is OFF (`SECOND_BRAIN=0`): `cd core &&
+  uv pip install langgraph anthropic upstash-redis upstash-vector`, flip the unit to
+  `SECOND_BRAIN=1`, restart. Upstash + Anthropic keys are already in `.env.local`.
+- `core/data/parquet/` historical files are absent → 4 `TestDataLoader` tests fail
+  (data-availability only; 176/180 logic tests pass). Live loop uses the Binance feed.
 
 ---
 

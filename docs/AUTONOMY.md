@@ -47,13 +47,19 @@ without overfitting the strategy or letting an LLM blind-deploy to a trading age
 > token work is wasted effort while the deterministic core has no edge. Fix the core first.
 
 ### P1 — Alpha (the gating work)
-- [ ] **Cross-sectional rotation** — build a portfolio backtester (current harness is
-  per-symbol), then a strategy that holds the *strongest* eligible asset and sits in USDT
-  when none qualify. Where long-only edge actually lives. **← next up**
+- [x] ~~**Cross-sectional rotation**~~ — PARKED (negative result, see below). Portfolio
+  backtester built (`core/backtest/portfolio.py`, reusable); rotation strategy itself
+  loses badly in this regime. The cash-default single-asset v1+v2 remains the baseline.
+- [ ] **Exit/risk lever (thesis-factory next direction)** — the first OOS thesis batch
+  (T-001…T-006, all FALSIFIED — see `docs/THESIS_LEDGER.md`) proved **drawdown, not entry,
+  is the binding constraint** (T-006 had positive Sortino on ETH/CAKE yet failed on a
+  −14.7% open drawdown). Test hard/ATR stops, regime-conditional entry (long only in
+  confirmed trend/recovery), and cash-default low-time-in-market rules. **← next up**
+- [ ] **Vol-targeted position sizing** — scale size by inverse ATR to flatten drawdown
+  further (incremental; the core posture is already capital-preservation).
 - [ ] **Complete the signal data:** find an OI source reachable from the VPS (Binance
   `openInterestHist` is blocked here) to finish S2; wire S4 on-chain flow (currently 0).
   Then re-tune signal weights on the full S1–S4 stack.
-- [ ] **Vol-targeted position sizing** — scale size by inverse ATR to flatten drawdown further.
 - [ ] **Regime detector recalibration for 1h** — current thresholds are daily-calibrated
   (lookback=20, slope 0.3%/bar, crash −15%/20bars); recalibrate for hourly sizing/crash.
 
@@ -90,3 +96,17 @@ without overfitting the strategy or letting an LLM blind-deploy to a trading age
   funding+sentiment live (2026-06-11). The "edge is in S2/S3/S4" hypothesis is falsified.
 - Per-asset entry tuning (rising-trend filter, v2): only a marginal objective gain over v1;
   diminishing returns — pivot to cross-sectional rotation for the next real lever.
+- Cross-sectional rotation (2026-06-12): tested 3 variants — naive (every-bar), daily
+  cadence + switch band, and ride-winner/exit-only. ALL catastrophic (obj −2.2 to −2.6,
+  ret −87% to −100%) vs cash 0.0 and single-asset CAKE −0.026. Accounting verified clean
+  (enter-once-and-hold = flat). Root cause: the eligible universe fell ~57% *uniformly*
+  (no dispersion), so "hold the strongest" = "hold the slowest faller"; rotation forces
+  more market exposure than cash-default and eats churn on top. Rotation only helps with
+  cross-sectional dispersion, which this data lacks. Don't tune it for a hoped-for bull
+  regime (overfit). The cash-default v1+v2 (mostly-in-USDT) is the right posture here.
+- Long-only trend/momentum thesis batch T-001…T-006 (2026-06-14, via the DSL + real-cost
+  harness `research/evaluate.py`): ALL FALSIFIED, 0/5 assets beat cash — full numbers in
+  `docs/THESIS_LEDGER.md`. Costs dominate naive single-line crossovers (700+ fills ≈ −60%
+  from fees/slippage alone → hysteresis mandatory); no long-only edge exists in the eligible
+  universe (it fell ~57% near-uniformly). Don't retry bare trend/momentum entries. The open
+  lever is **exit/risk** (T-006 showed a faint positive entry edge swamped by a −14.7% DD).

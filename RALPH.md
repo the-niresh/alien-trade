@@ -4,6 +4,11 @@ Read `docs/AWAKE_SPRINT.md` §6, `docs/AUTONOMY.md`, and `docs/FROZEN_ALLOWLIST.
 
 Do ONE iteration:
 
+0. **Win gate (CLAUDE.md).** For the item you're about to build, ask *"Will this win the
+   hackathon?!"* → **yes / no / maybe**. yes/maybe → proceed. no → skip it, log one line,
+   pick the next item. If you hit **many no's in a row**, stop grinding: send an `AT-REQ`
+   note to Nire via the alien-trade bot that the QUEUE is out of winning moves and a
+   strategy rethink is needed — do not keep building low-value work.
 1. Pick the top **unblocked** item from the `docs/AUTONOMY.md` QUEUE.
 2. Implement on an `AT-N-<slug>` branch. Touch ONLY allowlisted files (the PreToolUse
    hook enforces this). To touch anything else: send an `AT-REQ` via the **alien-trade**

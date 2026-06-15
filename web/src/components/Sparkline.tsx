@@ -10,7 +10,7 @@ type Props = {
 
 export function Sparkline({ ticks, positive, height = 56 }: Props) {
   if (ticks.length < 2) {
-    return <div className="sparkline-empty" style={{ height }} />;
+    return <div className="bg-elevated rounded-lg my-2" style={{ height }} />;
   }
   const color = positive ? "var(--green)" : "var(--red)";
   const gradId = `sg-${positive ? "pos" : "neg"}`;

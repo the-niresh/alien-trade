@@ -13,11 +13,11 @@ export function AgentTicker() {
   const doubled = [...items, ...items];
 
   return (
-    <div className="agent-ticker">
+    <div className="h-[30px] bg-surface border-t border-border flex items-center overflow-hidden flex-shrink-0 px-3">
       <div className="ticker-track">
         {doubled.map((item, i) => (
-          <span key={`${item.id}-${i}`} className="ticker-item">
-            <span className="ticker-item__agent" style={{ color: item.color }}>{item.agent}</span>
+          <span key={`${item.id}-${i}`} className="text-[11px] text-muted-fg">
+            <span className="font-bold mr-1.5" style={{ color: item.color }}>{item.agent}</span>
             {item.headline}
           </span>
         ))}

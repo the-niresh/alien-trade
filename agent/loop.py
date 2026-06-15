@@ -849,6 +849,11 @@ class DecisionLoop:
             mode=self.mode,
             updated_ms=bar.timestamp,
         )
+        self.bridge.append_price_tick(
+            symbol=self.symbol,
+            price=bar.close,
+            timestamp_ms=bar.timestamp,
+        )
 
         # ── Accumulate the scorecard series + push the live objective ────────
         open_exp = self.ledger.open_exposure(bar.close)

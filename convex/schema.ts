@@ -324,6 +324,20 @@ export default defineSchema({
   })
     .index("by_key", ["key"]),
 
+  // Live positions singleton — agent writes each cycle; cockpit reads for the
+  // holdings panel. One row per symbol, keyed by symbol string. Flat = quantity 0.
+  positions: defineTable({
+    symbol: v.string(),
+    quantity: v.number(),            // units held (0 = flat)
+    avg_entry_price: v.number(),     // weighted avg buy price
+    current_price: v.number(),       // price at last cycle bar close
+    current_value_usd: v.number(),   // quantity * current_price
+    unrealized_pnl_usd: v.number(),  // (current_price - avg_entry) * quantity
+    mode: v.string(),
+    updated_ms: v.number(),
+  })
+    .index("by_symbol", ["symbol"]),
+
   // Thesis ledger + trial registry (AWAKE_SPRINT §4.4/§4.6). Every thesis the loop
   // distills/tests is logged here — for multiplicity accounting (DSR) and the cockpit
   // "science in public" feed. status: untested | validated | FALSIFIED. asset_results

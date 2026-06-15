@@ -841,6 +841,14 @@ class DecisionLoop:
             peak_equity_usd=self.ledger.peak_equity,
             circuit_breaker_active=circuit,
         )
+        self.bridge.update_positions(
+            symbol=self.symbol,
+            quantity=self.ledger.units,
+            avg_entry_price=self.ledger.avg_entry,
+            current_price=bar.close,
+            mode=self.mode,
+            updated_ms=bar.timestamp,
+        )
 
         # ── Accumulate the scorecard series + push the live objective ────────
         open_exp = self.ledger.open_exposure(bar.close)

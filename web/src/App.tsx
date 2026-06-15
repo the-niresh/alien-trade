@@ -276,6 +276,57 @@ function EquityChart() {
   );
 }
 
+// ── Positions panel ──────────────────────────────────────────────────────────
+function PositionsPanel() {
+  const positions = useQuery(api.positions.open) ?? [];
+
+  return (
+    <div className="panel" style={{ marginBottom: 12 }}>
+      <h2 className="panel-title" style={{ marginBottom: 8 }}>Open positions</h2>
+      {positions.length === 0 ? (
+        <div className="sub" style={{ padding: "12px 0", textAlign: "center" }}>
+          No open positions — agent is flat.
+        </div>
+      ) : (
+        <table>
+          <thead>
+            <tr>
+              <th>Symbol</th>
+              <th>Qty</th>
+              <th>Avg entry</th>
+              <th>Current px</th>
+              <th>Value</th>
+              <th>Unreal. PnL</th>
+            </tr>
+          </thead>
+          <tbody>
+            {positions.map((p) => (
+              <tr key={p._id}>
+                <td style={{ fontWeight: 700, color: "#7dd3fc" }}>{p.symbol}</td>
+                <td>{p.quantity.toFixed(6)}</td>
+                <td>{usd(p.avg_entry_price)}</td>
+                <td>{usd(p.current_price)}</td>
+                <td>{usd(p.current_value_usd)}</td>
+                <td>
+                  <motion.span
+                    key={p.unrealized_pnl_usd}
+                    initial={{ scale: 1.1 }}
+                    animate={{ scale: 1 }}
+                    className={p.unrealized_pnl_usd >= 0 ? "pos" : "neg"}
+                    style={{ fontWeight: 600 }}
+                  >
+                    {p.unrealized_pnl_usd >= 0 ? "+" : ""}{usd(p.unrealized_pnl_usd)}
+                  </motion.span>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </div>
+  );
+}
+
 // ── Pairing gate ─────────────────────────────────────────────────────────────
 // Shown until a control token is present. Normally the onboarding QR deep-links
 // here with `#t=<token>` (auto-captured by loadToken); this is the manual fallback.
@@ -495,6 +546,9 @@ export default function App() {
               </div>
             </div>
           </div>
+
+          {/* Open positions */}
+          <PositionsPanel />
 
           {/* Equity/Drawdown chart */}
           <div className="panel" style={{ marginBottom: 12 }}>

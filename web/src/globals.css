@@ -1,0 +1,157 @@
+@import "tailwindcss";
+
+/* ── Tailwind v4: inline theme references CSS vars at runtime so dark/light toggle works ── */
+@theme inline {
+  --color-bg:        var(--bg);
+  --color-surface:   var(--surface);
+  --color-elevated:  var(--elevated);
+  --color-border:    var(--border);
+  --color-border-hi: var(--border-hi);
+  --color-green:     var(--green);
+  --color-red:       var(--red);
+  --color-cyan:      var(--cyan);
+  --color-yellow:    var(--yellow);
+  --color-purple:    var(--purple);
+  --color-text:      var(--text);
+  --color-muted-fg:  var(--muted);
+
+  /* shadcn semantic tokens */
+  --color-background:           var(--background);
+  --color-foreground:           var(--foreground);
+  --color-card:                 var(--card);
+  --color-card-foreground:      var(--card-foreground);
+  --color-popover:              var(--surface);
+  --color-popover-foreground:   var(--text);
+  --color-primary:              var(--primary);
+  --color-primary-foreground:   var(--primary-foreground);
+  --color-secondary:            var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted:                var(--muted-surface);
+  --color-muted-foreground:     var(--muted);
+  --color-accent:               var(--elevated);
+  --color-accent-foreground:    var(--text);
+  --color-destructive:          var(--red);
+  --color-destructive-foreground: #fff;
+  --color-input:                var(--border);
+  --color-ring:                 var(--cyan);
+
+  --font-grotesk: "Space Grotesk", sans-serif;
+  --font-mono:    "IBM Plex Mono", monospace;
+
+  --radius-sm:   0.375rem;
+  --radius-md:   0.5rem;
+  --radius-lg:   0.625rem;
+  --radius-xl:   0.75rem;
+  --radius-2xl:  1rem;
+  --radius-full: 9999px;
+}
+
+/* ── Design tokens ── */
+@layer base {
+  :root {
+    --bg:           #000000;
+    --surface:      #080d14;
+    --elevated:     #0d1520;
+    --border:       #172030;
+    --border-hi:    #243650;
+    --green:        #00ff9d;
+    --red:          #ff3060;
+    --cyan:         #00d4ff;
+    --yellow:       #ffd60a;
+    --purple:       #a855f7;
+    --text:         #e8f0f8;
+    --muted:        #5878a0;
+    --muted-surface: #0d1520;
+    color-scheme: dark;
+
+    /* shadcn required vars */
+    --background:           var(--bg);
+    --foreground:           var(--text);
+    --card:                 var(--surface);
+    --card-foreground:      var(--text);
+    --primary:              var(--cyan);
+    --primary-foreground:   #040d14;
+    --secondary:            var(--elevated);
+    --secondary-foreground: var(--text);
+    --radius:               0.625rem;
+  }
+
+  [data-theme="light"] {
+    --bg:           #f0f4f8;
+    --surface:      #ffffff;
+    --elevated:     #e8edf4;
+    --border:       #d0dae8;
+    --border-hi:    #a8bcd4;
+    --green:        #00a86b;
+    --red:          #e02050;
+    --cyan:         #0098c8;
+    --yellow:       #c89800;
+    --purple:       #8030d0;
+    --text:         #0a1828;
+    --muted:        #5878a0;
+    --muted-surface: #e8edf4;
+    color-scheme: light;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    background: var(--bg);
+    color: var(--text);
+    font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+/* ── Preserved hand-rolled rules (not expressible as Tailwind utilities) ── */
+
+/* Kill switch — conic-gradient countdown set via inline style in KillSwitch.tsx */
+.kill-switch,
+.kill-switch-hero {
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+}
+.kill-switch__inner { pointer-events: none; }
+
+/* Agent ticker scroll animation */
+@keyframes ticker-scroll {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+.ticker-track {
+  display: flex;
+  gap: 64px;
+  white-space: nowrap;
+  animation: ticker-scroll 80s linear infinite;
+}
+
+/* Log console monospace override */
+.logconsole {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 11px;
+  line-height: 1.5;
+  background: #02060c;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Touch targets */
+@media (pointer: coarse) {
+  button { min-height: 44px; }
+}

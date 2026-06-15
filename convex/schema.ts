@@ -342,6 +342,13 @@ export default defineSchema({
   // distills/tests is logged here — for multiplicity accounting (DSR) and the cockpit
   // "science in public" feed. status: untested | validated | FALSIFIED. asset_results
   // is a JSON blob {asset: {objective, ...}}; source is the exact citation.
+  price_ticks: defineTable({
+    symbol: v.string(),
+    price: v.float64(),
+    timestamp_ms: v.float64(),
+  })
+    .index("by_symbol_ts", ["symbol", "timestamp_ms"]),
+
   thesis_ledger: defineTable({
     thesis_id: v.string(),
     claim: v.string(),

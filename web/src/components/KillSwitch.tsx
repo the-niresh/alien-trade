@@ -1,0 +1,60 @@
+import { useRef, useState } from "react";
+import { motion } from "framer-motion";
+
+type Props = {
+  halted: boolean;
+  onToggle: () => void;
+  hero?: boolean;
+};
+
+const HOLD_MS = 1500;
+const TICK_MS = 50;
+
+export function KillSwitch({ halted, onToggle, hero = false }: Props) {
+  const [progress, setProgress] = useState(0);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const startHold = () => {
+    if (timerRef.current) return;
+    let elapsed = 0;
+    timerRef.current = setInterval(() => {
+      elapsed += TICK_MS;
+      const p = Math.min(elapsed / HOLD_MS, 1);
+      setProgress(p);
+      if (p >= 1) {
+        stopHold();
+        onToggle();
+      }
+    }, TICK_MS);
+  };
+
+  const stopHold = () => {
+    if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
+    setProgress(0);
+  };
+
+  const deg = progress * 360;
+  const color = halted ? "var(--green)" : "var(--red)";
+  const cls = hero ? "kill-switch-hero" : "kill-switch";
+
+  return (
+    <motion.button
+      className={`${cls} ${halted ? "kill-switch--resume" : "kill-switch--halt"}`}
+      style={{ background: `conic-gradient(${color} ${deg}deg, var(--border) ${deg}deg)` }}
+      onMouseDown={startHold}
+      onMouseUp={stopHold}
+      onMouseLeave={stopHold}
+      onTouchStart={(e) => { e.preventDefault(); startHold(); }}
+      onTouchEnd={stopHold}
+      animate={!halted && progress === 0
+        ? { boxShadow: ["0 0 0px #ff306000", "0 0 14px #ff306050", "0 0 0px #ff306000"] }
+        : {}}
+      transition={{ duration: 2, repeat: Infinity }}
+      title={halted ? "Hold to resume trading" : "Hold to halt trading"}
+    >
+      <span className="kill-switch__inner">
+        {progress > 0 ? `${Math.round(progress * 100)}%` : halted ? "RESUME" : "KILL"}
+      </span>
+    </motion.button>
+  );
+}

@@ -1,24 +1,45 @@
+/* ── Dark theme (default) ── */
 :root {
-  --bg:        #050a0f;
-  --surface:   #0d1520;
-  --elevated:  #141f30;
-  --border:    #1e2d42;
-  --border-hi: #2a4060;
+  --bg:        #000000;
+  --surface:   #080d14;
+  --elevated:  #0d1520;
+  --border:    #172030;
+  --border-hi: #243650;
   --green:     #00ff9d;
   --red:       #ff3060;
   --cyan:      #00d4ff;
   --yellow:    #ffd60a;
   --purple:    #a855f7;
   --text:      #e8f0f8;
-  --muted:     #6080a0;
+  --muted:     #5878a0;
   color-scheme: dark;
+}
+
+/* ── Light theme ── */
+[data-theme="light"] {
+  --bg:        #f0f4f8;
+  --surface:   #ffffff;
+  --elevated:  #e8edf4;
+  --border:    #d0dae8;
+  --border-hi: #a8bcd4;
+  --green:     #00a86b;
+  --red:       #e02050;
+  --cyan:      #0098c8;
+  --yellow:    #c89800;
+  --purple:    #8030d0;
+  --text:      #0a1828;
+  --muted:     #5878a0;
+  color-scheme: light;
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0; padding: 0; overflow: hidden;
   font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
   background: var(--bg);
   color: var(--text);
   font-variant-numeric: tabular-nums;
 }
-* { box-sizing: border-box; }
-body { margin: 0; padding: 0; overflow: hidden; }
 
 /* ── Shell ── */
 .app-shell { display: flex; flex-direction: column; height: 100vh; }

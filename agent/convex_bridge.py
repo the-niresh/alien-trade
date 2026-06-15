@@ -409,6 +409,14 @@ class ConvexBridge:
             "updated_ms": updated_ms,
         })
 
+    def append_price_tick(self, symbol: str, price: float, timestamp_ms: Optional[int] = None) -> None:
+        """Log one price tick per cycle for sparkline display in the cockpit."""
+        self._call("mutation", "priceTicks:append", {
+            "symbol": symbol,
+            "price": price,
+            "timestamp_ms": timestamp_ms,
+        })
+
     def audit(self, event_type: str, cycle_id: Optional[str], payload: dict, severity: str = "info") -> None:
         self._call("mutation", "audit:log", {
             "event_type": event_type,

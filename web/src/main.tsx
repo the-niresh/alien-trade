@@ -13,6 +13,8 @@ import "@fontsource/ibm-plex-mono/400.css";
 import "@fontsource/ibm-plex-mono/500.css";
 import App from "./App";
 import "./index.css";
+import { applyTheme, getTheme } from "./lib/theme";
+applyTheme(getTheme()); // restore persisted theme before first paint
 
 const convexUrl = import.meta.env.VITE_CONVEX_URL as string;
 const convex = new ConvexReactClient(convexUrl);

@@ -1,6 +1,6 @@
 import { useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
-import { AgentCard, AGENT_DEFS } from "../components/AgentCard";
+import { AgentCard, AgentCardSkeleton, AGENT_DEFS } from "../components/AgentCard";
 
 type Props = { onAgentClick: (name: string) => void };
 
@@ -14,20 +14,19 @@ export function AgentsView({ onAgentClick }: Props) {
 
   return (
     <div>
-      <div style={{ marginBottom: 20 }}>
-        <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 20, fontWeight: 700, marginBottom: 6 }}>
-          Agent Team
-        </div>
-        <div style={{ fontSize: 13, color: "var(--muted)" }}>
-          Click any agent to ask the co-pilot about them.
-        </div>
+      <div className="mb-5">
+        <h1 className="font-grotesk text-xl font-bold mb-1.5">Agent Team</h1>
+        <p className="text-[13px] text-muted-fg">Click any agent to ask the co-pilot about them.</p>
       </div>
-      <div className="agents-grid">
-        {AGENT_DEFS.map((def) => (
-          <AgentCard key={def.name} def={def}
-            lastEvent={rosterMap.get(def.name)}
-            onClick={() => onAgentClick(def.name)} />
-        ))}
+      <div className="grid grid-cols-2 gap-4 max-sm:grid-cols-1">
+        {roster === undefined
+          ? AGENT_DEFS.map((d) => <AgentCardSkeleton key={d.name} />)
+          : AGENT_DEFS.map((def) => (
+              <AgentCard key={def.name} def={def}
+                lastEvent={rosterMap.get(def.name)}
+                onClick={() => onAgentClick(def.name)} />
+            ))
+        }
       </div>
     </div>
   );

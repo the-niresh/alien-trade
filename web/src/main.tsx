@@ -12,7 +12,7 @@ import "@fontsource/inter/600.css";
 import "@fontsource/ibm-plex-mono/400.css";
 import "@fontsource/ibm-plex-mono/500.css";
 import App from "./App";
-import "./index.css";
+import "./globals.css";
 import { applyTheme, getTheme } from "./lib/theme";
 applyTheme(getTheme()); // restore persisted theme before first paint
 

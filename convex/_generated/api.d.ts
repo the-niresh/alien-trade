@@ -21,6 +21,7 @@ import type * as forecastCalibration from "../forecastCalibration.js";
 import type * as forecastState from "../forecastState.js";
 import type * as ledger from "../ledger.js";
 import type * as positions from "../positions.js";
+import type * as priceTicks from "../priceTicks.js";
 import type * as reflections from "../reflections.js";
 import type * as riskState from "../riskState.js";
 import type * as scorecard from "../scorecard.js";
@@ -48,6 +49,7 @@ declare const fullApi: ApiFromModules<{
   forecastState: typeof forecastState;
   ledger: typeof ledger;
   positions: typeof positions;
+  priceTicks: typeof priceTicks;
   reflections: typeof reflections;
   riskState: typeof riskState;
   scorecard: typeof scorecard;

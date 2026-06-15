@@ -2,9 +2,23 @@ import { useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { KillSwitch } from "./KillSwitch";
 import { RegimeBadge } from "./RegimeBadge";
+import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 import { usd } from "../lib/formatters";
 
-type Props = { halted: boolean; mode?: string; onKillToggle: () => void };
+type Props = {
+  halted: boolean;
+  mode?: string;
+  onKillToggle: () => void;
+  selectedSymbol?: string;
+  onSymbolChange?: (s: string) => void;
+};
+
+const MODE_CLASS: Record<string, string> = {
+  paper:   "bg-yellow/10 text-yellow border-yellow/20",
+  mainnet: "bg-red/10 text-red border-red/20",
+  testnet: "bg-cyan/10 text-cyan border-cyan/20",
+};
 
 export function LiveHeader({ halted, mode, onKillToggle }: Props) {
   const ledger    = useQuery(api.ledger.latest);
@@ -15,36 +29,39 @@ export function LiveHeader({ halted, mode, onKillToggle }: Props) {
   const pnlPos = (pnl ?? 0) >= 0;
 
   return (
-    <header className="live-header">
-      <span className="header-logo">ALIEN-TRADE</span>
-      <div className="header-sep" />
+    <header className="h-14 bg-surface border-b border-border flex items-center px-4 gap-3.5 flex-shrink-0">
+      <span className="font-grotesk text-[15px] font-bold tracking-[2px] text-cyan">
+        ALIEN-TRADE
+      </span>
+
+      <div className="w-px h-7 bg-border flex-shrink-0" />
 
       {regime && <RegimeBadge regime={regime} />}
 
       {mode && (
-        <span className={`mode-badge mode-badge--${mode}`}>
+        <Badge
+          variant="outline"
+          className={cn("text-[11px] font-bold tracking-widest rounded-md px-2.5", MODE_CLASS[mode] ?? "")}
+        >
           {mode === "mainnet" ? "LIVE" : mode.toUpperCase()}
-        </span>
+        </Badge>
       )}
 
       {pnl != null && (
         <>
-          <div className="header-sep" />
-          <span className="header-equity" style={{ color: pnlPos ? "var(--green)" : "var(--red)" }}>
+          <div className="w-px h-7 bg-border flex-shrink-0" />
+          <span className={cn("font-grotesk text-[22px] font-bold", pnlPos ? "text-green" : "text-red")}>
             {usd(pnl)}
           </span>
         </>
       )}
 
-      <div className="header-spacer" />
+      <div className="flex-1" />
 
       {halted && (
-        <span style={{
-          fontSize: 12, fontWeight: 700, color: "var(--red)",
-          background: "#ff306018", padding: "3px 10px", borderRadius: 6,
-        }}>
+        <Badge className="bg-red/10 text-red border border-red/30 text-[12px] font-bold tracking-wide rounded-md">
           HALTED
-        </span>
+        </Badge>
       )}
 
       <KillSwitch halted={halted} onToggle={onKillToggle} />

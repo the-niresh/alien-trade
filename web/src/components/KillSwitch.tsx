@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
 import { motion } from "framer-motion";
+import { cn } from "@/lib/utils";
 
 type Props = {
   halted: boolean;
@@ -21,10 +22,7 @@ export function KillSwitch({ halted, onToggle, hero = false }: Props) {
       elapsed += TICK_MS;
       const p = Math.min(elapsed / HOLD_MS, 1);
       setProgress(p);
-      if (p >= 1) {
-        stopHold();
-        onToggle();
-      }
+      if (p >= 1) { stopHold(); onToggle(); }
     }, TICK_MS);
   };
 
@@ -33,13 +31,18 @@ export function KillSwitch({ halted, onToggle, hero = false }: Props) {
     setProgress(0);
   };
 
-  const deg = progress * 360;
+  const deg   = progress * 360;
   const color = halted ? "var(--green)" : "var(--red)";
-  const cls = hero ? "kill-switch-hero" : "kill-switch";
+  const size  = hero ? "w-[120px] h-[120px]" : "w-11 h-11";
+  const inner = halted ? "bg-[#01120a] text-green" : "bg-[#12040a] text-red";
+  const textSz = hero ? "text-sm font-black tracking-wider" : "text-[8px] font-black tracking-wide";
 
   return (
     <motion.button
-      className={`${cls} ${halted ? "kill-switch--resume" : "kill-switch--halt"}`}
+      className={cn(
+        "kill-switch rounded-full border-none cursor-pointer p-[3px] flex items-center justify-center flex-shrink-0",
+        size
+      )}
       style={{ background: `conic-gradient(${color} ${deg}deg, var(--border) ${deg}deg)` }}
       onMouseDown={startHold}
       onMouseUp={stopHold}
@@ -52,7 +55,10 @@ export function KillSwitch({ halted, onToggle, hero = false }: Props) {
       transition={{ duration: 2, repeat: Infinity }}
       title={halted ? "Hold to resume trading" : "Hold to halt trading"}
     >
-      <span className="kill-switch__inner">
+      <span className={cn(
+        "kill-switch__inner w-full h-full rounded-full flex items-center justify-center",
+        inner, textSz
+      )}>
         {progress > 0 ? `${Math.round(progress * 100)}%` : halted ? "RESUME" : "KILL"}
       </span>
     </motion.button>

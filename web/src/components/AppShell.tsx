@@ -1,7 +1,8 @@
 import { ReactNode } from "react";
-import { SideNav, View } from "./SideNav";
+import { SideNav, type View } from "./SideNav";
 import { LiveHeader } from "./LiveHeader";
 import { AgentTicker } from "./AgentTicker";
+import { BottomNav } from "./BottomNav";
 
 type Props = {
   children: ReactNode;
@@ -15,13 +16,22 @@ type Props = {
 
 export function AppShell({ children, activeView, onViewChange, onCopilot, halted, mode, onKillToggle }: Props) {
   return (
-    <div className="app-shell">
+    <div className="flex flex-col h-screen">
       <LiveHeader halted={halted} mode={mode} onKillToggle={onKillToggle} />
-      <div className="app-body">
-        <SideNav active={activeView} onSelect={onViewChange} onCopilot={onCopilot} />
-        <main className="app-main">{children}</main>
+      <div className="flex flex-1 overflow-hidden">
+        {/* Sidebar — hidden on mobile */}
+        <div className="hidden sm:flex">
+          <SideNav active={activeView} onSelect={onViewChange} onCopilot={onCopilot} />
+        </div>
+        <main className="flex-1 overflow-y-auto px-6 py-5 pb-12">
+          {children}
+        </main>
       </div>
       <AgentTicker />
+      {/* Bottom nav — mobile only */}
+      <div className="flex sm:hidden">
+        <BottomNav active={activeView} onSelect={onViewChange} onCopilot={onCopilot} />
+      </div>
     </div>
   );
 }

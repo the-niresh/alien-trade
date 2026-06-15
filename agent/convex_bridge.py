@@ -386,6 +386,29 @@ class ConvexBridge:
         """Write a ForecastState row (upsert by symbol). Takes a contracts.ForecastState."""
         self._call("mutation", "forecastState:set", forecast.as_row())
 
+    def update_positions(
+        self,
+        symbol: str,
+        quantity: float,
+        avg_entry_price: float,
+        current_price: float,
+        mode: str,
+        updated_ms: Optional[int] = None,
+    ) -> None:
+        """Upsert the live position for a symbol. Called each cycle."""
+        current_value_usd = quantity * current_price
+        unrealized_pnl_usd = (current_price - avg_entry_price) * quantity if quantity > 0 else 0.0
+        self._call("mutation", "positions:upsert", {
+            "symbol": symbol,
+            "quantity": quantity,
+            "avg_entry_price": avg_entry_price,
+            "current_price": current_price,
+            "current_value_usd": current_value_usd,
+            "unrealized_pnl_usd": unrealized_pnl_usd,
+            "mode": mode,
+            "updated_ms": updated_ms,
+        })
+
     def audit(self, event_type: str, cycle_id: Optional[str], payload: dict, severity: str = "info") -> None:
         self._call("mutation", "audit:log", {
             "event_type": event_type,

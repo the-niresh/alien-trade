@@ -25,12 +25,23 @@ from agent.loop import DecisionLoop, CycleResult
 from agent.runtime import build_loop
 
 try:
-    from fastapi import FastAPI
+    from fastapi import FastAPI, HTTPException, Request
 except ImportError as e:  # pragma: no cover
     raise RuntimeError(
         "FastAPI not installed. Install the agent extras: "
         "core/.venv/Scripts/python.exe -m pip install fastapi uvicorn"
     ) from e
+
+
+def _require_api_token(request: Request) -> None:
+    """Reject requests to sensitive endpoints unless AGENT_API_TOKEN matches.
+    No-op when AGENT_API_TOKEN is unset (dev/paper convenience)."""
+    token = os.environ.get("AGENT_API_TOKEN", "")
+    if not token:
+        return
+    header = request.headers.get("X-API-Token", "")
+    if header != token:
+        raise HTTPException(status_code=401, detail="Unauthorized")
 
 
 _loop: DecisionLoop | None = None
@@ -132,7 +143,8 @@ def social_ingest() -> dict:
 
 
 @app.post("/cycle")
-def run_cycle() -> dict:
+def run_cycle(request: Request) -> dict:
+    _require_api_token(request)
     loop = get_loop()
     history = loop.feed.next()
     if history is None:
@@ -159,13 +171,15 @@ def status() -> dict:
 
 
 @app.post("/halt")
-def halt() -> dict:
+def halt(request: Request) -> dict:
+    _require_api_token(request)
     get_loop().bridge.set_halted(True)
     return {"halted": True}
 
 
 @app.post("/resume")
-def resume() -> dict:
+def resume(request: Request) -> dict:
+    _require_api_token(request)
     get_loop().bridge.set_halted(False)
     return {"halted": False}
 
@@ -178,10 +192,23 @@ def _second_brain():
 
 @app.post("/copilot")
 def copilot(body: dict) -> dict:
-    """Grounded Q&A over the Second Brain. POST {"question": "..."}."""
+    """Grounded Q&A over the Second Brain. POST {"question": "..."}.
+    Falls back to live status snapshot when SECOND_BRAIN=0."""
     sb = _second_brain()
     if sb is None:
-        return {"answer": "Second Brain disabled or offline.", "grounded": False}
+        loop = get_loop()
+        led = loop.ledger
+        halted = loop.bridge.is_halted()
+        lines = [
+            f"Agent: **{loop.mode}** mode · symbol **{loop.symbol}**",
+            f"Cash: ${led.cash:,.2f} | Position: {led.units:.6f} units"
+            + (f" @ ${led.avg_entry:.2f} avg entry" if led.units > 0 else " (flat)"),
+            f"Realized PnL: ${led.realized_pnl_total:+,.2f} | Peak equity: ${led.peak_equity:,.2f}",
+            f"Status: {'HALTED' if halted else 'running'} | Losses streak: {led.consecutive_losses}",
+            "",
+            "_(Full grounded Q&A requires SECOND_BRAIN=1 + Anthropic + Upstash keys.)_",
+        ]
+        return {"answer": "\n".join(lines), "grounded": True, "sources": []}
     return sb.copilot().ask(str(body.get("question", "")))
 
 

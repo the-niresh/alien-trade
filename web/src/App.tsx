@@ -157,11 +157,12 @@ export default function App() {
   const setHalted   = (a: Parameters<typeof _setHalted>[0])  => _setHalted(withToken(a));
   const setControl  = (a: Parameters<typeof _setControl>[0]) => _setControl(withToken(a));
 
-  const [token, setTokenState]         = useState<string | null>(loadToken());
-  const [view, setView]                = useState<View>("overview");
-  const [copilotOpen, setCopilotOpen]  = useState(false);
+  const [token, setTokenState]              = useState<string | null>(loadToken());
+  const [view, setView]                     = useState<View>("overview");
+  const [copilotOpen, setCopilotOpen]       = useState(false);
   const [copilotPrefill, setCopilotPrefill] = useState("");
   const [lastFloorHalt, setLastFloorHalt]   = useState<string | null>(null);
+  const [selectedSymbol, setSelectedSymbol] = useState("ALL");
 
   const halted = config?.halted ?? false;
   const mode   = config?.trading_mode;
@@ -220,6 +221,8 @@ export default function App() {
         halted={halted}
         mode={mode}
         onKillToggle={onKillToggle}
+        selectedSymbol={selectedSymbol}
+        onSymbolChange={setSelectedSymbol}
       >
         <AnimatePresence mode="wait">
           <motion.div

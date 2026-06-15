@@ -3,6 +3,7 @@ import { api } from "../../../convex/_generated/api";
 import { KillSwitch } from "./KillSwitch";
 import { RegimeBadge } from "./RegimeBadge";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { usd } from "../lib/formatters";
 
@@ -20,9 +21,10 @@ const MODE_CLASS: Record<string, string> = {
   testnet: "bg-cyan/10 text-cyan border-cyan/20",
 };
 
-export function LiveHeader({ halted, mode, onKillToggle }: Props) {
+export function LiveHeader({ halted, mode, onKillToggle, selectedSymbol = "ALL", onSymbolChange }: Props) {
   const ledger    = useQuery(api.ledger.latest);
   const decisions = useQuery(api.decisions.recent, { limit: 1 });
+  const symbols   = useQuery(api.symbolList.list) ?? [];
 
   const pnl    = ledger?.cumulative_pnl_usd;
   const regime = decisions?.[0]?.regime ?? null;
@@ -57,6 +59,20 @@ export function LiveHeader({ halted, mode, onKillToggle }: Props) {
       )}
 
       <div className="flex-1" />
+
+      {symbols.length > 0 && onSymbolChange && (
+        <Select value={selectedSymbol} onValueChange={onSymbolChange}>
+          <SelectTrigger className="w-28 h-7 text-[12px] bg-elevated border-border text-text focus:ring-cyan">
+            <SelectValue placeholder="ALL" />
+          </SelectTrigger>
+          <SelectContent className="bg-surface border-border text-text">
+            <SelectItem value="ALL" className="text-[12px]">ALL</SelectItem>
+            {symbols.map((s) => (
+              <SelectItem key={s} value={s} className="text-[12px] text-cyan font-bold">{s}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      )}
 
       {halted && (
         <Badge className="bg-red/10 text-red border border-red/30 text-[12px] font-bold tracking-wide rounded-md">

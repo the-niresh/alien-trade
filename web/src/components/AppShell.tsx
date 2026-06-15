@@ -12,12 +12,14 @@ type Props = {
   halted: boolean;
   mode?: string;
   onKillToggle: () => void;
+  selectedSymbol?: string;
+  onSymbolChange?: (s: string) => void;
 };
 
-export function AppShell({ children, activeView, onViewChange, onCopilot, halted, mode, onKillToggle }: Props) {
+export function AppShell({ children, activeView, onViewChange, onCopilot, halted, mode, onKillToggle, selectedSymbol, onSymbolChange }: Props) {
   return (
     <div className="flex flex-col h-screen">
-      <LiveHeader halted={halted} mode={mode} onKillToggle={onKillToggle} />
+      <LiveHeader halted={halted} mode={mode} onKillToggle={onKillToggle} selectedSymbol={selectedSymbol} onSymbolChange={onSymbolChange} />
       <div className="flex flex-1 overflow-hidden">
         {/* Sidebar — hidden on mobile */}
         <div className="hidden sm:flex">

@@ -1,5 +1,6 @@
 import { motion } from "framer-motion";
 import { ts } from "../lib/formatters";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export type AgentDef = {
   name: string;
@@ -27,10 +28,13 @@ export function AgentCard({ def, lastEvent, onClick }: Props) {
   const dotColor = isActive ? "var(--green)" : isRecent ? "var(--yellow)" : "var(--border-hi)";
 
   return (
-    <div className="agent-card" onClick={onClick}>
-      <div className="agent-card__header">
+    <div
+      className="bg-surface border border-border rounded-2xl p-5 cursor-pointer transition-colors hover:bg-elevated"
+      onClick={onClick}
+    >
+      <div className="flex items-center gap-3 mb-3">
         <motion.div
-          className="agent-card__avatar"
+          className="w-[42px] h-[42px] rounded-full flex items-center justify-center text-[13px] font-black flex-shrink-0"
           style={{ color: def.color, background: def.bg, border: `1.5px solid ${def.color}40` }}
           animate={isActive
             ? { boxShadow: [`0 0 8px ${def.color}40`, `0 0 20px ${def.color}80`, `0 0 8px ${def.color}40`] }
@@ -39,12 +43,12 @@ export function AgentCard({ def, lastEvent, onClick }: Props) {
         >
           {def.label}
         </motion.div>
-        <div style={{ flex: 1 }}>
-          <div className="agent-card__name" style={{ color: def.color }}>{def.name}</div>
-          <div className="agent-card__role">{def.role}</div>
+        <div className="flex-1">
+          <div className="font-grotesk text-[16px] font-bold" style={{ color: def.color }}>{def.name}</div>
+          <div className="text-[12px] text-muted-fg">{def.role}</div>
         </div>
         <motion.div
-          className="status-dot"
+          className="w-2 h-2 rounded-full flex-shrink-0"
           style={{ background: dotColor }}
           animate={isActive ? { opacity: [1, 0.4, 1] } : {}}
           transition={{ duration: 1, repeat: Infinity }}
@@ -52,14 +56,27 @@ export function AgentCard({ def, lastEvent, onClick }: Props) {
       </div>
       {lastEvent ? (
         <>
-          <div className="agent-card__last">{lastEvent.headline}</div>
-          <div className="agent-card__meta">{ts(lastEvent.ts_ms)} · {lastEvent.kind}</div>
+          <div className="text-[13px] text-text/80 leading-relaxed line-clamp-2">{lastEvent.headline}</div>
+          <div className="text-[11px] text-muted-fg mt-2">{ts(lastEvent.ts_ms)} · {lastEvent.kind}</div>
         </>
       ) : (
-        <div className="agent-card__last" style={{ color: "var(--muted)", fontStyle: "italic" }}>
-          No activity yet
-        </div>
+        <div className="text-[13px] text-muted-fg italic">No activity yet</div>
       )}
+    </div>
+  );
+}
+
+export function AgentCardSkeleton() {
+  return (
+    <div className="bg-surface border border-border rounded-2xl p-5">
+      <div className="flex items-center gap-3 mb-3">
+        <Skeleton className="w-[42px] h-[42px] rounded-full bg-elevated" />
+        <div className="flex-1 space-y-2">
+          <Skeleton className="h-4 w-24 bg-elevated" />
+          <Skeleton className="h-3 w-40 bg-elevated" />
+        </div>
+      </div>
+      <Skeleton className="h-8 w-full bg-elevated" />
     </div>
   );
 }

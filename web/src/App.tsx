@@ -50,18 +50,18 @@ function PairingScreen({ onPaired }: { onPaired: (t: string) => void }) {
   const STEPS: PairingStep[] = ["welcome", "pair", "done"];
 
   return (
-    <div className="grid place-items-center h-screen overflow-auto bg-bg">
+    <div className="grid place-items-center h-screen overflow-auto">
       <Dialog open modal>
         <DialogContent
-          className="bg-surface border-border max-w-sm w-[90%] rounded-2xl p-0 overflow-hidden"
+          className="panel border-border max-w-sm w-[90%] rounded-2xl p-0 overflow-hidden"
           onInteractOutside={(e) => e.preventDefault()}
         >
           {/* Step indicators */}
           <div className="flex gap-1.5 px-6 pt-5">
             {STEPS.map((s, i) => (
               <div key={s} className={`h-1 flex-1 rounded-full transition-colors ${
-                s === step ? "bg-cyan" :
-                STEPS.indexOf(step) > i ? "bg-cyan/40" : "bg-border"
+                s === step ? "bg-green" :
+                STEPS.indexOf(step) > i ? "bg-green/40" : "bg-border"
               }`} />
             ))}
           </div>
@@ -69,8 +69,8 @@ function PairingScreen({ onPaired }: { onPaired: (t: string) => void }) {
           {step === "welcome" && (
             <div className="px-6 py-5 text-center">
               <DialogHeader>
-                <div className="font-grotesk text-[28px] font-bold text-cyan tracking-[2px] mb-1">
-                  ALIEN-TRADE
+                <div className="font-display text-[28px] font-bold text-green glow-green tracking-[0.16em] mb-1">
+                  ALIEN<span className="text-text/40">·</span>TRADE
                 </div>
                 <DialogTitle className="text-[16px] font-semibold text-text">
                   Autonomous trading cockpit
@@ -80,7 +80,7 @@ function PairingScreen({ onPaired }: { onPaired: (t: string) => void }) {
                 </DialogDescription>
               </DialogHeader>
               <Button
-                className="mt-6 w-full bg-cyan text-[#040d14] font-bold hover:bg-cyan/80"
+                className="mt-6 w-full bg-green text-[#04140c] font-bold hover:bg-green/80 cursor-pointer"
                 onClick={() => setStep("pair")}
               >
                 Connect your agent →
@@ -110,10 +110,10 @@ function PairingScreen({ onPaired }: { onPaired: (t: string) => void }) {
                 placeholder="control token"
                 onChange={(e) => setVal(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && submit()}
-                className="w-full bg-bg border-border text-text font-mono text-[13px] focus-visible:ring-cyan mb-3"
+                className="w-full bg-bg border-border text-text font-mono text-[13px] focus-visible:ring-green mb-3"
               />
               <Button
-                className="w-full bg-cyan text-[#040d14] font-bold hover:bg-cyan/80"
+                className="w-full bg-green text-[#04140c] font-bold hover:bg-green/80 cursor-pointer"
                 onClick={submit}
                 disabled={!val.trim()}
               >

@@ -13,10 +13,10 @@ export function AgentsView({ onAgentClick }: Props) {
   );
 
   return (
-    <div>
+    <div className="max-w-[1180px] mx-auto">
       <div className="mb-5">
-        <h1 className="font-grotesk text-xl font-bold mb-1.5">Agent Team</h1>
-        <p className="text-[13px] text-muted-fg">Click any agent to ask the co-pilot about them.</p>
+        <h1 className="font-display text-[20px] font-bold tracking-wide mb-1">Agent Team</h1>
+        <p className="font-mono text-[12px] text-muted-fg">// click any agent to interrogate the co-pilot about it</p>
       </div>
       <div className="grid grid-cols-2 gap-4 max-sm:grid-cols-1">
         {roster === undefined

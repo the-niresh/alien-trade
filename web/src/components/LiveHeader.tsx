@@ -16,9 +16,9 @@ type Props = {
 };
 
 const MODE_CLASS: Record<string, string> = {
-  paper:   "bg-yellow/10 text-yellow border-yellow/20",
-  mainnet: "bg-red/10 text-red border-red/20",
-  testnet: "bg-cyan/10 text-cyan border-cyan/20",
+  paper:   "bg-yellow/10 text-yellow border-yellow/25",
+  mainnet: "bg-red/10 text-red border-red/30",
+  testnet: "bg-cyan/10 text-cyan border-cyan/25",
 };
 
 export function LiveHeader({ halted, mode, onKillToggle, selectedSymbol = "ALL", onSymbolChange }: Props) {
@@ -31,10 +31,20 @@ export function LiveHeader({ halted, mode, onKillToggle, selectedSymbol = "ALL",
   const pnlPos = (pnl ?? 0) >= 0;
 
   return (
-    <header className="h-14 bg-surface border-b border-border flex items-center px-4 gap-3.5 flex-shrink-0">
-      <span className="font-grotesk text-[15px] font-bold tracking-[2px] text-cyan">
-        ALIEN-TRADE
-      </span>
+    <header className="chrome h-14 border-b border-border flex items-center px-4 gap-3.5 flex-shrink-0 z-20">
+      {/* Brand mark */}
+      <div className="flex items-center gap-2.5">
+        <span className="relative flex h-2 w-2">
+          <span className={cn(
+            "absolute inline-flex h-full w-full rounded-full opacity-70 animate-ping",
+            halted ? "bg-red" : "bg-green",
+          )} />
+          <span className={cn("relative inline-flex h-2 w-2 rounded-full", halted ? "bg-red" : "bg-green")} />
+        </span>
+        <span className="font-display text-[15px] font-bold tracking-[0.22em] text-green glow-green">
+          ALIEN<span className="text-text/40">·</span>TRADE
+        </span>
+      </div>
 
       <div className="w-px h-7 bg-border flex-shrink-0" />
 
@@ -43,18 +53,21 @@ export function LiveHeader({ halted, mode, onKillToggle, selectedSymbol = "ALL",
       {mode && (
         <Badge
           variant="outline"
-          className={cn("text-[11px] font-bold tracking-widest rounded-md px-2.5", MODE_CLASS[mode] ?? "")}
+          className={cn("font-mono text-[10px] font-bold tracking-[0.2em] rounded-md px-2.5 py-0.5", MODE_CLASS[mode] ?? "")}
         >
-          {mode === "mainnet" ? "LIVE" : mode.toUpperCase()}
+          {mode === "mainnet" ? "● LIVE" : mode.toUpperCase()}
         </Badge>
       )}
 
       {pnl != null && (
         <>
-          <div className="w-px h-7 bg-border flex-shrink-0" />
-          <span className={cn("font-grotesk text-[22px] font-bold", pnlPos ? "text-green" : "text-red")}>
-            {usd(pnl)}
-          </span>
+          <div className="w-px h-7 bg-border flex-shrink-0 max-sm:hidden" />
+          <div className="flex items-baseline gap-1.5 max-sm:hidden">
+            <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-muted-fg">PnL</span>
+            <span className={cn("font-display text-[22px] font-bold leading-none tabular-nums", pnlPos ? "text-green glow-green" : "text-red glow-red")}>
+              {usd(pnl)}
+            </span>
+          </div>
         </>
       )}
 
@@ -62,20 +75,20 @@ export function LiveHeader({ halted, mode, onKillToggle, selectedSymbol = "ALL",
 
       {symbols.length > 0 && onSymbolChange && (
         <Select value={selectedSymbol} onValueChange={onSymbolChange}>
-          <SelectTrigger className="w-28 h-7 text-[12px] bg-elevated border-border text-text focus:ring-cyan">
+          <SelectTrigger className="w-28 h-7 font-mono text-[11px] bg-elevated/60 border-border text-text focus:ring-green">
             <SelectValue placeholder="ALL" />
           </SelectTrigger>
           <SelectContent className="bg-surface border-border text-text">
-            <SelectItem value="ALL" className="text-[12px]">ALL</SelectItem>
+            <SelectItem value="ALL" className="font-mono text-[11px]">ALL</SelectItem>
             {symbols.map((s) => (
-              <SelectItem key={s} value={s} className="text-[12px] text-cyan font-bold">{s}</SelectItem>
+              <SelectItem key={s} value={s} className="font-mono text-[11px] text-cyan font-bold">{s}</SelectItem>
             ))}
           </SelectContent>
         </Select>
       )}
 
       {halted && (
-        <Badge className="bg-red/10 text-red border border-red/30 text-[12px] font-bold tracking-wide rounded-md">
+        <Badge className="bg-red/10 text-red border border-red/40 font-mono text-[10px] font-bold tracking-[0.16em] rounded-md animate-pulse">
           HALTED
         </Badge>
       )}

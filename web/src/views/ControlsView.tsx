@@ -3,12 +3,12 @@ import { AnimatePresence, motion } from "framer-motion";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { KillSwitch } from "../components/KillSwitch";
+import { Panel } from "../components/Panel";
 import { withToken } from "../lib/control";
 import { usd, pct } from "../lib/formatters";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel,
@@ -61,28 +61,25 @@ export function ControlsView() {
 
   return (
     <div className="max-w-[680px] mx-auto space-y-4">
-      <h1 className="font-grotesk text-xl font-bold mb-2">Controls</h1>
+      <h1 className="font-display text-[20px] font-bold tracking-wide mb-1">Controls</h1>
 
       {/* Kill switch */}
-      <Card className="bg-surface border-border">
-        <CardHeader className="pb-2">
-          <p className="text-[11px] uppercase tracking-[0.6px] text-muted-fg font-bold">Emergency Stop</p>
-        </CardHeader>
-        <CardContent className="flex flex-col items-center gap-3 text-center">
+      <Panel label="Emergency Stop" tick="red">
+        <div className="flex flex-col items-center gap-4 text-center py-2">
           <KillSwitch halted={halted} onToggle={onKillToggle} hero />
-          <p className="text-[13px] text-muted-fg">
-            {halted ? "Agent is HALTED. Hold to resume trading." : "Hold for 1.5s to halt all trading."}
+          <p className="font-mono text-[12px] text-muted-fg">
+            {halted ? "Agent is HALTED — hold to resume trading." : "Hold for 1.5s to halt all trading."}
           </p>
           <div className="flex gap-2 justify-center">
             <AlertDialog>
               <AlertDialogTrigger asChild>
-                <Button variant="outline" size="sm" className="border-border text-muted-fg hover:text-text">
+                <Button variant="outline" size="sm" className="border-border text-muted-fg hover:text-text cursor-pointer">
                   {paused ? "Resume Agents" : "Pause Agents"}
                 </Button>
               </AlertDialogTrigger>
-              <AlertDialogContent className="bg-surface border-border">
+              <AlertDialogContent className="panel border-border">
                 <AlertDialogHeader>
-                  <AlertDialogTitle className="text-text">
+                  <AlertDialogTitle className="text-text font-display">
                     {paused ? "Resume advisory agents?" : "Pause advisory agents?"}
                   </AlertDialogTitle>
                   <AlertDialogDescription className="text-muted-fg">
@@ -92,7 +89,7 @@ export function ControlsView() {
                 <AlertDialogFooter>
                   <AlertDialogCancel className="border-border text-muted-fg">Cancel</AlertDialogCancel>
                   <AlertDialogAction
-                    className="bg-cyan text-[#040d14] font-bold hover:bg-cyan/80"
+                    className="bg-green text-[#04140c] font-bold hover:bg-green/80"
                     onClick={() => setControl({ agents_paused: !paused, updated_by: "user" })}
                   >Confirm</AlertDialogAction>
                 </AlertDialogFooter>
@@ -101,13 +98,13 @@ export function ControlsView() {
 
             <AlertDialog>
               <AlertDialogTrigger asChild>
-                <Button variant="outline" size="sm" className="border-red/30 text-red bg-red/5 hover:bg-red/10">
+                <Button variant="outline" size="sm" className="border-red/30 text-red bg-red/5 hover:bg-red/10 cursor-pointer">
                   Stop Response
                 </Button>
               </AlertDialogTrigger>
-              <AlertDialogContent className="bg-surface border-border">
+              <AlertDialogContent className="panel border-border">
                 <AlertDialogHeader>
-                  <AlertDialogTitle className="text-text">Stop current agent response?</AlertDialogTitle>
+                  <AlertDialogTitle className="text-text font-display">Stop current agent response?</AlertDialogTitle>
                   <AlertDialogDescription className="text-muted-fg">
                     This will cancel the in-flight agent action. Cannot be undone.
                   </AlertDialogDescription>
@@ -122,135 +119,126 @@ export function ControlsView() {
               </AlertDialogContent>
             </AlertDialog>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </Panel>
 
       {/* Trading mode */}
-      <Card className="bg-surface border-border">
-        <CardHeader className="pb-2">
-          <p className="text-[11px] uppercase tracking-[0.6px] text-muted-fg font-bold">Trading Mode</p>
-        </CardHeader>
-        <CardContent>
-          {config === undefined ? <Skeleton className="h-10 w-full bg-elevated" /> : (
-            <div className="flex bg-bg border border-border rounded-[10px] p-1 gap-1">
-              {(["testnet", "paper", "mainnet"] as const).map((m) => {
-                const isActive = mode === m;
-                const activeClass = m === "testnet" ? "bg-cyan/10 text-cyan"
-                  : m === "paper" ? "bg-yellow/10 text-yellow"
-                  : "bg-red/10 text-red";
-                if (m === "mainnet") {
-                  return (
-                    <AlertDialog key={m}>
-                      <AlertDialogTrigger asChild>
-                        <button
-                          className={cn(
-                            "flex-1 py-2 px-3 rounded-lg text-[12px] font-bold uppercase tracking-[0.4px] transition-colors",
-                            isActive ? activeClass : "text-muted-fg hover:text-text"
-                          )}
-                          disabled={isActive}
-                        >LIVE</button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent className="bg-surface border-border">
-                        <AlertDialogHeader>
-                          <AlertDialogTitle className="text-text">Switch to LIVE mainnet?</AlertDialogTitle>
-                          <AlertDialogDescription className="text-muted-fg">
-                            This will trade real funds via TWAK-signed transactions. Make sure your wallet is funded.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel className="border-border text-muted-fg">Cancel</AlertDialogCancel>
-                          <AlertDialogAction
-                            className="bg-red text-white font-bold hover:bg-red/80"
-                            onClick={() => setTradingMode({ trading_mode: "mainnet" })}
-                          >Go LIVE</AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-                  );
-                }
+      <Panel label="Trading Mode" tick="cyan">
+        {config === undefined ? <Skeleton className="h-10 w-full bg-elevated" /> : (
+          <div className="flex bg-bg border border-border rounded-[10px] p-1 gap-1">
+            {(["testnet", "paper", "mainnet"] as const).map((m) => {
+              const isActive = mode === m;
+              const activeClass = m === "testnet" ? "bg-cyan/12 text-cyan border border-cyan/25"
+                : m === "paper" ? "bg-yellow/12 text-yellow border border-yellow/25"
+                : "bg-red/12 text-red border border-red/25";
+              if (m === "mainnet") {
                 return (
-                  <button key={m}
-                    className={cn(
-                      "flex-1 py-2 px-3 rounded-lg text-[12px] font-bold uppercase tracking-[0.4px] transition-colors",
-                      isActive ? activeClass : "text-muted-fg hover:text-text"
-                    )}
-                    disabled={isActive}
-                    onClick={() => setTradingMode({ trading_mode: m })}
-                  >{m}</button>
+                  <AlertDialog key={m}>
+                    <AlertDialogTrigger asChild>
+                      <button
+                        className={cn(
+                          "flex-1 py-2 px-3 rounded-lg font-mono text-[11px] font-bold uppercase tracking-[0.14em] transition-colors cursor-pointer",
+                          isActive ? activeClass : "text-muted-fg hover:text-text"
+                        )}
+                        disabled={isActive}
+                      >LIVE</button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent className="panel border-border">
+                      <AlertDialogHeader>
+                        <AlertDialogTitle className="text-text font-display">Switch to LIVE mainnet?</AlertDialogTitle>
+                        <AlertDialogDescription className="text-muted-fg">
+                          This will trade real funds via TWAK-signed transactions. Make sure your wallet is funded.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel className="border-border text-muted-fg">Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                          className="bg-red text-white font-bold hover:bg-red/80"
+                          onClick={() => setTradingMode({ trading_mode: "mainnet" })}
+                        >Go LIVE</AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
                 );
-              })}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+              }
+              return (
+                <button key={m}
+                  className={cn(
+                    "flex-1 py-2 px-3 rounded-lg font-mono text-[11px] font-bold uppercase tracking-[0.14em] transition-colors cursor-pointer",
+                    isActive ? activeClass : "text-muted-fg hover:text-text"
+                  )}
+                  disabled={isActive}
+                  onClick={() => setTradingMode({ trading_mode: m })}
+                >{m}</button>
+              );
+            })}
+          </div>
+        )}
+      </Panel>
 
       {/* Strategy */}
-      <Card className="bg-surface border-border">
-        <CardHeader className="pb-2">
-          <p className="text-[11px] uppercase tracking-[0.6px] text-muted-fg font-bold">Strategy</p>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 gap-2">
-            {STRATEGIES.map((s) => (
+      <Panel label="Strategy">
+        <div className="grid grid-cols-2 gap-2 max-sm:grid-cols-1">
+          {STRATEGIES.map((s) => {
+            const sel = active === s.name;
+            return (
               <button key={s.name}
                 className={cn(
-                  "bg-elevated border-[1.5px] border-border rounded-xl p-3.5 cursor-pointer text-left transition-colors hover:border-border-hi",
-                  active === s.name && "border-cyan bg-cyan/5"
+                  "relative rounded-xl p-3.5 cursor-pointer text-left transition-all border",
+                  sel
+                    ? "border-green/50 bg-green/[0.06]"
+                    : "border-border bg-elevated hover:border-border-hi hover:-translate-y-0.5"
                 )}
                 onClick={() => setStrategy({ strategy_name: s.name })}
               >
-                <div className="font-bold text-[14px] text-text mb-1">{s.label}</div>
+                <div className="flex items-center gap-2 mb-1">
+                  {sel && <span className="h-1.5 w-1.5 rounded-full bg-green" style={{ boxShadow: "0 0 8px var(--green)" }} />}
+                  <span className={cn("font-display text-[14px] font-bold", sel ? "text-green" : "text-text")}>{s.label}</span>
+                </div>
                 <div className="text-[12px] text-muted-fg leading-snug">{s.blurb}</div>
               </button>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+            );
+          })}
+        </div>
+      </Panel>
 
       {/* Equity floor */}
-      <Card className="bg-surface border-border">
-        <CardHeader className="pb-2">
-          <p className="text-[11px] uppercase tracking-[0.6px] text-muted-fg font-bold">Equity Floor</p>
-        </CardHeader>
-        <CardContent className="space-y-3">
+      <Panel label="Equity Floor" tick="yellow">
+        <div className="space-y-3">
           <p className="text-[13px] text-muted-fg">
             {floor > 0
-              ? <><strong className="text-text">Floor: {usd(floor)}</strong> — agent halts if equity drops below this.</>
+              ? <><strong className="text-text font-mono">Floor {usd(floor)}</strong> — agent halts if equity drops below this.</>
               : "Disabled — agent trades until manually halted."}
           </p>
           <div className="flex gap-2">
             <Input
               type="number" min="0" placeholder="e.g. 50"
               value={floorInput} onChange={(e) => setFloorInput(e.target.value)}
-              className="w-32 bg-bg border-border text-text font-mono text-[13px] focus-visible:ring-cyan"
+              className="w-32 bg-bg border-border text-text font-mono text-[13px] focus-visible:ring-green"
             />
-            <Button size="sm" className="bg-cyan text-[#040d14] font-bold hover:bg-cyan/80"
+            <Button size="sm" className="bg-green text-[#04140c] font-bold hover:bg-green/80 cursor-pointer"
               onClick={onSetFloor} disabled={!floorInput}>Set</Button>
             {floor > 0 && (
-              <Button size="sm" variant="outline" className="border-border text-muted-fg hover:text-text"
+              <Button size="sm" variant="outline" className="border-border text-muted-fg hover:text-text cursor-pointer"
                 onClick={() => updateLimits({ equity_floor: 0 })}>Remove</Button>
             )}
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </Panel>
 
       {/* Autopilot */}
-      <Card className="bg-surface border-border">
-        <CardHeader className="pb-0">
-          <div className="flex justify-between items-center">
-            <p className="text-[11px] uppercase tracking-[0.6px] text-muted-fg font-bold">Autopilot</p>
-            <Button size="sm"
-              className={cn(
-                ap?.enabled
-                  ? "bg-cyan text-[#040d14] font-bold hover:bg-cyan/80"
-                  : "border border-border text-muted-fg bg-elevated hover:text-text"
-              )}
-              onClick={() => setAutopilot({ autopilot: { ...(ap ?? {}), enabled: !(ap?.enabled ?? false) } as Parameters<typeof setAutopilot>[0]["autopilot"] })}
-            >{ap?.enabled ? "ON" : "OFF"}</Button>
-          </div>
-        </CardHeader>
-        {ap?.enabled && (
-          <CardContent className="space-y-2.5 mt-3">
+      <Panel label="Autopilot" tick="cyan" action={
+        <Button size="sm"
+          className={cn("cursor-pointer font-mono tracking-wider",
+            ap?.enabled
+              ? "bg-green text-[#04140c] font-bold hover:bg-green/80"
+              : "border border-border text-muted-fg bg-elevated hover:text-text"
+          )}
+          onClick={() => setAutopilot({ autopilot: { ...(ap ?? {}), enabled: !(ap?.enabled ?? false) } as Parameters<typeof setAutopilot>[0]["autopilot"] })}
+        >{ap?.enabled ? "● ON" : "OFF"}</Button>
+      }>
+        {ap?.enabled ? (
+          <div className="space-y-2.5">
             {[
               { label: "Take profit %",        key: "profit_target_pct" },
               { label: "Trailing give-back %", key: "trailing_giveback_pct" },
@@ -260,7 +248,7 @@ export function ControlsView() {
                 <span className="text-[13px] text-muted-fg">{label}</span>
                 <Input
                   type="number" min="0" placeholder="—"
-                  className="w-20 bg-bg border-border text-text font-mono text-[13px] focus-visible:ring-cyan"
+                  className="w-20 bg-bg border-border text-text font-mono text-[13px] focus-visible:ring-green"
                   defaultValue={(ap as unknown as Record<string, number | undefined>)[key] != null
                     ? (((ap as unknown as Record<string, number | undefined>)[key] as number) * 100).toFixed(1) : ""}
                   onBlur={(e) => {
@@ -270,66 +258,69 @@ export function ControlsView() {
                 />
               </div>
             ))}
-          </CardContent>
+          </div>
+        ) : (
+          <p className="font-mono text-[12px] text-muted-fg">// autopilot disabled — manual exits only</p>
         )}
-      </Card>
+      </Panel>
 
       {/* Risk caps */}
-      <Card className="bg-surface border-border">
-        <CardHeader className="pb-0">
-          <div className="flex justify-between items-center">
-            <p className="text-[11px] uppercase tracking-[0.6px] text-muted-fg font-bold">Risk Caps</p>
-            <Button size="sm" variant="outline" className="border-border text-muted-fg hover:text-text"
-              onClick={() => setShowSliders(!showSliders)}>
-              {showSliders ? "Hide" : "Edit"}
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent className="mt-3">
-          <AnimatePresence>
-            {showSliders && config && (
-              <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }}
-                exit={{ opacity: 0, height: 0 }} className="overflow-hidden space-y-4 mb-4">
-                {[
-                  { label: "Max position",     key: "max_position_usd",     min: 100, max: 10000, step: 100, fmt: usd },
-                  { label: "Daily loss limit", key: "daily_loss_limit_usd", min: 50,  max: 2000,  step: 50,  fmt: usd },
-                ].map(({ label, key, min, max, step, fmt }) => (
-                  <div key={key}>
-                    <div className="flex justify-between text-[12px] mb-2">
-                      <span className="text-muted-fg">{label}</span>
-                      <span className="font-semibold">{fmt((config as unknown as Record<string, number>)[key])}</span>
-                    </div>
-                    <Slider
-                      min={min} max={max} step={step}
-                      defaultValue={[(config as unknown as Record<string, number>)[key]]}
-                      onValueCommit={([v]) => updateLimits({ [key]: v })}
-                    />
-                  </div>
-                ))}
-                <div>
-                  <div className="flex justify-between text-[12px] mb-2">
-                    <span className="text-muted-fg">Max drawdown</span>
-                    <span className="font-semibold">{pct(config.max_drawdown_pct)}</span>
+      <Panel label="Risk Caps" action={
+        <Button size="sm" variant="outline" className="border-border text-muted-fg hover:text-text cursor-pointer"
+          onClick={() => setShowSliders(!showSliders)}>
+          {showSliders ? "Hide" : "Edit"}
+        </Button>
+      }>
+        <AnimatePresence>
+          {showSliders && config && (
+            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }} className="overflow-hidden space-y-4 mb-4">
+              {[
+                { label: "Max position",     key: "max_position_usd",     min: 100, max: 10000, step: 100, fmt: usd },
+                { label: "Daily loss limit", key: "daily_loss_limit_usd", min: 50,  max: 2000,  step: 50,  fmt: usd },
+              ].map(({ label, key, min, max, step, fmt }) => (
+                <div key={key}>
+                  <div className="flex justify-between font-mono text-[12px] mb-2">
+                    <span className="text-muted-fg">{label}</span>
+                    <span className="font-semibold text-text">{fmt((config as unknown as Record<string, number>)[key])}</span>
                   </div>
                   <Slider
-                    min={1} max={50} step={1}
-                    defaultValue={[Math.round(config.max_drawdown_pct * 100)]}
-                    onValueCommit={([v]) => updateLimits({ max_drawdown_pct: v / 100 })}
+                    min={min} max={max} step={step}
+                    defaultValue={[(config as unknown as Record<string, number>)[key]]}
+                    onValueCommit={([v]) => updateLimits({ [key]: v })}
                   />
                 </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-          {!showSliders && config && (
-            <div className="space-y-1">
-              <p className="text-[13px] text-muted-fg">Max position: <strong className="text-text">{usd(config.max_position_usd)}</strong></p>
-              <p className="text-[13px] text-muted-fg">Daily loss limit: <strong className="text-text">{usd(config.daily_loss_limit_usd)}</strong></p>
-              <p className="text-[13px] text-muted-fg">Max drawdown: <strong className="text-text">{pct(config.max_drawdown_pct)}</strong></p>
-            </div>
+              ))}
+              <div>
+                <div className="flex justify-between font-mono text-[12px] mb-2">
+                  <span className="text-muted-fg">Max drawdown</span>
+                  <span className="font-semibold text-text">{pct(config.max_drawdown_pct)}</span>
+                </div>
+                <Slider
+                  min={1} max={50} step={1}
+                  defaultValue={[Math.round(config.max_drawdown_pct * 100)]}
+                  onValueCommit={([v]) => updateLimits({ max_drawdown_pct: v / 100 })}
+                />
+              </div>
+            </motion.div>
           )}
-          {!config && <Skeleton className="h-20 w-full bg-elevated" />}
-        </CardContent>
-      </Card>
+        </AnimatePresence>
+        {!showSliders && config && (
+          <div className="grid grid-cols-3 gap-2 max-sm:grid-cols-1">
+            {[
+              { label: "Max position", val: usd(config.max_position_usd) },
+              { label: "Daily loss", val: usd(config.daily_loss_limit_usd) },
+              { label: "Max drawdown", val: pct(config.max_drawdown_pct) },
+            ].map((r) => (
+              <div key={r.label} className="rounded-lg bg-bg/50 border border-border px-3 py-2.5">
+                <div className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted-fg mb-1">{r.label}</div>
+                <div className="font-mono text-[14px] font-semibold text-text tabular-nums">{r.val}</div>
+              </div>
+            ))}
+          </div>
+        )}
+        {!config && <Skeleton className="h-20 w-full bg-elevated" />}
+      </Panel>
     </div>
   );
 }

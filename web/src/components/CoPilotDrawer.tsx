@@ -50,8 +50,11 @@ export function CoPilotDrawer({ isOpen, onClose, prefill = "" }: Props) {
         side="right"
         className="w-[420px] max-sm:w-full bg-surface border-l border-border p-0 flex flex-col gap-0"
       >
-        <SheetHeader className="px-5 py-4 border-b border-border">
-          <SheetTitle className="font-grotesk text-[16px] font-bold text-purple">Co-Pilot</SheetTitle>
+        <SheetHeader className="px-5 py-4 border-b border-border chrome">
+          <SheetTitle className="font-display text-[16px] font-bold text-purple tracking-wide flex items-center gap-2">
+            <span className="h-1.5 w-1.5 rounded-full bg-purple" style={{ boxShadow: "0 0 8px var(--purple)" }} />
+            Co-Pilot
+          </SheetTitle>
         </SheetHeader>
 
         {/* Quick chips */}
@@ -106,10 +109,10 @@ export function CoPilotDrawer({ isOpen, onClose, prefill = "" }: Props) {
             onChange={(e) => setQuestion(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && send()}
             disabled={loading}
-            className="flex-1 bg-bg border-border text-text text-[13px] focus-visible:ring-cyan"
+            className="flex-1 bg-bg border-border text-text text-[13px] focus-visible:ring-purple"
           />
           <Button size="sm"
-            className="bg-cyan text-[#040d14] font-bold hover:bg-cyan/80"
+            className="bg-purple text-white font-bold hover:bg-purple/80 cursor-pointer"
             onClick={() => send()}
             disabled={loading || !question.trim()}
           >{loading ? "…" : "Ask"}</Button>

@@ -16,8 +16,11 @@ export function EquityChart() {
 
   if (data.length === 0) {
     return (
-      <div style={{ textAlign: "center", padding: "32px 0", color: "var(--muted)", fontSize: 13 }}>
-        No trade history yet — equity curve appears after the first cycle.
+      <div className="flex flex-col items-center justify-center gap-2 py-10 text-center">
+        <span className="font-mono text-[11px] tracking-[0.16em] text-green/70 uppercase">
+          <span className="animate-pulse">▮</span> awaiting telemetry
+        </span>
+        <p className="text-[13px] text-muted-fg">Equity curve plots after the first trade cycle.</p>
       </div>
     );
   }
@@ -25,7 +28,7 @@ export function EquityChart() {
   return (
     <ResponsiveContainer width="100%" height={200}>
       <ComposedChart data={data} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
-        <CartesianGrid strokeDasharray="3 3" stroke="#1a2737" vertical={false} />
+        <CartesianGrid strokeDasharray="2 4" stroke="var(--border)" vertical={false} />
         <XAxis dataKey="t" tickFormatter={(v) => ts(Number(v))}
           tick={{ fontSize: 10, fill: "var(--muted)" }} tickLine={false} axisLine={false} />
         <YAxis yAxisId="pnl" tick={{ fontSize: 10, fill: "var(--muted)" }}
@@ -33,8 +36,14 @@ export function EquityChart() {
         <YAxis yAxisId="dd" orientation="right" tick={{ fontSize: 10, fill: "var(--muted)" }}
           tickFormatter={(v) => `${v}%`} tickLine={false} axisLine={false} width={36}
           domain={[0, "auto"]} reversed />
+        <defs>
+          <linearGradient id="eq-dd" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%"  stopColor="var(--red)" stopOpacity={0.18} />
+            <stop offset="100%" stopColor="var(--red)" stopOpacity={0} />
+          </linearGradient>
+        </defs>
         <Tooltip
-          contentStyle={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 8, fontSize: 12 }}
+          contentStyle={{ background: "var(--surface)", border: "1px solid var(--border-hi)", borderRadius: 8, fontSize: 12, fontFamily: "var(--font-mono)" }}
           labelFormatter={(l) => ts(Number(l))}
           formatter={(val, name) => {
             const n = Number(val);
@@ -42,9 +51,10 @@ export function EquityChart() {
           }}
         />
         <Area yAxisId="dd" type="monotone" dataKey="dd" name="Drawdown"
-          stroke="var(--red)" fill="#ff306018" strokeWidth={1} />
+          stroke="var(--red)" fill="url(#eq-dd)" strokeWidth={1} />
         <Line yAxisId="pnl" type="monotone" dataKey="pnl" name="Equity"
-          stroke="var(--green)" strokeWidth={2} dot={false} />
+          stroke="var(--green)" strokeWidth={2} dot={false}
+          style={{ filter: "drop-shadow(0 0 6px color-mix(in oklab, var(--green) 45%, transparent))" }} />
       </ComposedChart>
     </ResponsiveContainer>
   );

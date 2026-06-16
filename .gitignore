@@ -55,3 +55,6 @@ index.ts
 
 # gstack local artifacts (security reports, analytics)
 .gstack/
+.env.local.bak*
+*.bak
+core/test_supervisor.py.skip

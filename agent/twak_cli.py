@@ -105,14 +105,14 @@ class TwakCli:
     def compete_status(self) -> dict:
         """Is this wallet registered for the BNB Hack Track-1 competition?
         (`twak compete status`). Read-only; safe to call as a preflight."""
-        return self._run("compete", "status", "--chain", self.chain, "--json")
+        return self._run("compete", "status", "--json")
 
     def compete_register(self) -> dict:
         """Register this wallet on-chain for Track 1 (`twak compete register`).
         Operator-run ONCE before the trading window opens (Jun 22) — resolves the
         agent wallet + submits the registration tx to the competition contract.
         Late entries are rejected, so this must happen during the build window."""
-        return self._run("compete", "register", "--chain", self.chain, "--json")
+        return self._run("compete", "register", "--json")
 
     # ── swaps ──────────────────────────────────────────────────────────────────
 

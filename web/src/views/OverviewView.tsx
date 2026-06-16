@@ -5,9 +5,11 @@ import { StatCard } from "../components/StatCard";
 import { EquityChart } from "../components/EquityChart";
 import { AgentCard, AgentCardSkeleton, AGENT_DEFS } from "../components/AgentCard";
 import { PositionCard } from "../components/PositionCard";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Panel } from "../components/Panel";
+import { RegimeBadge } from "../components/RegimeBadge";
 import { Skeleton } from "@/components/ui/skeleton";
 import ThesisLedger from "../components/ThesisLedger";
+import { cn } from "@/lib/utils";
 import { usd, pct, ts } from "../lib/formatters";
 
 type Props = { onAgentClick: (name: string) => void };
@@ -39,110 +41,108 @@ export function OverviewView({ onAgentClick }: Props) {
   );
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-5 max-w-[1180px] mx-auto">
       {/* Alert banners */}
       <AnimatePresence>
         {floorHalt && (
           <motion.div
-            className="rounded-xl px-4 py-3 font-semibold text-[13px] bg-red/10 text-red border border-red/25"
+            className="panel rounded-xl px-4 py-3 font-mono text-[12px] font-semibold !bg-red/10 !border-red/30 text-red flex items-center gap-2"
             initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }}
           >
-            Trading HALTED — equity floor hit. Fund wallet or raise floor, then Resume.
+            <span className="h-2 w-2 rounded-full bg-red animate-pulse" />
+            TRADING HALTED — equity floor hit. Fund wallet or raise floor, then Resume.
           </motion.div>
         )}
         {floorWarn && (
           <motion.div
-            className="rounded-xl px-4 py-3 font-semibold text-[13px] bg-yellow/10 text-yellow border border-yellow/20"
+            className="panel rounded-xl px-4 py-3 font-mono text-[12px] font-semibold !bg-yellow/10 !border-yellow/25 text-yellow flex items-center gap-2"
             initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }}
           >
+            <span className="h-2 w-2 rounded-full bg-yellow animate-pulse" />
             Portfolio approaching equity floor. Consider adding capital.
           </motion.div>
         )}
       </AnimatePresence>
 
       {/* Stats grid */}
-      <div className="grid grid-cols-4 gap-3 max-[900px]:grid-cols-2">
+      <div className="grid grid-cols-4 gap-3 items-stretch max-[900px]:grid-cols-2">
         {ledger === undefined
-          ? Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-24 w-full bg-surface border border-border rounded-[14px]" />)
+          ? Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-[104px] w-full bg-surface border border-border rounded-xl" />)
           : <>
-              <StatCard label="Cumulative PnL" value={usd(pnl)}
-                tone={(pnl ?? 0) >= 0 ? "positive" : "negative"} animKey={pnl ?? 0} />
-              <StatCard label="Max Drawdown" value={pct(dd)}
+              <StatCard label="Cumulative PnL" value={usd(pnl)} unit="USD" featured
+                tone={(pnl ?? 0) >= 0 ? "positive" : "negative"} animKey={pnl ?? 0}
+                sub={(pnl ?? 0) >= 0 ? "in profit" : "drawdown"} />
+              <StatCard label="Max Drawdown" value={pct(dd)} unit="peak"
                 tone={(dd ?? 0) > 0.05 ? "negative" : (dd ?? 0) > 0 ? "warn" : "positive"} />
-              <StatCard label="Open Exposure" value={usd(risk?.open_exposure_usd)} />
-              <StatCard label="Win Rate" value={risk?.win_rate != null ? pct(risk.win_rate) : "—"} />
+              <StatCard label="Open Exposure" value={usd(risk?.open_exposure_usd)} unit="USD" />
+              <StatCard label="Win Rate" value={risk?.win_rate != null ? pct(risk.win_rate) : "—"} unit="hit" />
             </>
         }
       </div>
 
       {/* Equity chart */}
-      <Card className="bg-surface border-border">
-        <CardHeader className="pb-2">
-          <p className="text-[11px] uppercase tracking-[0.6px] text-muted-fg font-bold">Equity Curve</p>
-        </CardHeader>
-        <CardContent>
-          <EquityChart />
-        </CardContent>
-      </Card>
+      <Panel label="Equity Curve" action={
+        <span className="font-mono text-[10px] text-muted-fg flex items-center gap-3">
+          <span className="flex items-center gap-1.5"><span className="h-[2px] w-3 bg-green inline-block rounded" />equity</span>
+          <span className="flex items-center gap-1.5"><span className="h-[2px] w-3 bg-red inline-block rounded" />drawdown</span>
+        </span>
+      }>
+        <EquityChart />
+      </Panel>
 
       {/* Open positions */}
       {positions.length > 0 && (
-        <Card className="bg-surface border-border">
-          <CardHeader className="pb-2">
-            <p className="text-[11px] uppercase tracking-[0.6px] text-muted-fg font-bold">Open Positions</p>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-3 gap-3 max-[1200px]:grid-cols-2 max-sm:grid-cols-1">
-              <AnimatePresence>
-                {positions.map((p) => <PositionCard key={p._id} position={p} />)}
-              </AnimatePresence>
-            </div>
-          </CardContent>
-        </Card>
+        <Panel label="Open Positions" tick="cyan" action={
+          <span className="font-mono text-[10px] text-muted-fg">{positions.length} active</span>
+        }>
+          <div className="grid grid-cols-3 gap-3 max-[1200px]:grid-cols-2 max-sm:grid-cols-1">
+            <AnimatePresence>
+              {positions.map((p) => <PositionCard key={p._id} position={p} />)}
+            </AnimatePresence>
+          </div>
+        </Panel>
       )}
 
       {/* Recent decisions */}
-      <Card className="bg-surface border-border">
-        <CardHeader className="pb-2">
-          <p className="text-[11px] uppercase tracking-[0.6px] text-muted-fg font-bold">Recent Decisions</p>
-        </CardHeader>
-        <CardContent>
-          {decisions === undefined
-            ? <div className="space-y-2">{Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-12 w-full bg-elevated" />)}</div>
-            : decisions.length === 0
-              ? <p className="text-[13px] text-muted-fg">No decisions yet.</p>
-              : <div className="divide-y divide-border">
-                  {decisions.map((d) => (
-                    <div key={d._id} className="flex items-center justify-between text-[13px] py-2">
-                      <span className="text-muted-fg text-[11px]">{ts(d.timestamp_ms)}</span>
-                      <span className="text-cyan font-bold">{d.symbol}</span>
-                      <span className="text-muted-fg">{d.regime}</span>
-                      <span className={d.risk_verdict === "allow" ? "text-green font-bold" : "text-red font-bold"}>{d.risk_verdict}</span>
+      <Panel label="Recent Decisions" tick="cyan">
+        {decisions === undefined
+          ? <div className="space-y-2">{Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-11 w-full bg-elevated rounded-lg" />)}</div>
+          : decisions.length === 0
+            ? <p className="font-mono text-[12px] text-muted-fg py-2">// no decisions logged yet</p>
+            : <div className="flex flex-col gap-1.5">
+                {decisions.map((d) => {
+                  const allow = d.risk_verdict === "allow";
+                  return (
+                    <div key={d._id} className="flex items-center gap-3 rounded-lg bg-bg/50 border border-border px-3 py-2.5 text-[13px]">
+                      <span className="font-mono text-[11px] text-muted-fg w-16 flex-shrink-0">{ts(d.timestamp_ms)}</span>
+                      <span className="font-display font-bold text-cyan w-14 flex-shrink-0">{d.symbol}</span>
+                      <RegimeBadge regime={d.regime} />
+                      <span className={cn(
+                        "ml-auto font-mono text-[10px] font-bold tracking-[0.16em] uppercase px-2 py-1 rounded border",
+                        allow ? "text-green border-green/30 bg-green/10" : "text-red border-red/30 bg-red/10",
+                      )}>
+                        {d.risk_verdict}
+                      </span>
                     </div>
-                  ))}
-                </div>
-          }
-        </CardContent>
-      </Card>
+                  );
+                })}
+              </div>
+        }
+      </Panel>
 
       {/* Agent roster */}
-      <Card className="bg-surface border-border">
-        <CardHeader className="pb-2">
-          <p className="text-[11px] uppercase tracking-[0.6px] text-muted-fg font-bold">Agent Team</p>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 gap-3 max-sm:grid-cols-1">
-            {roster === undefined
-              ? AGENT_DEFS.map((d) => <AgentCardSkeleton key={d.name} />)
-              : AGENT_DEFS.map((def) => (
-                  <AgentCard key={def.name} def={def}
-                    lastEvent={rosterMap.get(def.name)}
-                    onClick={() => onAgentClick(def.name)} />
-                ))
-            }
-          </div>
-        </CardContent>
-      </Card>
+      <Panel label="Agent Team" tick="purple">
+        <div className="grid grid-cols-2 gap-3 max-sm:grid-cols-1">
+          {roster === undefined
+            ? AGENT_DEFS.map((d) => <AgentCardSkeleton key={d.name} />)
+            : AGENT_DEFS.map((def) => (
+                <AgentCard key={def.name} def={def}
+                  lastEvent={rosterMap.get(def.name)}
+                  onClick={() => onAgentClick(def.name)} />
+              ))
+          }
+        </div>
+      </Panel>
 
       <ThesisLedger />
     </div>

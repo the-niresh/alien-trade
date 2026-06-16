@@ -1,6 +1,7 @@
 import { motion } from "framer-motion";
 import { ts } from "../lib/formatters";
 import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from "@/lib/utils";
 
 export type AgentDef = {
   name: string;
@@ -25,58 +26,75 @@ export function AgentCard({ def, lastEvent, onClick }: Props) {
   const ageSec = lastEvent ? (now - lastEvent.ts_ms) / 1000 : Infinity;
   const isActive = ageSec < 60;
   const isRecent = ageSec < 300;
+  const status   = isActive ? "ONLINE" : isRecent ? "ACTIVE" : "IDLE";
   const dotColor = isActive ? "var(--green)" : isRecent ? "var(--yellow)" : "var(--border-hi)";
 
   return (
-    <div
-      className="bg-surface border border-border rounded-2xl p-5 cursor-pointer transition-colors hover:bg-elevated"
+    <button
+      className="panel group relative w-full text-left p-5 cursor-pointer transition-all hover:-translate-y-0.5 hover:border-border-hi overflow-hidden"
       onClick={onClick}
     >
-      <div className="flex items-center gap-3 mb-3">
+      {/* accent wash in agent colour */}
+      <span
+        className="absolute -right-8 -top-8 h-24 w-24 rounded-full opacity-[0.07] blur-xl transition-opacity group-hover:opacity-15"
+        style={{ background: def.color }}
+      />
+
+      <div className="flex items-center gap-3 mb-3 relative">
         <motion.div
-          className="w-[42px] h-[42px] rounded-full flex items-center justify-center text-[13px] font-black flex-shrink-0"
-          style={{ color: def.color, background: def.bg, border: `1.5px solid ${def.color}40` }}
+          className="w-[44px] h-[44px] rounded-xl flex items-center justify-center font-mono text-[13px] font-bold flex-shrink-0"
+          style={{ color: def.color, background: def.bg, border: `1px solid ${def.color}40` }}
           animate={isActive
-            ? { boxShadow: [`0 0 8px ${def.color}40`, `0 0 20px ${def.color}80`, `0 0 8px ${def.color}40`] }
-            : { scale: [1, 1.03, 1] }}
-          transition={{ duration: isActive ? 1.5 : 4, repeat: Infinity, ease: "easeInOut" }}
+            ? { boxShadow: [`0 0 6px ${def.color}30`, `0 0 22px ${def.color}70`, `0 0 6px ${def.color}30`] }
+            : {}}
+          transition={{ duration: 1.6, repeat: Infinity, ease: "easeInOut" }}
         >
           {def.label}
         </motion.div>
-        <div className="flex-1">
-          <div className="font-grotesk text-[16px] font-bold" style={{ color: def.color }}>{def.name}</div>
-          <div className="text-[12px] text-muted-fg">{def.role}</div>
+        <div className="flex-1 min-w-0">
+          <div className="font-display text-[15px] font-bold tracking-wide" style={{ color: def.color }}>{def.name}</div>
+          <div className="text-[12px] text-muted-fg leading-snug line-clamp-1">{def.role}</div>
         </div>
-        <motion.div
-          className="w-2 h-2 rounded-full flex-shrink-0"
-          style={{ background: dotColor }}
-          animate={isActive ? { opacity: [1, 0.4, 1] } : {}}
-          transition={{ duration: 1, repeat: Infinity }}
-        />
+        <div className="flex flex-col items-end gap-1 flex-shrink-0">
+          <motion.span
+            className="w-2 h-2 rounded-full"
+            style={{ background: dotColor, boxShadow: isActive ? `0 0 8px ${dotColor}` : "none" }}
+            animate={isActive ? { opacity: [1, 0.35, 1] } : {}}
+            transition={{ duration: 1, repeat: Infinity }}
+          />
+          <span className="font-mono text-[9px] tracking-[0.12em]" style={{ color: dotColor }}>{status}</span>
+        </div>
       </div>
-      {lastEvent ? (
-        <>
-          <div className="text-[13px] text-text/80 leading-relaxed line-clamp-2">{lastEvent.headline}</div>
-          <div className="text-[11px] text-muted-fg mt-2">{ts(lastEvent.ts_ms)} · {lastEvent.kind}</div>
-        </>
-      ) : (
-        <div className="text-[13px] text-muted-fg italic">No activity yet</div>
-      )}
-    </div>
+
+      <div className="rounded-lg bg-bg/60 border border-border px-3 py-2.5">
+        {lastEvent ? (
+          <>
+            <div className="text-[12.5px] text-text/85 leading-relaxed line-clamp-2">{lastEvent.headline}</div>
+            <div className="font-mono text-[10px] text-muted-fg mt-1.5 flex items-center gap-1.5">
+              <span>{ts(lastEvent.ts_ms)}</span>
+              <span className="text-border-hi">·</span>
+              <span className="uppercase tracking-wide">{lastEvent.kind}</span>
+            </div>
+          </>
+        ) : (
+          <div className={cn("text-[12.5px] text-muted-fg italic")}>Awaiting first transmission…</div>
+        )}
+      </div>
+    </button>
   );
 }
 
 export function AgentCardSkeleton() {
   return (
-    <div className="bg-surface border border-border rounded-2xl p-5">
+    <div className="panel p-5">
       <div className="flex items-center gap-3 mb-3">
-        <Skeleton className="w-[42px] h-[42px] rounded-full bg-elevated" />
+        <Skeleton className="w-[44px] h-[44px] rounded-xl bg-elevated" />
         <div className="flex-1 space-y-2">
           <Skeleton className="h-4 w-24 bg-elevated" />
           <Skeleton className="h-3 w-40 bg-elevated" />
         </div>
       </div>
-      <Skeleton className="h-8 w-full bg-elevated" />
+      <Skeleton className="h-12 w-full bg-elevated rounded-lg" />
     </div>
   );
 }

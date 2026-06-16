@@ -30,19 +30,25 @@ export function PositionCard({ position }: { position: Position }) {
   return (
     <motion.div
       className={cn(
-        "bg-surface rounded-2xl p-4 border transition-[border-color,box-shadow] duration-300",
-        positive
-          ? "border-green/20 shadow-[0_0_20px_rgba(0,255,157,0.03)]"
-          : "border-red/20 shadow-[0_0_20px_rgba(255,48,96,0.03)]"
+        "panel relative p-4 overflow-hidden",
+        positive ? "border-green/25" : "border-red/25",
       )}
+      style={{ boxShadow: positive
+        ? "0 0 28px color-mix(in oklab, var(--green) 6%, transparent)"
+        : "0 0 28px color-mix(in oklab, var(--red) 6%, transparent)" }}
       layout
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, scale: 0.96 }}
     >
-      <div className="flex justify-between items-center mb-2">
-        <span className="font-grotesk text-[17px] font-bold">{position.symbol}</span>
-        <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-cyan/10 text-cyan tracking-widest">LONG</span>
+      <div className="flex justify-between items-center mb-2 relative">
+        <div className="flex items-center gap-2">
+          <span className="font-display text-[18px] font-bold tracking-wide">{position.symbol}</span>
+          <span className="font-mono text-[9px] font-bold px-1.5 py-0.5 rounded bg-cyan/10 text-cyan tracking-[0.18em] border border-cyan/20">LONG</span>
+        </div>
+        <span className={cn("font-mono text-[10px] tracking-wide", positive ? "text-green" : "text-red")}>
+          {sign}{pct(Math.abs(pnlPct))}
+        </span>
       </div>
 
       {ticks.length >= 2
@@ -50,24 +56,24 @@ export function PositionCard({ position }: { position: Position }) {
         : <Skeleton className="h-14 w-full bg-elevated rounded-lg my-2" />
       }
 
-      <div className="flex items-center gap-2 my-2.5">
+      <div className="flex items-center gap-3 my-2.5">
         <div className="flex-1">
-          <div className="text-[10px] text-muted-fg mb-0.5">Entry</div>
-          <div className="font-grotesk text-[13px] font-semibold">{usd(position.avg_entry_price)}</div>
+          <div className="font-mono text-[9px] uppercase tracking-[0.12em] text-muted-fg mb-0.5">Entry</div>
+          <div className="font-mono text-[13px] font-semibold tabular-nums">{usd(position.avg_entry_price)}</div>
         </div>
-        <span className="text-muted-fg text-sm">→</span>
-        <div className="flex-1">
-          <div className="text-[10px] text-muted-fg mb-0.5">Current</div>
-          <div className="font-grotesk text-[13px] font-semibold">{usd(position.current_price)}</div>
+        <span className="text-border-hi text-sm">→</span>
+        <div className="flex-1 text-right">
+          <div className="font-mono text-[9px] uppercase tracking-[0.12em] text-muted-fg mb-0.5">Mark</div>
+          <div className="font-mono text-[13px] font-semibold tabular-nums">{usd(position.current_price)}</div>
         </div>
       </div>
 
-      <div className="flex justify-between items-center mt-2">
-        <span className="text-[12px] text-muted-fg">
+      <div className="flex justify-between items-center mt-2 pt-2.5 border-t border-border">
+        <span className="font-mono text-[11px] text-muted-fg tabular-nums">
           {position.quantity.toFixed(4)} · {elapsed(position.updated_ms)}
         </span>
-        <span className={cn("font-grotesk text-[15px] font-bold", positive ? "text-green" : "text-red")}>
-          {sign}{usd(position.unrealized_pnl_usd)} ({sign}{pct(Math.abs(pnlPct))})
+        <span className={cn("font-display text-[16px] font-bold tabular-nums", positive ? "text-green glow-green" : "text-red glow-red")}>
+          {sign}{usd(position.unrealized_pnl_usd)}
         </span>
       </div>
     </motion.div>

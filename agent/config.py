@@ -112,3 +112,12 @@ class AgentConfig:
         # A named strategy overrides the default params (keeping the chosen symbol).
         if self.strategy_name:
             self.strategy = get_strategy_params(self.strategy_name, symbol=self.symbol)
+        # Allow position size override via env so live capital doesn't have to match
+        # the backtest's notional $1000. On mainnet with $5 wallet, set POSITION_SIZE_USD=4.
+        pos_override = os.environ.get("POSITION_SIZE_USD", "").strip()
+        if pos_override:
+            try:
+                from dataclasses import replace as _replace
+                self.strategy = _replace(self.strategy, position_size_usd=float(pos_override))
+            except (ValueError, TypeError):
+                pass

@@ -5,6 +5,8 @@ to the channel, the Pause-Agents control short-circuits Tier-1 nodes without run
 them, and historian summarises Vector recall. Hermetic — fake Second Brain + bridge.
 """
 from __future__ import annotations
+import pytest
+pytest.importorskip("langgraph", reason="langgraph not installed — skip supervisor tests")
 
 from types import SimpleNamespace
 

@@ -18,7 +18,7 @@ type Props = {
 
 export function BottomNav({ active, onSelect }: Props) {
   return (
-    <nav className="h-11 bg-surface border-t border-border flex items-stretch w-full flex-shrink-0">
+    <nav className="chrome h-12 border-t border-border flex items-stretch w-full flex-shrink-0 z-10">
       {TABS.map((tab) => {
         const Icon = tab.icon;
         const isActive = active === tab.view;
@@ -27,13 +27,17 @@ export function BottomNav({ active, onSelect }: Props) {
             key={tab.view}
             onClick={() => onSelect(tab.view)}
             className={cn(
-              "flex-1 flex flex-col items-center justify-center gap-0.5 transition-colors",
-              isActive ? "text-cyan" : "text-muted-fg"
+              "relative flex-1 flex flex-col items-center justify-center gap-0.5 transition-colors cursor-pointer",
+              isActive ? "text-green" : "text-muted-fg"
             )}
             aria-label={tab.label}
+            aria-current={isActive ? "page" : undefined}
           >
+            {isActive && (
+              <span className="absolute top-0 h-[2px] w-8 rounded-full bg-green" style={{ boxShadow: "0 0 8px var(--green)" }} />
+            )}
             <Icon className="w-[18px] h-[18px]" />
-            <span className={cn("text-[9px] font-bold", isActive ? "text-cyan" : "text-muted-fg")}>
+            <span className={cn("font-mono text-[9px] font-bold tracking-wide", isActive ? "text-green" : "text-muted-fg")}>
               {tab.label}
             </span>
           </button>

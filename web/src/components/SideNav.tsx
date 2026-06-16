@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { motion } from "framer-motion";
 import { toggleTheme, getTheme } from "../lib/theme";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
@@ -19,30 +20,45 @@ type Props = { active: View; onSelect: (v: View) => void; onCopilot: () => void 
 export function SideNav({ active, onSelect, onCopilot }: Props) {
   const [theme, setTheme] = useState(getTheme);
 
-  const handleThemeToggle = () => {
-    const next = toggleTheme();
-    setTheme(next);
-  };
+  const handleThemeToggle = () => setTheme(toggleTheme());
 
   return (
     <TooltipProvider delayDuration={300}>
-      <nav className="w-[52px] bg-surface border-r border-border flex flex-col items-center py-3 gap-1 flex-shrink-0">
+      <nav className="chrome w-[58px] border-r border-border flex flex-col items-center py-3 gap-1.5 flex-shrink-0 z-10">
         {NAV_ITEMS.map((item) => {
           const Icon = item.icon;
+          const isActive = active === item.view;
           return (
             <Tooltip key={item.view}>
               <TooltipTrigger asChild>
                 <button
                   onClick={() => onSelect(item.view)}
                   className={cn(
-                    "w-10 h-10 rounded-[10px] flex items-center justify-center transition-colors",
-                    active === item.view
-                      ? "bg-elevated text-cyan"
+                    "relative w-10 h-10 rounded-[11px] flex items-center justify-center transition-colors cursor-pointer",
+                    isActive
+                      ? "text-green"
                       : "text-muted-fg hover:bg-elevated hover:text-text"
                   )}
                   aria-label={item.label}
+                  aria-current={isActive ? "page" : undefined}
                 >
-                  <Icon className="w-[18px] h-[18px]" />
+                  {isActive && (
+                    <motion.span
+                      layoutId="nav-active"
+                      className="absolute inset-0 rounded-[11px] bg-green/10 border border-green/25"
+                      style={{ boxShadow: "0 0 18px color-mix(in oklab, var(--green) 28%, transparent)" }}
+                      transition={{ type: "spring", stiffness: 500, damping: 34 }}
+                    />
+                  )}
+                  {isActive && (
+                    <motion.span
+                      layoutId="nav-rail"
+                      className="absolute -left-3 top-1/2 -translate-y-1/2 h-5 w-[3px] rounded-full bg-green"
+                      style={{ boxShadow: "0 0 10px var(--green)" }}
+                      transition={{ type: "spring", stiffness: 500, damping: 34 }}
+                    />
+                  )}
+                  <Icon className="w-[18px] h-[18px] relative z-10" />
                 </button>
               </TooltipTrigger>
               <TooltipContent side="right">{item.label}</TooltipContent>
@@ -56,7 +72,7 @@ export function SideNav({ active, onSelect, onCopilot }: Props) {
           <TooltipTrigger asChild>
             <button
               onClick={onCopilot}
-              className="w-10 h-10 rounded-[10px] flex items-center justify-center text-purple hover:bg-elevated transition-colors"
+              className="w-10 h-10 rounded-[11px] flex items-center justify-center text-purple hover:bg-purple/10 transition-colors cursor-pointer"
               aria-label="Co-Pilot"
             >
               <Bot className="w-[18px] h-[18px]" />
@@ -69,7 +85,7 @@ export function SideNav({ active, onSelect, onCopilot }: Props) {
           <TooltipTrigger asChild>
             <button
               onClick={handleThemeToggle}
-              className="w-10 h-10 rounded-[10px] flex items-center justify-center text-muted-fg hover:bg-elevated hover:text-text transition-colors"
+              className="w-10 h-10 rounded-[11px] flex items-center justify-center text-muted-fg hover:bg-elevated hover:text-text transition-colors cursor-pointer"
               aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
             >
               {theme === "dark" ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}

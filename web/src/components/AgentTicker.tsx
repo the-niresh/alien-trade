@@ -13,12 +13,18 @@ export function AgentTicker() {
   const doubled = [...items, ...items];
 
   return (
-    <div className="h-[30px] bg-surface border-t border-border flex items-center overflow-hidden flex-shrink-0 px-3">
-      <div className="ticker-track">
+    <div className="chrome h-[30px] border-t border-border flex items-center overflow-hidden flex-shrink-0 z-10">
+      {/* live tag */}
+      <div className="flex items-center gap-1.5 px-3 h-full border-r border-border flex-shrink-0 bg-green/[0.04]">
+        <span className="h-1.5 w-1.5 rounded-full bg-green animate-pulse" style={{ boxShadow: "0 0 8px var(--green)" }} />
+        <span className="font-mono text-[9px] font-bold tracking-[0.18em] text-green uppercase">Feed</span>
+      </div>
+      <div className="ticker-track px-4">
         {doubled.map((item, i) => (
-          <span key={`${item.id}-${i}`} className="text-[11px] text-muted-fg">
-            <span className="font-bold mr-1.5" style={{ color: item.color }}>{item.agent}</span>
-            {item.headline}
+          <span key={`${item.id}-${i}`} className="font-mono text-[11px] text-muted-fg flex items-center gap-2">
+            <span className="font-bold tracking-wide" style={{ color: item.color }}>{item.agent}</span>
+            <span className="text-border-hi">›</span>
+            <span className="text-text/70">{item.headline}</span>
           </span>
         ))}
       </div>

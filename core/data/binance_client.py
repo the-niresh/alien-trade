@@ -161,7 +161,12 @@ class BinanceClient:
         klines = r.json()
         if klines:
             klines = klines[:-1]  # drop the in-progress candle
-        return self.bars_from_df(_parse_klines(klines))
+        df = _parse_klines(klines)
+        # Inject Fear & Greed Index so fear_greed_signal works on live bars
+        # (historical bars get this via _enrich_sentiment; live bars need it too)
+        if df["social_score"].max() == 0.0:
+            df = self._enrich_sentiment(df)
+        return self.bars_from_df(df)
 
     # ── Derivatives enrichment (free Binance Futures API: funding + OI) ──────
 

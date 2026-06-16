@@ -222,51 +222,92 @@ Start with S1 + S2 + one of S3/S4. Add the third only if it improves out-of-samp
 
 ---
 
-## Live Ops — deployed on this VPS (2026-06-11)
+## Live Ops — deployed on this VPS (2026-06-17, updated)
 
 **Key fact:** Claude Code runs **ON the target VPS** (`76.13.243.12`, host `ai`,
 Ubuntu 24.04, root). Deploy is **local — no SSH**. The repo runs in place at
 `/root/claude/projects/alien-trade` with the `core/.venv` Python (`uv`-built).
-`.env.local` is loaded by `agent/config.py` via an absolute path, so cwd doesn't matter.
 
 ### Running services (systemd, all `enabled` = survive reboot)
 
 | Unit                   | What it does                                                              | Logs |
 | ---------------------- | ------------------------------------------------------------------------ | ---- |
-| `alien-trade.service`  | 24/7 paper runtime, 1 h cadence, autopilot on, `Restart=always`          | `/var/log/alien-trade.log` |
-| `alien-cockpit.service`| Cockpit PWA (Vite) on `0.0.0.0:4173` → reads Convex `festive-newt-1`      | `/var/log/alien-cockpit.log` |
-| `alien-digest.timer`   | Fires `python -m agent.digest` hourly at `:07` → Telegram summary         | `/var/log/alien-digest.log` |
+| `alien-trade.service`  | **mainnet**, contrarian strategy, 1h cadence, activity-floor on          | `/var/log/alien-trade.log` |
+| `alien-cockpit.service`| Cockpit PWA (Vite) on `0.0.0.0:4173` → reads Convex `festive-newt-1`   | `/var/log/alien-cockpit.log` |
+| `alien-digest.timer`   | Fires `python -m agent.digest` hourly at `:07` → Telegram summary        | `/var/log/alien-digest.log` |
+
+The service uses `EnvironmentFile=/root/claude/projects/alien-trade/.env.local` so
+**all env vars (including `TWAK_WALLET_PASSWORD`) are inherited by subprocesses**
+including the `twak` CLI. Do not hardcode `--mode` in `ExecStart` — let `TRADING_MODE`
+in `.env.local` control it.
+
+### Key env vars (all in `.env.local`, loaded by systemd EnvironmentFile)
+
+| Var | Value | Purpose |
+| --- | --- | --- |
+| `TRADING_MODE` | `mainnet` | paper / testnet / mainnet |
+| `STRATEGY_NAME` | `contrarian` | Fear & Greed backbone strategy |
+| `POSITION_SIZE_USD` | `4` | Trade size — scale with wallet balance |
+| `ACTIVITY_FLOOR` | `1` | Force ≥1 trade/day (competition requirement) |
+| `TWAK_WALLET_PASSWORD` | set | Password for TWAK self-custody wallet |
+| `TW_ACCESS_ID` | set | Alias of TWAK_ACCESS_ID (expected by core tests) |
+| `TW_HMAC_SECRET` | set | Alias of TWAK_HMAC_SECRET (expected by core tests) |
+| `PWA_URL` | `http://76.13.243.12:4173` | Shown in terminal QR on startup |
 
 ### Operating commands
 
 ```bash
 systemctl status alien-trade --no-pager        # is the agent running?
-tail -f /var/log/alien-trade.log               # live decision/audit lines (JSON)
-systemctl restart alien-trade                   # after a git pull / .env.local change
+tail -f /var/log/alien-trade.log               # live decision/audit JSON
+systemctl restart alien-trade                   # after any .env.local or code change
 core/.venv/bin/python -m agent.digest --stdout  # preview the hourly digest now
 systemctl list-timers alien-digest --no-pager   # when does the next digest fire?
 ```
 
 ### Cockpit + alerts
 
-- **UI:** http://76.13.243.12:4173/ (VPS). Production build is `vite build` only
-  (`bun run build`); `tsc -b` moved to `bun run typecheck` (was blocking on non-fatal
-  `noImplicitAny`). Vercel-ready (`web/vercel.json`) — deploy needs `vercel login`.
-- **Telegram:** the agent's built-in two-way bot (`agent/notify.py`, wired in
-  `runtime.py`) sends per-event alerts (equity-floor / kill-switch / autopilot-bank)
-  and accepts `/status /halt /resume /pause`. Set `TELEGRAM_BOT_TOKEN` +
-  `TELEGRAM_CHAT_ID` in `.env.local`, then `systemctl restart alien-trade`. The hourly
-  `agent/digest.py` uses the same creds. Absent creds → both no-op (digest prints to log).
+- **UI:** http://76.13.243.12:4173/ — pair with `CONTROL_TOKEN` from `.env.local`
+  (paste into the pairing dialog, not the QR — QR only encodes the URL, not the token).
+- **Telegram:** two-way bot (`agent/notify.py`) sends alerts and accepts
+  `/status /halt /resume /pause`. Creds in `.env.local` (`TELEGRAM_BOT_TOKEN` + `TELEGRAM_CHAT_ID`).
+
+### Competition status (updated 2026-06-17)
+
+- ✅ **On-chain registration DONE** — tx `0x964fd6c9...` on BSC, registered before Jun 25 deadline.
+- ✅ **Wallet:** `0x485Ec1b615369d8a6dFb452471C4994f2e4d062d` — 0.01 BNB (gas) + 5 USDT (capital).
+- ✅ **BNB is gas-only** — NOT an eligible scoring token. Keep ≥0.005 BNB for gas at all times.
+- ⬜ **DoraHacks submission** — wallet address + strategy writeup still needed at dorahacks.io.
+- ⬜ **Demo video** — ~3 min screen recording (operator task, post Jun 21 freeze).
+
+### TWAK CLI — known gotchas
+
+- `twak compete status/register` does **NOT** accept `--chain` flag (unlike `twak wallet/swap`).
+  The `TwakCli.compete_status()` and `compete_register()` methods in `agent/twak_cli.py` are
+  fixed to omit `--chain`. Do not re-add it.
+- `TWAK_WALLET_PASSWORD` must be set in the environment for ANY twak command that touches the
+  wallet (balance, swap, compete). Since systemd loads `.env.local` via `EnvironmentFile`,
+  subprocesses inherit it automatically. When testing manually: prefix with
+  `TWAK_WALLET_PASSWORD="..." twak ...`.
+
+### Signal fixes applied (2026-06-17)
+
+- **S3 (Fear & Greed) was 0 on live bars** — `BinanceClient.fetch_recent_bars` now calls
+  `_enrich_sentiment` to inject F&G from disk cache, same as historical bars.
+- **Contrarian CHOP gate** — default 0.5 gate fought the strategy. `StrategyParams.chop_gate=0.8`
+  on contrarian. CRASH gate (0.0) and HIGH_VOL gate (0.3) unchanged.
+- **Backtest showed 0 fills** — root cause was the above two issues. All 6 thesis-factory
+  theses (T-001…T-006) are FALSIFIED; see `docs/THESIS_LEDGER.md`. Search direction: exit/risk
+  rules with hard ATR stops, not entry rules.
 
 ### Known follow-ups
 
-- Stale ledger rows from earlier local runs are still in Convex (equity ≈ $9,831,
-  drawdown −1.92%). Reset before the clean 8-day corpus if a fresh start is wanted.
-- Second Brain (Hermes reflection / co-pilot) is OFF (`SECOND_BRAIN=0`): `cd core &&
-  uv pip install langgraph anthropic upstash-redis upstash-vector`, flip the unit to
-  `SECOND_BRAIN=1`, restart. Upstash + Anthropic keys are already in `.env.local`.
-- `core/data/parquet/` historical files are absent → 4 `TestDataLoader` tests fail
-  (data-availability only; 176/180 logic tests pass). Live loop uses the Binance feed.
+- Second Brain (Hermes reflection / co-pilot) is OFF (`SECOND_BRAIN=0`). To enable:
+  `cd core && uv pip install langgraph anthropic upstash-redis upstash-vector`
+  then flip `SECOND_BRAIN=1` in the systemd service and restart. Keys already in `.env.local`.
+- Stale Convex ledger rows from paper runs (equity ≈ $9,831). Reset before the clean
+  8-day window if a fresh start is wanted.
+- `core/data/parquet/` open_interest and net_flow columns are all zeros — S2 OI and S4
+  flow signals are disabled until data is backfilled.
 
 ---
 

@@ -64,6 +64,10 @@ class StrategyParams:
     trend_slope_lookback: int = 12
     # Rebalance band: skip trade if |target - current| < band (cuts churn)
     rebalance_band: float = 0.15
+    # Per-strategy CHOP gate override. Default None = use REGIME_GATES[CHOP]=0.5.
+    # Contrarian sets this to 0.8 because it is DESIGNED for sideways/choppy markets
+    # and the generic 0.5 gate directly fights its edge.
+    chop_gate: float | None = None
     # Position sizing
     position_size_usd: float = 1_000.0
     # Traded symbol — must be a competition-eligible BEP-20 (see docs/GOAL.md).
@@ -93,6 +97,8 @@ def make_strategy(params: StrategyParams) -> StrategyFn:
         # ── Regime gate ───────────────────────────────────────────────────────
         regime = detect_regime(history)
         gate = REGIME_GATES.get(regime, 1.0)
+        if regime == Regime.CHOP and params.chop_gate is not None:
+            gate = params.chop_gate
 
         # ── Trend-filter regime gate (cash is the default) ────────────────────
         # Only hold long while price is above the long EMA. Below it, capital sits
@@ -170,6 +176,8 @@ def score_breakdown(history: list[Bar], params: StrategyParams) -> dict:
     """Return per-signal scores + composite for a given history slice."""
     regime = detect_regime(history)
     gate = REGIME_GATES.get(regime, 1.0)
+    if regime == Regime.CHOP and params.chop_gate is not None:
+        gate = params.chop_gate
     mom   = momentum_signal(history, params.ema_fast, params.ema_slow, params.roc_period)
     deriv = derivatives_signal(history)
     sent  = fear_greed_signal(history) if params.w_sentiment > 0.0 else 0.0

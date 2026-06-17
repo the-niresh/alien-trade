@@ -18,7 +18,14 @@ type Props = {
 
 export function BottomNav({ active, onSelect }: Props) {
   return (
-    <nav className="chrome h-12 border-t border-border flex items-stretch w-full flex-shrink-0 z-10">
+    <nav
+      className="h-14 border-t border-border/60 flex items-stretch w-full flex-shrink-0 z-10"
+      style={{
+        background: "color-mix(in oklab, var(--surface) 88%, transparent)",
+        backdropFilter: "blur(16px) saturate(1.2)",
+        WebkitBackdropFilter: "blur(16px) saturate(1.2)",
+      }}
+    >
       {TABS.map((tab) => {
         const Icon = tab.icon;
         const isActive = active === tab.view;
@@ -27,17 +34,30 @@ export function BottomNav({ active, onSelect }: Props) {
             key={tab.view}
             onClick={() => onSelect(tab.view)}
             className={cn(
-              "relative flex-1 flex flex-col items-center justify-center gap-0.5 transition-colors cursor-pointer",
-              isActive ? "text-green" : "text-muted-fg"
+              "relative flex-1 flex flex-col items-center justify-center gap-[3px] transition-all duration-200 cursor-pointer min-h-[44px]",
+              isActive ? "text-green" : "text-muted-fg hover:text-text/70",
             )}
             aria-label={tab.label}
             aria-current={isActive ? "page" : undefined}
           >
+            {/* Active indicator — full-width top bar with glow */}
             {isActive && (
-              <span className="absolute top-0 h-[2px] w-8 rounded-full bg-green" style={{ boxShadow: "0 0 8px var(--green)" }} />
+              <span
+                className="absolute top-0 left-2 right-2 h-[2.5px] rounded-full bg-green"
+                style={{ boxShadow: "0 0 10px var(--green), 0 0 20px color-mix(in oklab, var(--green) 40%, transparent)" }}
+              />
             )}
-            <Icon className="w-[18px] h-[18px]" />
-            <span className={cn("font-mono text-[9px] font-bold tracking-wide", isActive ? "text-green" : "text-muted-fg")}>
+
+            {/* Active background wash */}
+            {isActive && (
+              <span className="absolute inset-x-1 inset-y-1 rounded-xl bg-green/6" />
+            )}
+
+            <Icon className={cn("relative z-10 transition-transform duration-200", isActive ? "w-[19px] h-[19px]" : "w-[18px] h-[18px]", isActive && "drop-shadow-[0_0_6px_var(--green)]")} />
+            <span className={cn(
+              "relative z-10 font-mono font-bold tracking-[0.08em] transition-all duration-200",
+              isActive ? "text-[10px] text-green" : "text-[9px] text-muted-fg",
+            )}>
               {tab.label}
             </span>
           </button>

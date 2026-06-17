@@ -7,9 +7,15 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 function ViewHeading({ title, meta }: { title: string; meta?: string }) {
   return (
-    <div className="flex items-baseline gap-3 mb-5">
-      <h1 className="font-display text-[20px] font-bold tracking-wide">{title}</h1>
-      {meta && <span className="font-mono text-[11px] text-muted-fg">{meta}</span>}
+    <div className="mb-5">
+      <div className="font-mono text-[10px] text-muted-fg tracking-[0.22em] uppercase mb-1.5 flex items-center gap-2">
+        <span className="h-[2px] w-4 bg-cyan rounded-full inline-block" style={{ boxShadow: "0 0 6px var(--cyan)" }} />
+        Live Book
+      </div>
+      <div className="flex items-baseline gap-3">
+        <h1 className="font-display text-[22px] font-bold tracking-wide">{title}</h1>
+        {meta && <span className="font-mono text-[11px] text-cyan font-bold">{meta}</span>}
+      </div>
     </div>
   );
 }

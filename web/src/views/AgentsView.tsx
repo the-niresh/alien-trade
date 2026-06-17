@@ -14,9 +14,17 @@ export function AgentsView({ onAgentClick }: Props) {
 
   return (
     <div className="max-w-[1180px] mx-auto">
-      <div className="mb-5">
-        <h1 className="font-display text-[20px] font-bold tracking-wide mb-1">Agent Team</h1>
-        <p className="font-mono text-[12px] text-muted-fg">// click any agent to interrogate the co-pilot about it</p>
+      <div className="mb-6 flex items-end gap-4 justify-between">
+        <div>
+          <div className="font-mono text-[10px] text-muted-fg tracking-[0.22em] uppercase mb-1.5 flex items-center gap-2">
+            <span className="h-[2px] w-4 bg-purple rounded-full inline-block" style={{ boxShadow: "0 0 6px var(--purple)" }} />
+            Neural Mesh
+          </div>
+          <h1 className="font-display text-[22px] font-bold tracking-wide text-text">Agent Team</h1>
+        </div>
+        <p className="font-mono text-[11px] text-muted-fg/60 hidden sm:block pb-0.5">
+          tap to interrogate via co-pilot
+        </p>
       </div>
       <div className="grid grid-cols-2 gap-4 max-sm:grid-cols-1">
         {roster === undefined

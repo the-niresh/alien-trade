@@ -61,7 +61,13 @@ export function ControlsView() {
 
   return (
     <div className="max-w-[680px] mx-auto space-y-4">
-      <h1 className="font-display text-[20px] font-bold tracking-wide mb-1">Controls</h1>
+      <div className="mb-2">
+        <div className="font-mono text-[10px] text-muted-fg tracking-[0.22em] uppercase mb-1.5 flex items-center gap-2">
+          <span className="h-[2px] w-4 bg-red rounded-full inline-block" style={{ boxShadow: "0 0 6px var(--red)" }} />
+          Command Override
+        </div>
+        <h1 className="font-display text-[22px] font-bold tracking-wide text-text">Controls</h1>
+      </div>
 
       {/* Kill switch */}
       <Panel label="Emergency Stop" tick="red">
@@ -184,18 +190,34 @@ export function ControlsView() {
             return (
               <button key={s.name}
                 className={cn(
-                  "relative rounded-xl p-3.5 cursor-pointer text-left transition-all border",
+                  "relative rounded-xl p-3.5 cursor-pointer text-left transition-all border overflow-hidden",
                   sel
-                    ? "border-green/50 bg-green/[0.06]"
-                    : "border-border bg-elevated hover:border-border-hi hover:-translate-y-0.5"
+                    ? "border-green/55 bg-green/[0.07]"
+                    : "border-border bg-elevated hover:border-border-hi hover:-translate-y-0.5 hover:bg-elevated/80"
                 )}
+                style={sel ? {
+                  boxShadow: "0 0 20px color-mix(in oklab, var(--green) 10%, transparent), inset 0 1px 0 color-mix(in oklab, var(--green) 15%, transparent)",
+                } : {}}
                 onClick={() => setStrategy({ strategy_name: s.name })}
               >
-                <div className="flex items-center gap-2 mb-1">
-                  {sel && <span className="h-1.5 w-1.5 rounded-full bg-green" style={{ boxShadow: "0 0 8px var(--green)" }} />}
-                  <span className={cn("font-display text-[14px] font-bold", sel ? "text-green" : "text-text")}>{s.label}</span>
+                {/* Selected wash */}
+                {sel && (
+                  <span className="absolute inset-0 pointer-events-none rounded-xl"
+                    style={{ background: "linear-gradient(135deg, color-mix(in oklab, var(--green) 8%, transparent) 0%, transparent 60%)" }}
+                  />
+                )}
+                <div className="flex items-center gap-2 mb-1.5 relative">
+                  {sel
+                    ? <span className="h-2 w-2 rounded-full bg-green flex-shrink-0" style={{ boxShadow: "0 0 10px var(--green)" }} />
+                    : <span className="h-2 w-2 rounded-full bg-border flex-shrink-0" />
+                  }
+                  <span className={cn("font-display text-[14px] font-bold", sel ? "text-green" : "text-text")}>
+                    {s.label}
+                  </span>
                 </div>
-                <div className="text-[12px] text-muted-fg leading-snug">{s.blurb}</div>
+                <div className={cn("text-[12px] leading-snug relative", sel ? "text-text/70" : "text-muted-fg")}>
+                  {s.blurb}
+                </div>
               </button>
             );
           })}

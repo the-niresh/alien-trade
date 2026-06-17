@@ -150,7 +150,7 @@ export function LogsView() {
         ) : auditLog.length === 0 ? (
           <p className="font-mono text-[12px] text-muted-fg">// no log entries yet</p>
         ) : (
-          <div className="logconsole max-h-80 overflow-y-auto border border-border rounded-lg p-2.5">
+          <div className="logconsole max-h-80 overflow-y-auto overflow-x-auto border border-border rounded-lg p-2.5">
             {auditLog.map((a) => (
               <div key={a._id} className={cn(
                 "flex gap-2 py-px whitespace-nowrap",

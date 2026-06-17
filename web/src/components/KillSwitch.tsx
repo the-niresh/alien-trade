@@ -6,12 +6,13 @@ type Props = {
   halted: boolean;
   onToggle: () => void;
   hero?: boolean;
+  size?: "sm" | "md";
 };
 
 const HOLD_MS = 1500;
 const TICK_MS = 50;
 
-export function KillSwitch({ halted, onToggle, hero = false }: Props) {
+export function KillSwitch({ halted, onToggle, hero = false, size = "sm" }: Props) {
   const [progress, setProgress] = useState(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -33,15 +34,17 @@ export function KillSwitch({ halted, onToggle, hero = false }: Props) {
 
   const deg     = progress * 360;
   const color   = halted ? "var(--green)" : "var(--red)";
-  const size    = hero ? "w-[124px] h-[124px]" : "w-11 h-11";
+  const sizeCls = hero ? "w-[124px] h-[124px]" : size === "md" ? "w-[72px] h-[72px]" : "w-11 h-11";
   const inner   = halted ? "bg-[#02140c] text-green" : "bg-[#160510] text-red";
-  const textSz  = hero ? "text-base font-black tracking-[0.12em]" : "text-[8px] font-black tracking-wide";
+  const textSz  = hero ? "text-base font-black tracking-[0.12em]"
+                : size === "md" ? "text-[11px] font-black tracking-[0.1em]"
+                : "text-[8px] font-black tracking-wide";
   const holding = progress > 0;
+  const showRings = (hero || size === "md") && !halted && !holding;
 
   return (
-    <div className={cn("relative flex items-center justify-center flex-shrink-0", size)}>
-      {/* concentric pulse rings — hero, idle (armed) only */}
-      {hero && !halted && !holding && (
+    <div className={cn("relative flex items-center justify-center flex-shrink-0", sizeCls)}>
+      {showRings && (
         <>
           <span className="kill-ring" />
           <span className="kill-ring" style={{ animationDelay: "1.2s" }} />
@@ -69,8 +72,8 @@ export function KillSwitch({ halted, onToggle, hero = false }: Props) {
           "kill-switch__inner w-full h-full rounded-full flex flex-col items-center justify-center gap-0.5",
           inner, textSz,
         )}>
-          {hero && !holding && (
-            <span className="text-[9px] font-mono tracking-[0.2em] opacity-60">
+          {(hero || size === "md") && !holding && (
+            <span className={cn("font-mono opacity-60", hero ? "text-[9px] tracking-[0.2em]" : "text-[8px] tracking-[0.16em]")}>
               {halted ? "SYSTEM" : "EMERGENCY"}
             </span>
           )}

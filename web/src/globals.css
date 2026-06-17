@@ -222,9 +222,26 @@
     -webkit-backdrop-filter: blur(12px) saturate(1.1);
   }
 
-  .glow-green { text-shadow: 0 0 16px color-mix(in oklab, var(--green) 55%, transparent); }
-  .glow-red   { text-shadow: 0 0 16px color-mix(in oklab, var(--red) 55%, transparent); }
-  .glow-cyan  { text-shadow: 0 0 14px color-mix(in oklab, var(--cyan) 55%, transparent); }
+  .glow-green  { text-shadow: 0 0 18px color-mix(in oklab, var(--green)  58%, transparent); }
+  .glow-red    { text-shadow: 0 0 18px color-mix(in oklab, var(--red)    58%, transparent); }
+  .glow-cyan   { text-shadow: 0 0 16px color-mix(in oklab, var(--cyan)   55%, transparent); }
+  .glow-yellow { text-shadow: 0 0 16px color-mix(in oklab, var(--yellow) 50%, transparent); }
+
+  /* Interactive panel — smooth hover lift + border brightening */
+  .panel-interactive {
+    transition: border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
+  }
+  .panel-interactive:hover {
+    border-color: var(--border-hi);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 24px rgba(0,0,0,0.35);
+  }
+
+  /* Diagonal colour washes used inside stat cards */
+  .tone-wash-positive { background: linear-gradient(115deg, color-mix(in oklab, var(--green)    14%, transparent) 0%, transparent 52%); }
+  .tone-wash-negative { background: linear-gradient(115deg, color-mix(in oklab, var(--red)      14%, transparent) 0%, transparent 52%); }
+  .tone-wash-warn     { background: linear-gradient(115deg, color-mix(in oklab, var(--yellow)   12%, transparent) 0%, transparent 52%); }
+  .tone-wash-neutral  { background: linear-gradient(115deg, color-mix(in oklab, var(--border-hi) 16%, transparent) 0%, transparent 52%); }
 }
 
 /* ── Preserved / new hand-rolled rules ── */

@@ -42,63 +42,63 @@ export function RecentTrades() {
             return (
               <div
                 key={t._id}
-                className="flex items-center gap-3 rounded-lg bg-bg/50 border border-border px-3 py-2.5"
+                className="rounded-lg bg-bg/50 border border-border px-3 py-2.5"
               >
-                {/* Side pill */}
-                <span
-                  className={cn(
-                    "font-mono text-[10px] font-bold tracking-[0.16em] uppercase px-2 py-1 rounded border w-12 text-center flex-shrink-0",
-                    isBuy
-                      ? "text-green border-green/30 bg-green/10"
-                      : "text-red border-red/30 bg-red/10",
+                {/* Row 1: side pill · symbol · size · [spacer] · tx link */}
+                <div className="flex items-center gap-2.5 flex-wrap">
+                  <span
+                    className={cn(
+                      "font-mono text-[10px] font-bold tracking-[0.16em] uppercase px-2 py-1 rounded border w-12 text-center flex-shrink-0",
+                      isBuy
+                        ? "text-green border-green/30 bg-green/10"
+                        : "text-red border-red/30 bg-red/10",
+                    )}
+                  >
+                    {t.side}
+                  </span>
+
+                  <span className="font-display font-bold text-cyan text-[13px] flex-shrink-0">
+                    {t.symbol}
+                  </span>
+
+                  <span className="font-mono text-[12px] text-text flex-shrink-0">
+                    {usd(t.size_usd)}
+                  </span>
+
+                  {t.mode === "mainnet" && (
+                    <span className="font-mono text-[9px] font-bold tracking-widest uppercase text-green/60 border border-green/20 rounded px-1.5 py-0.5 flex-shrink-0">
+                      live
+                    </span>
                   )}
-                >
-                  {t.side}
-                </span>
 
-                {/* Symbol */}
-                <span className="font-display font-bold text-cyan text-[13px] w-10 flex-shrink-0">
-                  {t.symbol}
-                </span>
+                  <div className="ml-auto flex items-center gap-2 flex-shrink-0">
+                    {txUrl && (
+                      <a
+                        href={txUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="font-mono text-[10px] text-green/70 hover:text-green border border-green/20 hover:border-green/40 rounded px-1.5 py-0.5 transition-colors"
+                        title="View on BSCScan"
+                      >
+                        TX ↗
+                      </a>
+                    )}
+                  </div>
+                </div>
 
-                {/* Size + price */}
-                <span className="font-mono text-[12px] text-text">
-                  {usd(t.size_usd)}
-                </span>
-                <span className="font-mono text-[11px] text-muted-fg">
-                  @ {usd(t.fill_price)}
-                </span>
-
-                {/* Costs (shown only when nonzero) */}
-                {totalCost > 0 && (
-                  <span className="font-mono text-[10px] text-muted-fg/70">
-                    fees {usd(totalCost)}
-                  </span>
-                )}
-
-                {/* Mode badge for mainnet */}
-                {t.mode === "mainnet" && (
-                  <span className="font-mono text-[9px] font-bold tracking-widest uppercase text-green/60 border border-green/20 rounded px-1.5 py-0.5">
-                    live
-                  </span>
-                )}
-
-                {/* Timestamp + BSCScan link */}
-                <div className="ml-auto flex items-center gap-2 flex-shrink-0">
+                {/* Row 2: fill price · fees · timestamp */}
+                <div className="flex items-center gap-3 mt-1 flex-wrap">
                   <span className="font-mono text-[11px] text-muted-fg">
+                    @ {usd(t.fill_price)}
+                  </span>
+                  {totalCost > 0 && (
+                    <span className="font-mono text-[10px] text-muted-fg/70">
+                      fees {usd(totalCost)}
+                    </span>
+                  )}
+                  <span className="font-mono text-[10px] text-muted-fg/60 ml-auto">
                     {ts(t.timestamp_ms)}
                   </span>
-                  {txUrl && (
-                    <a
-                      href={txUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="font-mono text-[10px] text-green/70 hover:text-green border border-green/20 hover:border-green/40 rounded px-1.5 py-0.5 transition-colors"
-                      title="View on BSCScan"
-                    >
-                      TX ↗
-                    </a>
-                  )}
                 </div>
               </div>
             );

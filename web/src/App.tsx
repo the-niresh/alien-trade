@@ -28,7 +28,10 @@ type PairingStep = "welcome" | "pair" | "done";
 function PairingScreen({ onPaired }: { onPaired: (t: string) => void }) {
   const [step, setStep]     = useState<PairingStep>("welcome");
   const [val, setVal]       = useState("");
+  const [error, setError]   = useState("");
+  const [checking, setChecking] = useState(false);
   const canvasRef           = useRef<HTMLCanvasElement>(null);
+  const pingMutation        = useMutation(api.ping.ping);
 
   useEffect(() => {
     if (step === "pair" && canvasRef.current) {
@@ -40,11 +43,20 @@ function PairingScreen({ onPaired }: { onPaired: (t: string) => void }) {
     }
   }, [step]);
 
-  const submit = () => {
+  const submit = async () => {
     const t = val.trim();
     if (!t) return;
-    setStep("done");
-    setTimeout(() => onPaired(t), 1200);
+    setError("");
+    setChecking(true);
+    try {
+      await pingMutation({ control_token: t });
+      setChecking(false);
+      setStep("done");
+      setTimeout(() => onPaired(t), 1200);
+    } catch {
+      setChecking(false);
+      setError("Wrong token — check your .env.local CONTROL_TOKEN.");
+    }
   };
 
   const STEPS: PairingStep[] = ["welcome", "pair", "done"];
@@ -108,16 +120,19 @@ function PairingScreen({ onPaired }: { onPaired: (t: string) => void }) {
                 type="password"
                 value={val}
                 placeholder="control token"
-                onChange={(e) => setVal(e.target.value)}
+                onChange={(e) => { setVal(e.target.value); setError(""); }}
                 onKeyDown={(e) => e.key === "Enter" && submit()}
-                className="w-full bg-bg border-border text-text font-mono text-[13px] focus-visible:ring-green mb-3"
+                className="w-full bg-bg border-border text-text font-mono text-[13px] focus-visible:ring-green mb-2"
               />
+              {error && (
+                <p className="font-mono text-[11px] text-red mb-2">{error}</p>
+              )}
               <Button
-                className="w-full bg-green text-[#04140c] font-bold hover:bg-green/80 cursor-pointer"
+                className="w-full bg-green text-[#04140c] font-bold hover:bg-green/80 cursor-pointer disabled:opacity-50"
                 onClick={submit}
-                disabled={!val.trim()}
+                disabled={!val.trim() || checking}
               >
-                Pair cockpit →
+                {checking ? "Verifying…" : "Pair cockpit →"}
               </Button>
             </div>
           )}

@@ -35,9 +35,9 @@ export function LiveHeader({ halted, mode, onKillToggle, selectedSymbol = "ALL",
   const priceUp    = latestTick && prevTick ? latestTick.price >= prevTick.price : true;
 
   return (
-    <header className="chrome h-14 border-b border-border flex items-center px-4 gap-3.5 flex-shrink-0 z-20">
+    <header className="chrome h-14 border-b border-border flex items-center px-3 sm:px-4 gap-2 sm:gap-3.5 flex-shrink-0 z-20 overflow-hidden">
       {/* Brand mark */}
-      <div className="flex items-center gap-2.5">
+      <div className="flex items-center gap-2 sm:gap-2.5 flex-shrink-0">
         <span className="relative flex h-2 w-2">
           <span className={cn(
             "absolute inline-flex h-full w-full rounded-full opacity-70 animate-ping",
@@ -45,82 +45,91 @@ export function LiveHeader({ halted, mode, onKillToggle, selectedSymbol = "ALL",
           )} />
           <span className={cn("relative inline-flex h-2 w-2 rounded-full", halted ? "bg-red" : "bg-green")} />
         </span>
-        <span className="font-display text-[15px] font-bold tracking-[0.22em] text-green glow-green">
+        <span className="font-display text-[13px] sm:text-[15px] font-bold tracking-[0.18em] sm:tracking-[0.22em] text-green glow-green whitespace-nowrap">
           ALIEN<span className="text-text/40">·</span>TRADE
         </span>
       </div>
 
-      <div className="w-px h-7 bg-border flex-shrink-0" />
+      {/* Regime + price — hidden on mobile */}
+      <div className="hidden sm:flex items-center gap-3.5 flex-shrink-0">
+        <div className="w-px h-7 bg-border" />
+        {regime && <RegimeBadge regime={regime} />}
 
-      {regime && <RegimeBadge regime={regime} />}
-
-      {latestTick && (
-        <>
-          <div className="w-px h-7 bg-border flex-shrink-0" />
-          <div className="flex items-baseline gap-1.5">
-            <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-muted-fg">
-              {selectedSymbol === "ALL" ? "ETH" : selectedSymbol}
-            </span>
-            <span className={cn(
-              "font-display text-[18px] font-bold leading-none tabular-nums",
-              priceUp ? "text-green" : "text-red",
-            )}>
-              ${latestTick.price.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            </span>
-            {prevTick && (
-              <span className={cn("font-mono text-[10px]", priceUp ? "text-green/70" : "text-red/70")}>
-                {priceUp ? "▲" : "▼"}
-                {Math.abs((latestTick.price - prevTick.price) / prevTick.price * 100).toFixed(2)}%
+        {latestTick && (
+          <>
+            <div className="w-px h-7 bg-border" />
+            <div className="flex items-baseline gap-1.5">
+              <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-muted-fg">
+                {selectedSymbol === "ALL" ? "ETH" : selectedSymbol}
               </span>
-            )}
-          </div>
-        </>
-      )}
+              <span className={cn(
+                "font-display text-[18px] font-bold leading-none tabular-nums",
+                priceUp ? "text-green" : "text-red",
+              )}>
+                ${latestTick.price.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </span>
+              {prevTick && (
+                <span className={cn("font-mono text-[10px]", priceUp ? "text-green/70" : "text-red/70")}>
+                  {priceUp ? "▲" : "▼"}
+                  {Math.abs((latestTick.price - prevTick.price) / prevTick.price * 100).toFixed(2)}%
+                </span>
+              )}
+            </div>
+          </>
+        )}
+      </div>
 
       {mode && (
         <Badge
           variant="outline"
-          className={cn("font-mono text-[10px] font-bold tracking-[0.2em] rounded-md px-2.5 py-0.5", MODE_CLASS[mode] ?? "")}
+          className={cn("font-mono text-[9px] sm:text-[10px] font-bold tracking-[0.15em] sm:tracking-[0.2em] rounded-md px-2 sm:px-2.5 py-0.5 flex-shrink-0", MODE_CLASS[mode] ?? "")}
         >
           {mode === "mainnet" ? "● LIVE" : mode.toUpperCase()}
         </Badge>
       )}
 
+      {/* PnL — hidden on mobile */}
       {pnl != null && (
-        <>
-          <div className="w-px h-7 bg-border flex-shrink-0 max-sm:hidden" />
-          <div className="flex items-baseline gap-1.5 max-sm:hidden">
+        <div className="hidden sm:flex items-center gap-3.5 flex-shrink-0">
+          <div className="w-px h-7 bg-border" />
+          <div className="flex items-baseline gap-1.5">
             <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-muted-fg">PnL</span>
             <span className={cn("font-display text-[22px] font-bold leading-none tabular-nums", pnlPos ? "text-green glow-green" : "text-red glow-red")}>
               {usd(pnl)}
             </span>
           </div>
-        </>
+        </div>
       )}
 
       <div className="flex-1" />
 
+      {/* Symbol select — hidden on mobile */}
       {symbols.length > 0 && onSymbolChange && (
-        <Select value={selectedSymbol} onValueChange={onSymbolChange}>
-          <SelectTrigger className="w-28 h-7 font-mono text-[11px] bg-elevated/60 border-border text-text focus:ring-green">
-            <SelectValue placeholder="ALL" />
-          </SelectTrigger>
-          <SelectContent className="bg-surface border-border text-text">
-            <SelectItem value="ALL" className="font-mono text-[11px]">ALL</SelectItem>
-            {symbols.map((s) => (
-              <SelectItem key={s} value={s} className="font-mono text-[11px] text-cyan font-bold">{s}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <div className="hidden sm:block flex-shrink-0">
+          <Select value={selectedSymbol} onValueChange={onSymbolChange}>
+            <SelectTrigger className="w-28 h-7 font-mono text-[11px] bg-elevated/60 border-border text-text focus:ring-green">
+              <SelectValue placeholder="ALL" />
+            </SelectTrigger>
+            <SelectContent className="bg-surface border-border text-text">
+              <SelectItem value="ALL" className="font-mono text-[11px]">ALL</SelectItem>
+              {symbols.map((s) => (
+                <SelectItem key={s} value={s} className="font-mono text-[11px] text-cyan font-bold">{s}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       )}
 
       {halted && (
-        <Badge className="bg-red/10 text-red border border-red/40 font-mono text-[10px] font-bold tracking-[0.16em] rounded-md animate-pulse">
+        <Badge className="bg-red/10 text-red border border-red/40 font-mono text-[10px] font-bold tracking-[0.16em] rounded-md animate-pulse flex-shrink-0">
           HALTED
         </Badge>
       )}
 
-      <KillSwitch halted={halted} onToggle={onKillToggle} />
+      {/* desktop only — mobile has a FAB in AppShell */}
+      <div className="hidden sm:flex">
+        <KillSwitch halted={halted} onToggle={onKillToggle} />
+      </div>
     </header>
   );
 }

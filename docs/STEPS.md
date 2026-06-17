@@ -409,7 +409,21 @@ Steps 0–7 done. STEP 8 well underway: the **agent team is wired and skill-grou
 ### 9.4 Demo video
 - [ ] 🔴 Record demo video (~3 min). *(Still needed — screen recording is operator task.)*
 
+### 9.5 curl-bootstrap install flow
+- [ ] 🟡 Add bootstrap preamble to `install.sh`: detect `curl | bash` mode (empty `BASH_SOURCE[0]`), auto `git clone github.com/the-niresh/alien-trade ~/alien-trade`, then re-exec the real `install.sh` from the cloned copy.
+- [ ] 🟡 Serve `install.sh` as a static file at `alientrade.niresh.tech/install.sh` (Vercel static asset or nginx alias on VPS).
+- [ ] 🟡 One-liner for users: `curl -fsSL https://alientrade.niresh.tech/install.sh | bash`
+- [ ] 🟢 After install: agent boots in paper mode, cockpit opens at `localhost:4173`, ASCII QR printed in terminal — cockpit is local-only (Hermes/OpenClaw pattern, keys never leave user's machine).
+
+### 9.6 Public landing page — alientrade.niresh.tech
+- [ ] 🟡 Build `web-landing/` — separate Vite/React static site (alien terminal aesthetic, matches cockpit identity).
+- [ ] 🟡 Sections: Hero (product + one-liner install command), How it works (3 steps: Install → Configure TWAK → Run), Architecture diagram (Your Machine ↔ Convex ↔ BSC), Signal stack (S1/S2/S3/S4), Live stats panel (Convex public read-only: regime + last trade + cumulative PnL), GitHub CTA.
+- [ ] 🟡 Deploy to Vercel, point `alientrade.niresh.tech` CNAME → `cname.vercel-dns.com` (Hostinger DNS panel).
+- [ ] 🟢 Serve `install.sh` as `/install.sh` static file from the same Vercel deployment.
+- [ ] 🟢 The VPS cockpit (`:4173`) remains the operator's private instance — not linked from the public page.
+
 - ✅ **Exit (9.1–9.3):** judge can `bash install.sh` for one-command setup; `docker build .` for containerised demo; `vercel deploy web/` for hosted PWA.
+- ⬜ **Exit (9.5–9.6):** any user can `curl -fsSL https://alientrade.niresh.tech/install.sh | bash` and be trading in paper mode within 5 minutes.
 
 ---
 

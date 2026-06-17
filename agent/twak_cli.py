@@ -79,7 +79,16 @@ class TwakCli:
             try:
                 return json.loads(out)
             except json.JSONDecodeError:
-                pass
+                # twak swap prefixes human-readable status lines before the JSON
+                # block (e.g. "Swapping ... Swap executed!\n{...}"). Extract the
+                # last top-level JSON object from the mixed output.
+                start = out.rfind("{")
+                end = out.rfind("}") + 1
+                if start != -1 and end > start:
+                    try:
+                        return json.loads(out[start:end])
+                    except json.JSONDecodeError:
+                        pass
         if proc.returncode != 0:
             raise TwakError(f"twak {' '.join(args)} failed (exit {proc.returncode}): "
                             f"{(proc.stderr or out).strip()[:400]}")

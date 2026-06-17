@@ -326,6 +326,13 @@ class ConvexBridge:
     def update_risk_state(self, **kw) -> None:
         self._call("mutation", "riskState:update", kw)
 
+    def update_wallet_state(self, *, usdt: float, eth: float, bnb: float,
+                             bnb_usd: float, total_usd: float, updated_ms: int) -> None:
+        self._call("mutation", "walletState:upsert", {
+            "usdt": usdt, "eth": eth, "bnb": bnb,
+            "bnb_usd": bnb_usd, "total_usd": total_usd, "updated_ms": updated_ms,
+        })
+
     def update_scorecard(self, **kw) -> None:
         """Upsert the live scorecard singleton (core/scorecard.py as_convex_row)."""
         self._call("mutation", "scorecard:update", kw)

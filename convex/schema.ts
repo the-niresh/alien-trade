@@ -363,4 +363,14 @@ export default defineSchema({
   })
     .index("by_status", ["status"])
     .index("by_ts", ["ts_ms"]),
+
+  // Live wallet balances — agent writes each cycle; cockpit reads for balance panel
+  wallet_state: defineTable({
+    usdt: v.number(),
+    eth: v.number(),
+    bnb: v.number(),
+    bnb_usd: v.number(),
+    total_usd: v.number(),
+    updated_ms: v.number(),
+  }),
 });

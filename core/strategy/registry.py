@@ -46,6 +46,7 @@ def _contrarian(symbol: str) -> StrategyParams:
         w_momentum=0.20, w_derivatives=0.20, w_sentiment=0.60,
         entry_threshold=0.20, exit_threshold=-0.05,
         chop_gate=0.8,
+        bypass_trend_filter=True,
     )
 
 

@@ -29,6 +29,7 @@ import type * as social from "../social.js";
 import type * as symbolList from "../symbolList.js";
 import type * as thesisLedger from "../thesisLedger.js";
 import type * as trades from "../trades.js";
+import type * as walletState from "../walletState.js";
 
 import type {
   ApiFromModules,
@@ -58,6 +59,7 @@ declare const fullApi: ApiFromModules<{
   symbolList: typeof symbolList;
   thesisLedger: typeof thesisLedger;
   trades: typeof trades;
+  walletState: typeof walletState;
 }>;
 
 /**

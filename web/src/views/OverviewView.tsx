@@ -9,6 +9,13 @@ import { Panel } from "../components/Panel";
 import { RegimeBadge } from "../components/RegimeBadge";
 import { Skeleton } from "@/components/ui/skeleton";
 import ThesisLedger from "../components/ThesisLedger";
+import { RecentTrades } from "../components/RecentTrades";
+import { DailyStats } from "../components/DailyStats";
+import { SignalScores } from "../components/SignalScores";
+import { FearGreedGauge } from "../components/FearGreedGauge";
+import { AgentHeartbeat } from "../components/AgentHeartbeat";
+import { WalletBalance } from "../components/WalletBalance";
+import { FeesGasSummary } from "../components/FeesGasSummary";
 import { cn } from "@/lib/utils";
 import { usd, pct, ts } from "../lib/formatters";
 
@@ -64,7 +71,7 @@ export function OverviewView({ onAgentClick }: Props) {
         )}
       </AnimatePresence>
 
-      {/* Stats grid */}
+      {/* Stats grid — 4 core + 2 daily */}
       <div className="grid grid-cols-4 gap-3 items-stretch max-[900px]:grid-cols-2">
         {ledger === undefined
           ? Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-[104px] w-full bg-surface border border-border rounded-xl" />)
@@ -78,6 +85,21 @@ export function OverviewView({ onAgentClick }: Props) {
               <StatCard label="Win Rate" value={risk?.win_rate != null ? pct(risk.win_rate) : "—"} unit="hit" />
             </>
         }
+      </div>
+
+      {/* Daily stats */}
+      <DailyStats />
+
+      {/* Signal scores + Fear & Greed */}
+      <div className="grid grid-cols-2 gap-3 max-sm:grid-cols-1">
+        <SignalScores />
+        <FearGreedGauge />
+      </div>
+
+      {/* Agent heartbeat + Wallet balance */}
+      <div className="grid grid-cols-2 gap-3 max-sm:grid-cols-1">
+        <AgentHeartbeat />
+        <WalletBalance />
       </div>
 
       {/* Equity chart */}
@@ -102,6 +124,12 @@ export function OverviewView({ onAgentClick }: Props) {
           </div>
         </Panel>
       )}
+
+      {/* Trade history — actual fills with size, price, TX hash */}
+      <RecentTrades />
+
+      {/* Fees & gas */}
+      <FeesGasSummary />
 
       {/* Recent decisions */}
       <Panel label="Recent Decisions" tick="cyan">

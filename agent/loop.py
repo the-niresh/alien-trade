@@ -796,6 +796,22 @@ class DecisionLoop:
                              {"side": execution.order.side, "size_usd": execution.order.size_usd,
                               "fill_price": execution.fill.fill_price, "tx_hash": execution.tx_hash,
                               "realized_pnl": realized}, "info")
+            # ── Immediate trade alert (Telegram) ────────────────────────────
+            # Fire the moment the fill is confirmed — users must not wait for the
+            # next cycle log line to know a trade happened.
+            side_emoji = "🟢" if execution.order.side == "buy" else "🔴"
+            tx_url = (f"https://bscscan.com/tx/{execution.tx_hash}"
+                      if execution.tx_hash else "")
+            pnl_str = (f"  PnL: ${realized:+.2f}" if execution.order.side == "sell" else "")
+            alert = (
+                f"{side_emoji} TRADE FILLED — {execution.order.side.upper()} "
+                f"{execution.order.symbol}\n"
+                f"  Size: ${execution.order.size_usd:.2f}  @  ${execution.fill.fill_price:,.2f}\n"
+                f"  Mode: {self.mode}{pnl_str}\n"
+                + (f"  TX: {tx_url}" if tx_url else "")
+            )
+            self._notify(alert)
+
             # Hermes write-side: a sell closes/reduces a position → reflect on the
             # realized outcome. (Buys open positions — no outcome to learn yet.)
             if (self.reflection_writer is not None
@@ -849,6 +865,26 @@ class DecisionLoop:
             mode=self.mode,
             updated_ms=bar.timestamp,
         )
+
+        # ── Wallet balance snapshot (best-effort, never block the cycle) ────
+        try:
+            from agent.twak_cli import TwakCli
+            _twak = TwakCli()
+            _bal = _twak.wallet_balance(self._chain if hasattr(self, "_chain") else "bsc")
+            _tokens = {t["symbol"]: float(t["balance"]) for t in _bal.get("tokens", [])}
+            _bnb = float(_bal.get("available", 0))
+            _bnb_price = bar.close if self.symbol == "BNB" else 650.0  # rough BNB price
+            self.bridge.update_wallet_state(
+                usdt=_tokens.get("USDT", 0.0),
+                eth=_tokens.get("ETH", 0.0),
+                bnb=_bnb,
+                bnb_usd=round(_bnb * _bnb_price, 4),
+                total_usd=round(_tokens.get("USDT", 0.0) + _tokens.get("ETH", 0.0) * bar.close + _bnb * _bnb_price, 2),
+                updated_ms=bar.timestamp,
+            )
+        except Exception:
+            pass  # wallet balance is display-only; never block the trade cycle
+
         self.bridge.append_price_tick(
             symbol=self.symbol,
             price=bar.close,

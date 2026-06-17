@@ -68,6 +68,10 @@ class StrategyParams:
     # Contrarian sets this to 0.8 because it is DESIGNED for sideways/choppy markets
     # and the generic 0.5 gate directly fights its edge.
     chop_gate: float | None = None
+    # When True, skip the rising-EMA trend filter on entry. Contrarian buys fear in
+    # flat/down markets — requiring a rising EMA would block every entry it is meant
+    # to make.  Momentum/balanced leave this False (trend filter protects their edge).
+    bypass_trend_filter: bool = False
     # Position sizing
     position_size_usd: float = 1_000.0
     # Traded symbol — must be a competition-eligible BEP-20 (see docs/GOAL.md).
@@ -128,7 +132,9 @@ def make_strategy(params: StrategyParams) -> StrategyFn:
             )
 
         # No new longs unless price is above a confirmed *rising* trend (cash-default).
-        if not can_enter:
+        # Contrarian bypasses this: it buys fear in flat/down markets where the trend
+        # filter would block every entry it is designed to make.
+        if not can_enter and not params.bypass_trend_filter:
             return None
 
         # ── Signal scores ─────────────────────────────────────────────────────

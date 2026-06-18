@@ -34,6 +34,7 @@ _GUARDED_MUTATIONS = frozenset({
     "config:setAutopilotState",
     "agentControl:set",
     "thesisLedger:record",
+    "agentCommands:updateStatus",
 })
 
 

@@ -18,7 +18,8 @@ export function LandingView({ onConnect }: { onConnect: () => void }) {
         <img
           src="/logo.png"
           alt="Alien-Trade"
-          className="logo-blend w-28 h-28 mb-6"
+          className="w-32 h-32 rounded-full object-contain mb-6"
+          style={{ mixBlendMode: "screen" }}
         />
         <div className="font-display text-[48px] font-bold text-green tracking-[0.12em] mb-2"
           style={{ textShadow: "0 0 40px rgba(74,222,128,0.4)" }}>

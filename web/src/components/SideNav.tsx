@@ -8,10 +8,11 @@ import { cn } from "@/lib/utils";
 import { eventSeverity } from "../lib/eventSeverity";
 import { LayoutDashboard, List, Users, Settings, FileText, Bot, Sun, Moon, Bell, Wallet, Activity, BookOpen, LineChart, GraduationCap } from "lucide-react";
 
-export type View = "overview" | "chart" | "positions" | "agents" | "controls" | "pipeline" | "portfolio" | "logs" | "notifications" | "docs";
+export type View = "overview" | "trackers" | "chart" | "positions" | "agents" | "controls" | "pipeline" | "portfolio" | "logs" | "notifications" | "docs";
 
 const NAV_ITEMS: { view: View; icon: React.ComponentType<{ className?: string }>; label: string }[] = [
   { view: "overview",      icon: LayoutDashboard, label: "Overview" },
+  { view: "trackers",      icon: Activity,        label: "Trackers" },
   { view: "chart",         icon: LineChart,       label: "Chart" },
   { view: "portfolio",     icon: Wallet,          label: "Portfolio" },
   { view: "pipeline",      icon: Activity,        label: "Pipeline" },

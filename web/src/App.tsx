@@ -16,6 +16,7 @@ import { PortfolioView } from "./views/PortfolioView";
 import { PipelineView } from "./views/PipelineView";
 import { DocsView } from "./views/DocsView";
 import { ChartView } from "./views/ChartView";
+import { TrackersView } from "./views/TrackersView";
 import { LandingView } from "./views/LandingView";
 import { ViewError } from "./components/ViewError";
 import { ErrorBoundary } from "react-error-boundary";
@@ -259,6 +260,7 @@ export default function App() {
   const renderView = () => {
     switch (view) {
       case "overview":      return <OverviewView  onAgentClick={onAgentClick} onCopilot={() => setCopilotOpen(true)} />;
+      case "trackers":      return <TrackersView />;
       case "chart":         return <ChartView />;
       case "portfolio":     return <PortfolioView />;
       case "pipeline":      return <PipelineView />;

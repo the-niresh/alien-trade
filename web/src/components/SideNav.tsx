@@ -6,12 +6,13 @@ import { toggleTheme, getTheme } from "../lib/theme";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { eventSeverity } from "../lib/eventSeverity";
-import { LayoutDashboard, List, Users, Settings, FileText, Bot, Sun, Moon, Bell, Wallet, Activity, BookOpen } from "lucide-react";
+import { LayoutDashboard, List, Users, Settings, FileText, Bot, Sun, Moon, Bell, Wallet, Activity, BookOpen, LineChart } from "lucide-react";
 
-export type View = "overview" | "positions" | "agents" | "controls" | "pipeline" | "portfolio" | "logs" | "notifications" | "docs";
+export type View = "overview" | "chart" | "positions" | "agents" | "controls" | "pipeline" | "portfolio" | "logs" | "notifications" | "docs";
 
 const NAV_ITEMS: { view: View; icon: React.ComponentType<{ className?: string }>; label: string }[] = [
   { view: "overview",      icon: LayoutDashboard, label: "Overview" },
+  { view: "chart",         icon: LineChart,       label: "Chart" },
   { view: "portfolio",     icon: Wallet,          label: "Portfolio" },
   { view: "pipeline",      icon: Activity,        label: "Pipeline" },
   { view: "positions",     icon: List,            label: "Positions" },
@@ -57,6 +58,7 @@ export function SideNav({ active, onSelect, onCopilot }: Props) {
                   )}
                   aria-label={item.label}
                   aria-current={isActive ? "page" : undefined}
+                  data-tour={`nav-${item.view}`}
                 >
                   {isActive && (
                     <motion.span

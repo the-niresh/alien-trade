@@ -162,13 +162,15 @@ export const finaliseStream = mutation({
  * Returns gracefully when the agent is offline (judges running paper-only).
  */
 export const ask = action({
-  args: { question: v.string() },
+  args: { question: v.string(), control_token: v.optional(v.string()) },
   returns: v.object({
     answer: v.string(),
     grounded: v.boolean(),
     sources: v.array(v.any()),
   }),
-  handler: async (_ctx, { question }) => {
+  handler: async (_ctx, args) => {
+    assertControlToken(args.control_token);
+    const { question } = args;
     const agentUrl = process.env.AGENT_URL ?? "http://localhost:8000";
     try {
       const res = await fetch(`${agentUrl}/copilot`, {

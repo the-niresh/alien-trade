@@ -71,6 +71,8 @@ class DecisionLoop:
         activity_trade_usd: float = 15.0,
         notifier: Optional["TelegramNotifier"] = None,
         autopilot_config: Optional["AutopilotConfig"] = None,
+        kol_enabled: bool = False,
+        kol_min_conf: float = 0.5,
     ):
         self.feed = feed
         self.strategy = strategy            # the SAME risk-wrapped /core strategy
@@ -126,6 +128,8 @@ class DecisionLoop:
         self.enforce_activity_floor = enforce_activity_floor
         self.activity_deadline_hour = activity_deadline_hour
         self.activity_trade_usd = activity_trade_usd
+        self.kol_enabled = kol_enabled
+        self._kol_min_conf = kol_min_conf
         self._activity_day = -1
         self._trades_today = 0
 
@@ -250,6 +254,11 @@ class DecisionLoop:
         ap_intervention = self._apply_autopilot(bar, cycle_id, regime.value)
         if ap_intervention is not None:
             return ap_intervention
+
+        # ── KOL auto-trade overlay (live-only; flat→open / held→reduce) ──────
+        kol_intervention = self._apply_kol_signal(bar, cycle_id)
+        if kol_intervention is not None:
+            return kol_intervention
 
         # ── Decision (same code as the sim) ─────────────────────────────────
         order = self.strategy(history)
@@ -652,6 +661,85 @@ class DecisionLoop:
                 None, None, 0.0, 0.0, None, {}, {}, halted=False,
             )
         return None
+
+    # ── KOL auto-trade overlay (live-only; deterministic; risk-gated) ─────────
+
+    def _apply_kol_signal(self, bar: "Bar", cycle_id: str):
+        """When enabled, turn a high-conviction eligible KOL reading into a scored
+        order — open_long while flat, reduce while held — gated by check_guardrails.
+        Disabled/offline → None (sim parity). Never raises (Tier-1, off hot path)."""
+        if not getattr(self, "kol_enabled", False):
+            return None
+        try:
+            ss = self.bridge.get_sentiment_state(self.symbol)
+            if not ss:
+                return None
+            from agent.social.schema import SentimentReading
+            from agent.social.kol_intent import kol_intent
+            from risk.guardrails import check_guardrails, check_max_exposure, RiskConfig
+
+            reading = SentimentReading(
+                symbol=self.symbol, score=float(ss.get("score", 0.0)),
+                confidence=float(ss.get("confidence", 0.0)),
+                n_posts=int(ss.get("n_posts", 0)), ts_ms=int(ss.get("ts_ms", bar.timestamp)),
+            )
+            held = self.ledger.open_exposure(bar.close) > 1e-6
+            intent = kol_intent(reading, holds_symbol=held, min_conf=self._kol_min_conf)
+            if intent.action == "none":
+                return None
+
+            from backtest.engine import Order
+            cfg = RiskConfig()
+            equity = self.ledger.mark(bar.close)
+            if intent.action == "open_long":
+                size = min(self.base_position_usd, cfg.max_trade_usd)
+                gr = check_guardrails(symbol=self.symbol, size_usd=size, daily_loss_pct=0.0,
+                                      consecutive_losses=0, capital=equity, config=cfg)
+                if not gr.allowed:
+                    self.bridge.audit("risk_veto", cycle_id,
+                                      {"reason": gr.reason, "source": "kol"}, "warn")
+                    return None
+                ex = check_max_exposure(
+                    open_exposure_usd=self.ledger.open_exposure(bar.close),
+                    new_size_usd=size, equity=equity, config=cfg)
+                if not ex.allowed:
+                    self.bridge.audit("risk_veto", cycle_id,
+                                      {"reason": ex.reason, "source": "kol"}, "warn")
+                    return None
+                order = Order(side="buy", size_usd=size, symbol=self.symbol, timestamp=bar.timestamp)
+            else:  # reduce
+                held_usd = self.ledger.open_exposure(bar.close)
+                if held_usd <= 0.0:
+                    return None
+                order = Order(side="sell", size_usd=held_usd, symbol=self.symbol,
+                              timestamp=bar.timestamp)
+
+            execution = self.executor.execute(order, bar, idempotency_key=f"{cycle_id}-kol")
+            verdict, reason, trade_id = self._handle_execution(
+                execution, bar, cycle_id, "", None)
+            try:
+                from agent.graph.contracts import AgentEvent, KIND_ACTION
+                self.bridge.emit_event(AgentEvent(
+                    agent="Scout", kind=KIND_ACTION,
+                    headline=(f"KOL {intent.action.upper()} {self.symbol}: {intent.reason} "
+                              f"(conf {intent.confidence:.2f})"),
+                    cycle_id=cycle_id,
+                    detail={"action": intent.action, "symbol": self.symbol,
+                            "score": reading.score, "confidence": reading.confidence},
+                    refs=[execution.tx_hash] if execution.tx_hash else [],
+                ))
+            except Exception:  # noqa: BLE001
+                pass
+            return self._finalise(
+                cycle_id, bar, "", verdict, f"kol: {intent.reason}", order, execution,
+                0.0, order.size_usd, trade_id, {}, {}, halted=False)
+        except Exception as e:  # noqa: BLE001 — Tier-1; must never crash a cycle
+            try:
+                self.bridge.audit("error", cycle_id,
+                                  {"error": str(e), "source": "kol_overlay"}, "error")
+            except Exception:  # noqa: BLE001
+                pass
+            return None
 
     def _sync_autopilot_config(self) -> None:
         """Pick up cockpit autopilot changes live (config.autopilot). Offline /

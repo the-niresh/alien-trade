@@ -91,3 +91,57 @@ export function startTour(): void {
 
   driverObj.drive();
 }
+
+// ── Post-trade tour (fires once when 0→1 trades) ─────────────────────────────
+
+const POST_TOUR_KEY = "alien-trade:posttrade-tour-seen-v1";
+
+export function hasPostTradeTourBeenSeen(): boolean {
+  return localStorage.getItem(POST_TOUR_KEY) === "1";
+}
+
+export function startPostTradeTour(): void {
+  const driverObj = driver({
+    showProgress: true,
+    progressText: "{{current}} / {{total}}",
+    animate: true,
+    overlayOpacity: 0.65,
+    popoverClass: "alien-tour-popover",
+    onDestroyed: () => localStorage.setItem(POST_TOUR_KEY, "1"),
+    steps: [
+      {
+        element: '[data-tour="nav-trackers"]',
+        popover: {
+          title: "First trade logged",
+          description: "Your agent made its first trade. The Trackers view shows all ongoing positions and queued commands.",
+          side: "right",
+        },
+      },
+      {
+        element: '[data-tour="nav-portfolio"]',
+        popover: {
+          title: "Check your portfolio",
+          description: "Portfolio shows your TWAK wallet balance — USDT, ETH, BNB, and total value after the trade.",
+          side: "right",
+        },
+      },
+      {
+        element: '[data-tour="nav-chart"]',
+        popover: {
+          title: "See the entry on the chart",
+          description: "The chart marks your buy with a green ▲ and sell with a red ▼.",
+          side: "right",
+        },
+      },
+      {
+        element: '[data-tour="nav-copilot"]',
+        popover: {
+          title: "Withdraw or take profit",
+          description: 'Ask the Co-Pilot: "withdraw 2 USDT to 0x…" or "take profit at 5%" to set up autopilot.',
+          side: "right",
+        },
+      },
+    ],
+  });
+  driverObj.drive();
+}

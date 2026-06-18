@@ -13,6 +13,7 @@ type Props = {
   onKillToggle: () => void;
   selectedSymbol?: string;
   onSymbolChange?: (s: string) => void;
+  onDeposit?: () => void;
 };
 
 const MODE_CLASS: Record<string, string> = {
@@ -21,7 +22,7 @@ const MODE_CLASS: Record<string, string> = {
   testnet: "bg-cyan/10 text-cyan border-cyan/25",
 };
 
-export function LiveHeader({ halted, mode, onKillToggle, selectedSymbol = "ALL", onSymbolChange }: Props) {
+export function LiveHeader({ halted, mode, onKillToggle, selectedSymbol = "ALL", onSymbolChange, onDeposit }: Props) {
   const ledger    = useQuery(api.ledger.latest);
   const decisions = useQuery(api.decisions.recent, { limit: 1 });
   const symbols   = useQuery(api.symbolList.list) ?? [];
@@ -129,6 +130,16 @@ export function LiveHeader({ halted, mode, onKillToggle, selectedSymbol = "ALL",
         <Badge className="bg-red/10 text-red border border-red/40 font-mono text-[10px] font-bold tracking-[0.16em] rounded-md animate-pulse flex-shrink-0">
           HALTED
         </Badge>
+      )}
+
+      {onDeposit && (
+        <button
+          onClick={onDeposit}
+          data-tour="deposit-btn"
+          className="hidden sm:flex items-center gap-1.5 font-mono text-[10px] font-bold text-cyan border border-cyan/25 bg-cyan/8 rounded-lg px-2.5 py-1 hover:bg-cyan/15 transition-colors cursor-pointer flex-shrink-0"
+        >
+          ↓ Deposit
+        </button>
       )}
 
       {/* desktop only — mobile has a FAB in AppShell */}

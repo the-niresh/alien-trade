@@ -3,17 +3,20 @@ import { motion } from "framer-motion";
 import { toggleTheme, getTheme } from "../lib/theme";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import { LayoutDashboard, List, Users, Settings, FileText, Bot, Sun, Moon, Bell } from "lucide-react";
+import { LayoutDashboard, List, Users, Settings, FileText, Bot, Sun, Moon, Bell, Wallet, Activity, BookOpen } from "lucide-react";
 
-export type View = "overview" | "positions" | "agents" | "controls" | "logs" | "notifications";
+export type View = "overview" | "positions" | "agents" | "controls" | "pipeline" | "portfolio" | "logs" | "notifications" | "docs";
 
 const NAV_ITEMS: { view: View; icon: React.ComponentType<{ className?: string }>; label: string }[] = [
-  { view: "overview",  icon: LayoutDashboard, label: "Overview" },
-  { view: "positions", icon: List,            label: "Positions" },
-  { view: "agents",    icon: Users,           label: "Agents" },
-  { view: "controls",  icon: Settings,        label: "Controls" },
-  { view: "logs",          icon: FileText,  label: "Logs" },
-  { view: "notifications", icon: Bell,      label: "Alerts" },
+  { view: "overview",      icon: LayoutDashboard, label: "Overview" },
+  { view: "portfolio",     icon: Wallet,          label: "Portfolio" },
+  { view: "pipeline",      icon: Activity,        label: "Pipeline" },
+  { view: "positions",     icon: List,            label: "Positions" },
+  { view: "agents",        icon: Users,           label: "Agents" },
+  { view: "controls",      icon: Settings,        label: "Controls" },
+  { view: "logs",          icon: FileText,        label: "Logs" },
+  { view: "notifications", icon: Bell,            label: "Alerts" },
+  { view: "docs",          icon: BookOpen,        label: "Docs" },
 ];
 
 type Props = { active: View; onSelect: (v: View) => void; onCopilot: () => void };

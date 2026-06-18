@@ -37,7 +37,7 @@ export function LiveHeader({ halted, mode, onKillToggle, selectedSymbol = "ALL",
   return (
     <header className="chrome h-14 border-b border-border flex items-center px-3 sm:px-4 gap-2 sm:gap-3.5 flex-shrink-0 z-20 overflow-hidden">
       {/* Brand mark */}
-      <div className="flex items-center gap-2 sm:gap-2.5 flex-shrink-0">
+      <div className="flex items-center gap-2 sm:gap-2.5 flex-shrink-0" data-tour="brand">
         <span className="relative flex h-2 w-2">
           <span className={cn(
             "absolute inline-flex h-full w-full rounded-full opacity-70 animate-ping",
@@ -127,7 +127,7 @@ export function LiveHeader({ halted, mode, onKillToggle, selectedSymbol = "ALL",
       )}
 
       {/* desktop only — mobile has a FAB in AppShell */}
-      <div className="hidden sm:flex">
+      <div className="hidden sm:flex" data-tour="kill-switch">
         <KillSwitch halted={halted} onToggle={onKillToggle} />
       </div>
     </header>

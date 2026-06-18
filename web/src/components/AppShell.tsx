@@ -10,6 +10,7 @@ type Props = {
   activeView: View;
   onViewChange: (v: View) => void;
   onCopilot: () => void;
+  onTour: () => void;
   halted: boolean;
   mode?: string;
   onKillToggle: () => void;
@@ -22,6 +23,7 @@ export function AppShell({
   activeView,
   onViewChange,
   onCopilot,
+  onTour,
   halted,
   mode,
   onKillToggle,
@@ -44,6 +46,7 @@ export function AppShell({
             active={activeView}
             onSelect={onViewChange}
             onCopilot={onCopilot}
+            onTour={onTour}
           />
         </div>
         <main className="flex-1 overflow-y-auto px-6 py-5 pb-12">

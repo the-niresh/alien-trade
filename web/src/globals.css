@@ -341,3 +341,56 @@
 @media (pointer: coarse) {
   button { min-height: 44px; }
 }
+
+/* ── driver.js tour — dark theme override ───────────────────────────────── */
+.alien-tour-popover {
+  background: oklch(5.5% 0 0) !important;
+  border: 1px solid oklch(14% 0 0) !important;
+  border-radius: 12px !important;
+  color: #e6f1f5 !important;
+  box-shadow: 0 0 40px rgba(52,255,174,0.08), 0 8px 32px rgba(0,0,0,0.6) !important;
+}
+.alien-tour-popover .driver-popover-title {
+  font-family: "Chakra Petch", ui-sans-serif, sans-serif !important;
+  font-size: 14px !important;
+  font-weight: 700 !important;
+  color: #34ffae !important;
+  margin-bottom: 6px !important;
+}
+.alien-tour-popover .driver-popover-description {
+  font-family: "IBM Plex Mono", ui-monospace, monospace !important;
+  font-size: 12px !important;
+  color: rgba(230,241,245,0.8) !important;
+  line-height: 1.65 !important;
+}
+.alien-tour-popover .driver-popover-progress-text {
+  font-family: "IBM Plex Mono", ui-monospace, monospace !important;
+  font-size: 10px !important;
+  color: #5f7d96 !important;
+}
+.alien-tour-popover .driver-popover-navigation-btns button {
+  background: oklch(8% 0 0) !important;
+  border: 1px solid oklch(14% 0 0) !important;
+  color: #e6f1f5 !important;
+  border-radius: 6px !important;
+  font-family: "IBM Plex Mono", ui-monospace, monospace !important;
+  font-size: 11px !important;
+  cursor: pointer !important;
+  padding: 4px 12px !important;
+}
+.alien-tour-popover .driver-popover-navigation-btns button:hover {
+  background: oklch(10% 0 0) !important;
+}
+.alien-tour-popover .driver-popover-next-btn {
+  border-color: rgba(52,255,174,0.3) !important;
+  color: #34ffae !important;
+}
+.alien-tour-popover .driver-popover-close-btn {
+  color: #5f7d96 !important;
+  background: transparent !important;
+  border: none !important;
+}
+.alien-tour-popover .driver-popover-close-btn:hover {
+  color: #e6f1f5 !important;
+  background: transparent !important;
+}

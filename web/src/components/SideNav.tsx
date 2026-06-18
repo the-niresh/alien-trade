@@ -6,7 +6,7 @@ import { toggleTheme, getTheme } from "../lib/theme";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { eventSeverity } from "../lib/eventSeverity";
-import { LayoutDashboard, List, Users, Settings, FileText, Bot, Sun, Moon, Bell, Wallet, Activity, BookOpen, LineChart } from "lucide-react";
+import { LayoutDashboard, List, Users, Settings, FileText, Bot, Sun, Moon, Bell, Wallet, Activity, BookOpen, LineChart, GraduationCap } from "lucide-react";
 
 export type View = "overview" | "chart" | "positions" | "agents" | "controls" | "pipeline" | "portfolio" | "logs" | "notifications" | "docs";
 
@@ -23,9 +23,9 @@ const NAV_ITEMS: { view: View; icon: React.ComponentType<{ className?: string }>
   { view: "docs",          icon: BookOpen,        label: "Docs" },
 ];
 
-type Props = { active: View; onSelect: (v: View) => void; onCopilot: () => void };
+type Props = { active: View; onSelect: (v: View) => void; onCopilot: () => void; onTour: () => void };
 
-export function SideNav({ active, onSelect, onCopilot }: Props) {
+export function SideNav({ active, onSelect, onCopilot, onTour }: Props) {
   const [theme, setTheme] = useState(getTheme);
   const events = useQuery(api.agentEvents.recent, { limit: 20 }) ?? [];
 
@@ -95,7 +95,22 @@ export function SideNav({ active, onSelect, onCopilot }: Props) {
         <Tooltip>
           <TooltipTrigger asChild>
             <button
+              onClick={onTour}
+              data-tour="nav-tour"
+              className="w-10 h-10 rounded-[11px] flex items-center justify-center text-muted-fg hover:bg-elevated hover:text-text transition-colors cursor-pointer"
+              aria-label="Start tour"
+            >
+              <GraduationCap className="w-[18px] h-[18px]" />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="right">Start tour</TooltipContent>
+        </Tooltip>
+
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
               onClick={onCopilot}
+              data-tour="nav-copilot"
               className="w-10 h-10 rounded-[11px] flex items-center justify-center text-purple hover:bg-purple/10 transition-colors cursor-pointer"
               aria-label="Co-Pilot"
             >

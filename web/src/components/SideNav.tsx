@@ -1,8 +1,11 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
+import { useQuery } from "convex/react";
+import { api } from "../../../convex/_generated/api";
 import { toggleTheme, getTheme } from "../lib/theme";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+import { eventSeverity } from "../lib/eventSeverity";
 import { LayoutDashboard, List, Users, Settings, FileText, Bot, Sun, Moon, Bell, Wallet, Activity, BookOpen } from "lucide-react";
 
 export type View = "overview" | "positions" | "agents" | "controls" | "pipeline" | "portfolio" | "logs" | "notifications" | "docs";
@@ -23,6 +26,14 @@ type Props = { active: View; onSelect: (v: View) => void; onCopilot: () => void 
 
 export function SideNav({ active, onSelect, onCopilot }: Props) {
   const [theme, setTheme] = useState(getTheme);
+  const events = useQuery(api.agentEvents.recent, { limit: 20 }) ?? [];
+
+  // Count events in the last 30 minutes that are non-info
+  const BADGE_WINDOW_MS = 30 * 60 * 1000;
+  const now = Date.now();
+  const badgeCount = events.filter(
+    (e) => now - e.ts_ms < BADGE_WINDOW_MS && eventSeverity(e) !== "info"
+  ).length;
 
   const handleThemeToggle = () => setTheme(toggleTheme());
 
@@ -32,6 +43,7 @@ export function SideNav({ active, onSelect, onCopilot }: Props) {
         {NAV_ITEMS.map((item) => {
           const Icon = item.icon;
           const isActive = active === item.view;
+          const showBadge = item.view === "notifications" && badgeCount > 0 && !isActive;
           return (
             <Tooltip key={item.view}>
               <TooltipTrigger asChild>
@@ -63,9 +75,15 @@ export function SideNav({ active, onSelect, onCopilot }: Props) {
                     />
                   )}
                   <Icon className="w-[18px] h-[18px] relative z-10" />
+                  {showBadge && (
+                    <span className="absolute top-1 right-1 w-[7px] h-[7px] rounded-full bg-red z-20 animate-pulse"
+                      style={{ boxShadow: "0 0 6px var(--red)" }} />
+                  )}
                 </button>
               </TooltipTrigger>
-              <TooltipContent side="right">{item.label}</TooltipContent>
+              <TooltipContent side="right">
+                {item.label}{showBadge ? ` (${badgeCount} recent)` : ""}
+              </TooltipContent>
             </Tooltip>
           );
         })}

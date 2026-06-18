@@ -62,8 +62,17 @@ export function TradingChart({ ticks, trades = [], height = 480 }: Props) {
     });
 
     const sorted = [...ticks].sort((a, b) => a.timestamp_ms - b.timestamp_ms);
+    const deduped = sorted.reduce<typeof sorted>((acc, t) => {
+      const sec = Math.floor(t.timestamp_ms / 1000);
+      if (acc.length > 0 && Math.floor(acc[acc.length - 1].timestamp_ms / 1000) === sec) {
+        acc[acc.length - 1] = t; // keep later value for same second
+      } else {
+        acc.push(t);
+      }
+      return acc;
+    }, []);
     areaSeries.setData(
-      sorted.map((t) => ({
+      deduped.map((t) => ({
         time: Math.floor(t.timestamp_ms / 1000) as UTCTimestamp,
         value: t.price,
       }))

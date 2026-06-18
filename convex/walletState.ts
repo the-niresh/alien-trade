@@ -3,10 +3,11 @@ import { v } from "convex/values";
 
 export const upsert = mutation({
   args: {
-    usdt: v.number(),
-    eth: v.number(),
-    bnb: v.number(),
-    bnb_usd: v.number(),
+    address:   v.optional(v.string()),
+    usdt:      v.number(),
+    eth:       v.number(),
+    bnb:       v.number(),
+    bnb_usd:   v.number(),
     total_usd: v.number(),
     updated_ms: v.number(),
   },
@@ -27,10 +28,11 @@ export const get = query({
   returns: v.union(v.null(), v.object({
     _id: v.id("wallet_state"),
     _creationTime: v.number(),
-    usdt: v.number(),
-    eth: v.number(),
-    bnb: v.number(),
-    bnb_usd: v.number(),
+    address:   v.optional(v.string()),
+    usdt:      v.number(),
+    eth:       v.number(),
+    bnb:       v.number(),
+    bnb_usd:   v.number(),
     total_usd: v.number(),
     updated_ms: v.number(),
   })),

@@ -10,6 +10,7 @@ import { PositionsView } from "./views/PositionsView";
 import { AgentsView } from "./views/AgentsView";
 import { ControlsView } from "./views/ControlsView";
 import { LogsView } from "./views/LogsView";
+import { NotificationsView } from "./views/NotificationsView";
 import { ViewError } from "./components/ViewError";
 import { ErrorBoundary } from "react-error-boundary";
 import { Toaster, toast } from "sonner";
@@ -20,6 +21,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { View } from "./components/SideNav";
+import { eventSeverity } from "./lib/eventSeverity";
 
 // ── Pairing wizard ────────────────────────────────────────────────────────────
 
@@ -165,7 +167,7 @@ function PairingScreen({ onPaired }: { onPaired: (t: string) => void }) {
 
 export default function App() {
   const config = useQuery(api.config.get);
-  const events = useQuery(api.agentEvents.recent, { limit: 5 });
+  const events = useQuery(api.agentEvents.recent, { limit: 20 });
 
   const _setHalted  = useMutation(api.config.setHalted);
   const _setControl = useMutation(api.agentControl.set);
@@ -176,26 +178,29 @@ export default function App() {
   const [view, setView]                     = useState<View>("overview");
   const [copilotOpen, setCopilotOpen]       = useState(false);
   const [copilotPrefill, setCopilotPrefill] = useState("");
-  const [lastFloorHalt, setLastFloorHalt]   = useState<string | null>(null);
   const [selectedSymbol, setSelectedSymbol] = useState("ALL");
 
   const halted = config?.halted ?? false;
   const mode   = config?.trading_mode;
 
-  // Equity floor toast — fires once per unique event
+  // Generalized toast router — fires once per unique event _id
+  const seenEventIds = useRef<Set<string>>(new Set());
   useEffect(() => {
-    const floorHalt = (events ?? []).find(
-      (e) => e.agent === "RiskGuard" && e.kind === "control" &&
-        typeof e.headline === "string" && e.headline.includes("floor hit"),
-    );
-    if (floorHalt && floorHalt._id !== lastFloorHalt) {
-      setLastFloorHalt(floorHalt._id);
-      toast.error("Equity floor hit", {
-        description: "Agent has been halted. Fund wallet or raise floor.",
-        duration: Infinity,
-      });
+    if (!events) return;
+    // Prime on first load so historical rows don't toast in a burst.
+    if (seenEventIds.current.size === 0) {
+      for (const e of events) seenEventIds.current.add(e._id);
+      return;
     }
-  }, [events, lastFloorHalt]);
+    for (const e of [...events].reverse()) {
+      if (seenEventIds.current.has(e._id)) continue;
+      seenEventIds.current.add(e._id);
+      const sev = eventSeverity(e);
+      if (sev === "critical") toast.error(e.headline, { duration: 8000 });
+      else if (sev === "risk") toast.warning(e.headline, { duration: 5000 });
+      else if (sev === "trade") toast.success(e.headline, { duration: 3000 });
+    }
+  }, [events]);
 
   const onKillToggle = () => {
     const willHalt = !halted;
@@ -223,7 +228,8 @@ export default function App() {
       case "positions": return <PositionsView />;
       case "agents":    return <AgentsView    onAgentClick={onAgentClick} />;
       case "controls":  return <ControlsView />;
-      case "logs":      return <LogsView />;
+      case "logs":          return <LogsView />;
+      case "notifications": return <NotificationsView />;
     }
   };
 

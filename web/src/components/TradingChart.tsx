@@ -61,22 +61,24 @@ export function TradingChart({ ticks, trades = [], height = 480 }: Props) {
       lineWidth: 2,
     });
 
+    // lightweight-charts requires strictly ascending integer seconds.
+    // Ticks from Convex may overlap on restarts or share the same second.
+    // 1. Sort ascending by raw timestamp_ms.
+    // 2. Convert to seconds (handles both ms and already-seconds storage).
+    // 3. Final monotonic filter: drop any point not strictly > previous second.
+    const toSec = (ms: number) => ms > 1e10 ? Math.floor(ms / 1000) : Math.floor(ms);
     const sorted = [...ticks].sort((a, b) => a.timestamp_ms - b.timestamp_ms);
-    const deduped = sorted.reduce<typeof sorted>((acc, t) => {
-      const sec = Math.floor(t.timestamp_ms / 1000);
-      if (acc.length > 0 && Math.floor(acc[acc.length - 1].timestamp_ms / 1000) === sec) {
-        acc[acc.length - 1] = t; // keep later value for same second
-      } else {
-        acc.push(t);
+    const chartData: Array<{ time: UTCTimestamp; value: number }> = [];
+    for (const t of sorted) {
+      const sec = toSec(t.timestamp_ms) as UTCTimestamp;
+      if (chartData.length === 0 || sec > chartData[chartData.length - 1].time) {
+        chartData.push({ time: sec, value: t.price });
+      } else if (sec === chartData[chartData.length - 1].time) {
+        chartData[chartData.length - 1].value = t.price; // same second — keep latest
       }
-      return acc;
-    }, []);
-    areaSeries.setData(
-      deduped.map((t) => ({
-        time: Math.floor(t.timestamp_ms / 1000) as UTCTimestamp,
-        value: t.price,
-      }))
-    );
+      // sec < prev.time: skip (clock skew / restart artifact)
+    }
+    areaSeries.setData(chartData);
 
     if (trades.length > 0) {
       const sortedTrades = [...trades].sort((a, b) => a.timestamp_ms - b.timestamp_ms);

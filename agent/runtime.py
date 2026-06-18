@@ -12,6 +12,7 @@ CLI:
 from __future__ import annotations
 
 import argparse
+import os
 from dataclasses import replace
 from typing import Optional
 
@@ -110,6 +111,8 @@ def build_loop(cfg: AgentConfig, *, feed=None, dry_run: bool = False,
         enforce_activity_floor=cfg.enforce_activity_floor,
         notifier=notifier,
         autopilot_config=cfg.autopilot,
+        kol_enabled=os.environ.get("KOL_AUTOTRADE", "0") == "1",
+        kol_min_conf=float(os.environ.get("KOL_MIN_CONF", "0.5")),
     )
     loop.second_brain = sb   # co-pilot / research / telemetry access (may be None)
     if recover:

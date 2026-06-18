@@ -1080,6 +1080,14 @@ class DecisionLoop:
         from agent.observability import jlog
         while True:
             try:
+                # Refresh KOL sentiment before each cycle when enabled (off hot path,
+                # failure-isolated inside run_live_ingest).
+                if getattr(self, "kol_enabled", False):
+                    try:
+                        from agent.social.live import run_live_ingest
+                        run_live_ingest(self.bridge)
+                    except Exception:  # noqa: BLE001
+                        pass
                 history = self.feed.next()
                 if history:
                     res = self.run_cycle(history)

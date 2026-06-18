@@ -15,7 +15,7 @@ from pathlib import Path
 
 from agent.social.ingest import ingest, load_watchlist
 from agent.social.schema import SentimentReading
-from core.risk.guardrails import TOKEN_ALLOWLIST
+from risk.guardrails import TOKEN_ALLOWLIST
 
 _DEFAULT_WATCHLIST = Path(__file__).resolve().parent / "watchlist.example.json"
 

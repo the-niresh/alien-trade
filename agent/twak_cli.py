@@ -47,6 +47,21 @@ class TwakSwapResult:
     raw: dict
 
 
+# BSC tokens that `twak swap` does NOT resolve by symbol — must use contract addresses.
+# ETH works by symbol; everything else on BSC requires the 0x... address.
+_BSC_TOKEN_REGISTRY: dict[str, str] = {
+    "CAKE": "0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82",
+    "UNI":  "0xBf5140A22578168FD562DCcF235E5D43A02ce9B1",
+    "LINK": "0xF8A0BF9cF54Bb92F17374d9e9A321E6a111a51bD",
+    "AAVE": "0xfb6115445Bff7b52FeB98650C87f44907E58f802",
+    "USDT": "0x55d398326f99059fF775485246999027B3197955",
+}
+
+def _resolve_bsc_token(symbol: str) -> str:
+    """Return contract address for BSC tokens that twak can't resolve by symbol."""
+    return _BSC_TOKEN_REGISTRY.get(symbol.upper(), symbol)
+
+
 class TwakCli:
     """Subprocess wrapper. Construct once; reuse across cycles."""
 
@@ -130,9 +145,13 @@ class TwakCli:
         slippage: float = 1.0,
     ) -> TwakQuote:
         """Quote a USD-sized swap without executing (simulate-before-send)."""
+        c = chain or self.chain
+        # BSC: CAKE/UNI/LINK/AAVE require contract addresses, not symbols
+        ft = _resolve_bsc_token(from_token) if c == "bsc" else from_token
+        tt = _resolve_bsc_token(to_token)   if c == "bsc" else to_token
         data = self._run(
-            "swap", from_token, to_token, "--usd", str(usd),
-            "--chain", chain or self.chain, "--slippage", str(slippage),
+            "swap", ft, tt, "--usd", str(usd),
+            "--chain", c, "--slippage", str(slippage),
             "--quote-only", "--json",
         )
         return _parse_quote(data, from_token, to_token)
@@ -142,9 +161,12 @@ class TwakCli:
         slippage: float = 1.0,
     ) -> TwakSwapResult:
         """Execute a USD-sized swap: route + sign on-device + broadcast."""
+        c = chain or self.chain
+        ft = _resolve_bsc_token(from_token) if c == "bsc" else from_token
+        tt = _resolve_bsc_token(to_token)   if c == "bsc" else to_token
         data = self._run(
-            "swap", from_token, to_token, "--usd", str(usd),
-            "--chain", chain or self.chain, "--slippage", str(slippage), "--json",
+            "swap", ft, tt, "--usd", str(usd),
+            "--chain", c, "--slippage", str(slippage), "--json",
         )
         tx = data.get("txHash") or data.get("hash") or data.get("transactionHash") or ""
         return TwakSwapResult(tx_hash=tx, raw=data)

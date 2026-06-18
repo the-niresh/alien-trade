@@ -254,6 +254,20 @@ class DecisionLoop:
         # ── Decision (same code as the sim) ─────────────────────────────────
         order = self.strategy(history)
 
+        # ── Stop-loss telemetry: surface a forced ATR-stop exit on the channel ─
+        stop_exit = getattr(self.strategy, "last_stop_exit", None)
+        if stop_exit:
+            try:
+                from agent.graph.contracts import AgentEvent, KIND_CONTROL
+                self.bridge.emit_event(AgentEvent(
+                    agent="RiskGuard", kind=KIND_CONTROL,
+                    headline=(f"STOP: {stop_exit['kind']} ATR stop hit "
+                              f"@ ${stop_exit['price']:.2f} (stop ${stop_exit['stop']:.2f})"),
+                    cycle_id=cycle_id, detail=stop_exit,
+                ))
+            except Exception:  # noqa: BLE001 — channel write must never crash the loop
+                pass
+
         verdict, reason, execution, trade_id, final_size = "block", "no signal / risk veto", None, None, 0.0
 
         if order is not None and self._block_entry and order.side == "buy":

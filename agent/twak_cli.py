@@ -156,6 +156,25 @@ class TwakCli:
         )
         return _parse_quote(data, from_token, to_token)
 
+    def transfer(
+        self, to_address: str, amount: float, token: str, *, chain: Optional[str] = None,
+    ) -> dict:
+        """Transfer tokens to another address via `twak transfer`.
+
+        For BNB (native coin): omits --token flag.
+        For ERC-20 tokens: passes symbol; twak resolves contract address.
+        """
+        args = [
+            "transfer",
+            "--to", to_address,
+            "--amount", str(amount),
+            "--chain", chain or self.chain,
+            "--json",
+        ]
+        if token.upper() != "BNB":
+            args += ["--token", token]
+        return self._run(*args)
+
     def swap_execute(
         self, from_token: str, to_token: str, *, usd: float, chain: Optional[str] = None,
         slippage: float = 1.0,

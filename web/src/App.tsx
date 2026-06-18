@@ -11,6 +11,10 @@ import { AgentsView } from "./views/AgentsView";
 import { ControlsView } from "./views/ControlsView";
 import { LogsView } from "./views/LogsView";
 import { NotificationsView } from "./views/NotificationsView";
+import { PortfolioView } from "./views/PortfolioView";
+import { PipelineView } from "./views/PipelineView";
+import { DocsView } from "./views/DocsView";
+import { LandingView } from "./views/LandingView";
 import { ViewError } from "./components/ViewError";
 import { ErrorBoundary } from "react-error-boundary";
 import { Toaster, toast } from "sonner";
@@ -175,6 +179,7 @@ export default function App() {
   const setControl  = (a: Parameters<typeof _setControl>[0]) => _setControl(withToken(a));
 
   const [token, setTokenState]              = useState<string | null>(loadToken());
+  const [showPairing, setShowPairing]       = useState(false);
   const [view, setView]                     = useState<View>("overview");
   const [copilotOpen, setCopilotOpen]       = useState(false);
   const [copilotPrefill, setCopilotPrefill] = useState("");
@@ -219,17 +224,24 @@ export default function App() {
   };
 
   if (!token) {
-    return <PairingScreen onPaired={(t) => { setToken(t); setTokenState(t); }} />;
+    const hasDeepLink = location.hash.startsWith("#t=");
+    if (hasDeepLink || showPairing) {
+      return <PairingScreen onPaired={(t) => { setToken(t); setTokenState(t); }} />;
+    }
+    return <LandingView onConnect={() => setShowPairing(true)} />;
   }
 
   const renderView = () => {
     switch (view) {
-      case "overview":  return <OverviewView  onAgentClick={onAgentClick} />;
-      case "positions": return <PositionsView />;
-      case "agents":    return <AgentsView    onAgentClick={onAgentClick} />;
-      case "controls":  return <ControlsView />;
+      case "overview":      return <OverviewView  onAgentClick={onAgentClick} />;
+      case "portfolio":     return <PortfolioView />;
+      case "pipeline":      return <PipelineView />;
+      case "positions":     return <PositionsView />;
+      case "agents":        return <AgentsView    onAgentClick={onAgentClick} />;
+      case "controls":      return <ControlsView />;
       case "logs":          return <LogsView />;
       case "notifications": return <NotificationsView />;
+      case "docs":          return <DocsView />;
     }
   };
 

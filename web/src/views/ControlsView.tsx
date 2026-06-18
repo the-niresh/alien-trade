@@ -5,6 +5,8 @@ import { api } from "../../../convex/_generated/api";
 import { KillSwitch } from "../components/KillSwitch";
 import { Panel } from "../components/Panel";
 import { withToken } from "../lib/control";
+import { SPONSOR_CONTROLS } from "../lib/sponsorRegistry";
+import { ControlCard } from "../components/CommandPanel";
 import { usd, pct } from "../lib/formatters";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -67,6 +69,15 @@ export function ControlsView() {
           Command Override
         </div>
         <h1 className="font-display text-[22px] font-bold tracking-wide text-text">Controls</h1>
+      </div>
+
+      {/* ── Section 1: Autonomous Agent Controls ── */}
+      <div className="mb-2">
+        <div className="font-mono text-[10px] text-muted-fg tracking-[0.22em] uppercase mb-1.5 flex items-center gap-2">
+          <span className="h-[2px] w-4 bg-green rounded-full inline-block" style={{ boxShadow: "0 0 6px var(--green)" }} />
+          Autonomous Agent Controls
+        </div>
+        <p className="font-mono text-[11px] text-muted-fg/70">Scored path. Agent reads these each cycle.</p>
       </div>
 
       {/* Kill switch */}
@@ -343,6 +354,20 @@ export function ControlsView() {
         )}
         {!config && <Skeleton className="h-20 w-full bg-elevated" />}
       </Panel>
+
+      {/* ── Section 2: Manual Operator Tools ── */}
+      <div className="mt-6 mb-2">
+        <div className="font-mono text-[10px] text-muted-fg tracking-[0.22em] uppercase mb-1.5 flex items-center gap-2">
+          <span className="h-[2px] w-4 bg-yellow rounded-full inline-block" style={{ boxShadow: "0 0 6px var(--yellow)" }} />
+          Manual Operator Tools
+        </div>
+        <p className="font-mono text-[11px] text-muted-fg/70">TWAK-signed. Off the scored path. Every action is audited.</p>
+      </div>
+      <div className="grid grid-cols-2 gap-3 max-sm:grid-cols-1">
+        {SPONSOR_CONTROLS
+          .filter((c) => c.transport === "imperative" || (c.transport === "read" && c.readEndpoint))
+          .map((c) => <ControlCard key={c.id} control={c} />)}
+      </div>
     </div>
   );
 }

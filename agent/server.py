@@ -48,6 +48,22 @@ _loop: DecisionLoop | None = None
 _supervisor = None   # agent.graph.supervisor.Supervisor — built lazily after loop warms
 
 
+_ACTION_VERBS = {
+    "halt": {"type": "halt", "params": {}, "summary": "Halt all trading."},
+    "resume": {"type": "resume", "params": {}, "summary": "Resume trading."},
+    "stop trading": {"type": "halt", "params": {}, "summary": "Halt all trading."},
+}
+
+
+def _extract_action(question: str, answer: str) -> dict | None:
+    """Lightweight server-side action extraction. Client grammar is the primary path."""
+    q = question.lower()
+    for trigger, action in _ACTION_VERBS.items():
+        if trigger in q:
+            return action
+    return None
+
+
 def get_loop() -> DecisionLoop:
     global _loop
     if _loop is None:
@@ -194,6 +210,7 @@ def _second_brain():
 def copilot(body: dict) -> dict:
     """Grounded Q&A over the Second Brain. POST {"question": "..."}.
     Falls back to live status snapshot when SECOND_BRAIN=0."""
+    question = str(body.get("question", ""))
     sb = _second_brain()
     if sb is None:
         loop = get_loop()
@@ -208,8 +225,13 @@ def copilot(body: dict) -> dict:
             "",
             "_(Full grounded Q&A requires SECOND_BRAIN=1 + Anthropic + Upstash keys.)_",
         ]
-        return {"answer": "\n".join(lines), "grounded": True, "sources": []}
-    return sb.copilot().ask(str(body.get("question", "")))
+        answer = "\n".join(lines)
+        action = _extract_action(question, answer)
+        return {"answer": answer, "grounded": True, "sources": [], "action": action}
+    res = sb.copilot().ask(question)
+    action = _extract_action(question, res.get("answer", ""))
+    res["action"] = action
+    return res
 
 
 @app.post("/research")

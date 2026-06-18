@@ -167,6 +167,7 @@ export const ask = action({
     answer: v.string(),
     grounded: v.boolean(),
     sources: v.array(v.any()),
+    action: v.optional(v.any()),
   }),
   handler: async (_ctx, args) => {
     assertControlToken(args.control_token);
@@ -184,23 +185,27 @@ export const ask = action({
           answer: `Agent returned HTTP ${res.status}. Is the server running?`,
           grounded: false,
           sources: [],
+          action: null,
         };
       }
       const data = (await res.json()) as {
         answer?: string;
         grounded?: boolean;
         sources?: unknown[];
+        action?: Record<string, unknown> | null;
       };
       return {
         answer: data.answer ?? "",
         grounded: Boolean(data.grounded),
         sources: Array.isArray(data.sources) ? data.sources : [],
+        action: data.action ?? null,
       };
     } catch (e) {
       return {
         answer: `Co-pilot offline — start the agent server to enable live Q&A. (${e})`,
         grounded: false,
         sources: [],
+        action: null,
       };
     }
   },

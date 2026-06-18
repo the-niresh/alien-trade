@@ -178,6 +178,10 @@ export function CoPilotDrawer({ isOpen, onClose, prefill = "" }: Props) {
       const streamId = await startStream(withToken({ thread_id: activeThreadId ?? undefined }));
       const res = await ask(withToken({ question: text }));
       await finaliseStream(withToken({ id: streamId, content: res.answer, sources_json: JSON.stringify(res.sources) }));
+      // If agent returned a structured action, surface the confirm card
+      if (res.action && !pendingAction) {
+        setPendingAction(res.action as ProposedAction);
+      }
     } finally {
       setLoading(false);
       setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: "smooth" }), 50);

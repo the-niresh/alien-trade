@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "convex/react";
-import { api } from "../../convex/_generated/api";
+import { api } from "../../../convex/_generated/api";
 import { Panel } from "./Panel";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ts } from "../lib/formatters";

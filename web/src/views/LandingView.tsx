@@ -15,6 +15,11 @@ export function LandingView({ onConnect }: { onConnect: () => void }) {
     <div className="min-h-screen bg-[#000000] flex flex-col">
       {/* Hero */}
       <div className="flex flex-col items-center justify-center pt-24 pb-16 px-6 text-center">
+        <img
+          src="/logo.png"
+          alt="Alien-Trade"
+          className="logo-blend w-28 h-28 mb-6"
+        />
         <div className="font-display text-[48px] font-bold text-green tracking-[0.12em] mb-2"
           style={{ textShadow: "0 0 40px rgba(74,222,128,0.4)" }}>
           ALIEN·TRADE

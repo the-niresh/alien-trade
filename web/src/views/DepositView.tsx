@@ -10,8 +10,9 @@ import QRCode from "qrcode";
 type Tab = "deposit" | "buy";
 
 export function DepositView() {
-  const wallet  = useQuery(api.walletState.get);
-  const address = wallet?.address ?? "";
+  // getAddress reads from Convex row first, falls back to WALLET_ADDRESS env var —
+  // so Deposit works immediately without waiting for an agent cycle to write the address
+  const address = useQuery(api.walletState.getAddress) ?? "";
   const [tab, setTab]       = useState<Tab>("deposit");
   const [copied, setCopied] = useState(false);
   const canvasRef           = useRef<HTMLCanvasElement>(null);

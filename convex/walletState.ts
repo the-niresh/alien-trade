@@ -40,3 +40,19 @@ export const get = query({
     return await ctx.db.query("wallet_state").first();
   },
 });
+
+/**
+ * Returns the self-custody wallet address directly from the server env var.
+ * Used by DepositView so it works immediately without waiting for an agent cycle.
+ */
+export const getAddress = query({
+  args: {},
+  returns: v.string(),
+  handler: async (ctx) => {
+    // First try the Convex row (populated by agent each cycle)
+    const row = await ctx.db.query("wallet_state").first();
+    if (row?.address) return row.address;
+    // Fall back to env var set in Convex dashboard / deployment
+    return process.env.WALLET_ADDRESS ?? "";
+  },
+});

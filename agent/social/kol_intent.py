@@ -15,7 +15,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from agent.social.schema import SentimentReading
-from core.risk.guardrails import TOKEN_ALLOWLIST
+from risk.guardrails import TOKEN_ALLOWLIST
 
 
 @dataclass(frozen=True)

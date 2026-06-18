@@ -6,6 +6,7 @@ import type { Id } from "../../../convex/_generated/dataModel";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { withToken } from "@/lib/control";
 import { Plus, X } from "lucide-react";
 
 const CHIPS = [
@@ -69,7 +70,7 @@ export function CoPilotDrawer({ isOpen, onClose, prefill = "" }: Props) {
   }
 
   const newThread = async () => {
-    const id = await createThread({ title: "New conversation" });
+    const id = await createThread(withToken({ title: "New conversation" }));
     setActiveThreadId(id);
   };
 
@@ -79,11 +80,11 @@ export function CoPilotDrawer({ isOpen, onClose, prefill = "" }: Props) {
     setQuestion("");
     setLoading(true);
     try {
-      await addMessage({ role: "user", content: text, sources_json: "[]", thread_id: activeThreadId ?? undefined });
+      await addMessage(withToken({ role: "user", content: text, sources_json: "[]", thread_id: activeThreadId ?? undefined }));
       // Start streaming assistant message
-      const streamId = await startStream({ thread_id: activeThreadId ?? undefined });
+      const streamId = await startStream(withToken({ thread_id: activeThreadId ?? undefined }));
       const res = await ask({ question: text });
-      await finaliseStream({ id: streamId, content: res.answer, sources_json: JSON.stringify(res.sources) });
+      await finaliseStream(withToken({ id: streamId, content: res.answer, sources_json: JSON.stringify(res.sources) }));
     } finally {
       setLoading(false);
       setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: "smooth" }), 50);

@@ -38,6 +38,7 @@ export const list = query({
 
 export const updateStatus = mutation({
   args: {
+    control_token: v.optional(v.string()),
     id:            v.id("agent_commands"),
     status:        v.union(v.literal("running"), v.literal("done"), v.literal("failed")),
     result:        v.optional(v.string()),
@@ -46,6 +47,7 @@ export const updateStatus = mutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
+    assertControlToken(args.control_token);
     await ctx.db.patch(args.id, {
       status:        args.status,
       result:        args.result,

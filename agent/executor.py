@@ -291,64 +291,89 @@ class TwakSwapExecutor(_IdempotentBase):
             from_tok, to_tok = self.QUOTE_CCY, order.symbol
         else:
             from_tok, to_tok = order.symbol, self.QUOTE_CCY
-        slippage_pct_arg = self._risk.max_slippage_pct * 100.0
 
-        # 1. quote = simulate-before-send
-        try:
-            quote = self._twak.swap_quote(
-                from_tok, to_tok, usd=order.size_usd,
-                chain=self._chain, slippage=slippage_pct_arg,
-            )
-        except TwakError as e:
-            return ExecutionReport(FAILED, order, reason=f"twak quote error: {e}")
+        # Slippage retry ladder: start at the configured cap, step up on TX_FAILED.
+        # BSC routing (LiquidMesh vs 0x) is amount- and slippage-dependent; at low
+        # slippage small trades land on LiquidMesh which requires a prior ERC-20
+        # approval that the wallet may not have. Stepping up re-routes to 0x, which
+        # handles approvals internally. Ladder is capped at 8% to stay within the
+        # drawdown-first mandate.
+        base_slip = self._risk.max_slippage_pct * 100.0
+        slip_ladder = sorted({base_slip, 5.0, 8.0})  # at least [base, 5, 8]
 
-        # 2. slippage cap (drawdown-first abort on bad quote)
-        cap = check_slippage(quote.price_impact_pct, self._risk)
-        if not cap.allowed:
-            return ExecutionReport(REJECTED, order, reason=cap.reason)
+        rug_checked = False
+        last_err = "no slippage level succeeded"
 
-        if self._dry_run:
+        for slip in slip_ladder:
+            # 1. quote = simulate-before-send (re-quote per rung — provider may differ)
+            try:
+                quote = self._twak.swap_quote(
+                    from_tok, to_tok, usd=order.size_usd,
+                    chain=self._chain, slippage=slip,
+                )
+            except TwakError as e:
+                last_err = f"twak quote error at {slip}%: {e}"
+                continue
+
+            # 2. slippage cap (drawdown-first: abort if price impact exceeds cap)
+            cap = check_slippage(quote.price_impact_pct, self._risk)
+            if not cap.allowed:
+                return ExecutionReport(REJECTED, order, reason=cap.reason)
+
+            if self._dry_run:
+                return self._remember(
+                    idempotency_key,
+                    ExecutionReport(SIMULATED, order,
+                                    reason=f"dry-run: quote ok, impact {quote.price_impact_pct:.2%}"),
+                )
+
+            # 3. rug-check gate — run once only (idempotent per order)
+            if not rug_checked:
+                self._rug_check(to_tok)
+                rug_checked = True
+
+            # 4. execute (sign on-device + broadcast)
+            try:
+                res = self._twak.swap_execute(
+                    from_tok, to_tok, usd=order.size_usd,
+                    chain=self._chain, slippage=slip,
+                )
+            except TwakError as e:
+                err_str = str(e)
+                if "TX_FAILED" in err_str or "execution reverted" in err_str:
+                    # On-chain revert — likely wrong router; retry with higher slippage
+                    last_err = f"TX_FAILED at {slip}% (router mismatch), stepping up"
+                    continue
+                # Other errors (network, auth, etc.) — don't retry
+                return ExecutionReport(FAILED, order, reason=f"twak swap error: {e}")
+
+            if not res.tx_hash:
+                last_err = f"no tx hash at {slip}%, stepping up"
+                continue
+
+            # SUCCESS — confirm on-chain (BNB SDK receipt = source of truth)
+            gas_usd = 0.0
+            if self._bnb is not None:
+                try:
+                    receipt = self._bnb.wait_for_receipt(res.tx_hash)
+                except Exception as e:  # noqa: BLE001
+                    return ExecutionReport(FAILED, order, tx_hash=res.tx_hash,
+                                           reason=f"confirm error: {e}")
+                if getattr(receipt, "status", 1) != 1:
+                    return ExecutionReport(FAILED, order, tx_hash=res.tx_hash,
+                                           reason="tx reverted on-chain")
+                gas_usd = _gas_usd_from_receipt(receipt, bar)
+
+            fee, model_gas, slippage_usd = self._cost(order, bar)
+            fill = Fill(order=order, fill_price=bar.close,
+                        fee_usd=fee, gas_usd=gas_usd or model_gas, slippage_usd=slippage_usd)
             return self._remember(
                 idempotency_key,
-                ExecutionReport(SIMULATED, order,
-                                reason=f"dry-run: quote ok, impact {quote.price_impact_pct:.2%}"),
+                ExecutionReport(FILLED, order, fill=fill, tx_hash=res.tx_hash,
+                                reason=f"twak swap confirmed (slippage={slip}%)"),
             )
 
-        # 3. rug-check gate (capital preservation — abort if TWAK flags the token)
-        self._rug_check(to_tok)
-
-        # 4. execute (sign on-device + broadcast)
-        try:
-            res = self._twak.swap_execute(
-                from_tok, to_tok, usd=order.size_usd,
-                chain=self._chain, slippage=slippage_pct_arg,
-            )
-        except TwakError as e:
-            return ExecutionReport(FAILED, order, reason=f"twak swap error: {e}")
-        if not res.tx_hash:
-            return ExecutionReport(FAILED, order, reason="twak swap returned no tx hash")
-
-        # 5. confirm on-chain (BNB SDK receipt = source of truth)
-        gas_usd = 0.0
-        if self._bnb is not None:
-            try:
-                receipt = self._bnb.wait_for_receipt(res.tx_hash)
-            except Exception as e:  # noqa: BLE001
-                return ExecutionReport(FAILED, order, tx_hash=res.tx_hash,
-                                       reason=f"confirm error: {e}")
-            if getattr(receipt, "status", 1) != 1:
-                return ExecutionReport(FAILED, order, tx_hash=res.tx_hash,
-                                       reason="tx reverted on-chain")
-            gas_usd = _gas_usd_from_receipt(receipt, bar)
-
-        fee, model_gas, slippage_usd = self._cost(order, bar)
-        fill = Fill(order=order, fill_price=bar.close,
-                    fee_usd=fee, gas_usd=gas_usd or model_gas, slippage_usd=slippage_usd)
-        return self._remember(
-            idempotency_key,
-            ExecutionReport(FILLED, order, fill=fill, tx_hash=res.tx_hash,
-                            reason="twak swap confirmed"),
-        )
+        return ExecutionReport(FAILED, order, reason=last_err)
 
 
 def _expected_slippage_pct(size_usd: float, cost_model: BSCCostModel) -> float:

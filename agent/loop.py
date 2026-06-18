@@ -693,8 +693,12 @@ class DecisionLoop:
             equity = self.ledger.mark(bar.close)
             if intent.action == "open_long":
                 size = min(self.base_position_usd, cfg.max_trade_usd)
-                gr = check_guardrails(symbol=self.symbol, size_usd=size, daily_loss_pct=0.0,
-                                      consecutive_losses=0, capital=equity, config=cfg)
+                daily_loss_usd = self.ledger.daily_loss_usd(bar.close)
+                daily_loss_pct = daily_loss_usd / max(equity, 1.0)
+                gr = check_guardrails(symbol=self.symbol, size_usd=size,
+                                      daily_loss_pct=daily_loss_pct,
+                                      consecutive_losses=self.ledger.consecutive_losses,
+                                      capital=equity, config=cfg)
                 if not gr.allowed:
                     self.bridge.audit("risk_veto", cycle_id,
                                       {"reason": gr.reason, "source": "kol"}, "warn")

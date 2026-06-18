@@ -59,8 +59,13 @@ export default defineSchema({
     content: v.string(),
     sources_json: v.string(),   // JSON array of {id, kind, score, text} hits
     ts_ms: v.number(),
+    // Phase 3 additions — optional for backward compat with existing rows
+    thread_id:       v.optional(v.id("copilot_threads")),
+    partial_content: v.optional(v.string()),
+    is_streaming:    v.optional(v.boolean()),
   })
-    .index("by_ts", ["ts_ms"]),
+    .index("by_ts", ["ts_ms"])
+    .index("by_thread", ["thread_id"]),
 
   // Hermes self-learning: post-trade reflections stored for mistake-avoidance
   reflections: defineTable({
@@ -323,6 +328,33 @@ export default defineSchema({
     ts_ms: v.number(),
   })
     .index("by_key", ["key"]),
+
+  // Operator command queue — imperative TWAK-signed actions dispatched from the cockpit.
+  // UI enqueues (token-gated); the agent command worker drains and executes.
+  agent_commands: defineTable({
+    command_type: v.string(),
+    params: v.string(),           // JSON
+    status: v.union(
+      v.literal("queued"), v.literal("running"),
+      v.literal("done"),  v.literal("failed"),
+    ),
+    result:        v.optional(v.string()),
+    error:         v.optional(v.string()),
+    audit_id:      v.optional(v.id("audit")),
+    queued_by:     v.string(),
+    queued_at_ms:  v.number(),
+    updated_at_ms: v.number(),
+  })
+    .index("by_status",    ["status"])
+    .index("by_queued_at", ["queued_at_ms"]),
+
+  // Co-pilot thread index — each named conversation.
+  copilot_threads: defineTable({
+    title:          v.string(),
+    created_ms:     v.number(),
+    last_active_ms: v.number(),
+  })
+    .index("by_last_active", ["last_active_ms"]),
 
   // Live positions singleton — agent writes each cycle; cockpit reads for the
   // holdings panel. One row per symbol, keyed by symbol string. Flat = quantity 0.

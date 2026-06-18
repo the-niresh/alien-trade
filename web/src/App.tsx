@@ -3,7 +3,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { loadToken, setToken, withToken } from "./lib/control";
-import { startTour, hasTourBeenSeen } from "./lib/tour";
+import { startTour, hasTourBeenSeen, startPostTradeTour, hasPostTradeTourBeenSeen } from "./lib/tour";
 import { AppShell } from "./components/AppShell";
 import { CoPilotDrawer } from "./components/CoPilotDrawer";
 import { OverviewView } from "./views/OverviewView";
@@ -17,6 +17,7 @@ import { PipelineView } from "./views/PipelineView";
 import { DocsView } from "./views/DocsView";
 import { ChartView } from "./views/ChartView";
 import { TrackersView } from "./views/TrackersView";
+import { DepositView } from "./views/DepositView";
 import { LandingView } from "./views/LandingView";
 import { ViewError } from "./components/ViewError";
 import { ErrorBoundary } from "react-error-boundary";
@@ -183,6 +184,7 @@ function PairingScreen({ onPaired }: { onPaired: (t: string) => void }) {
 export default function App() {
   const config = useQuery(api.config.get);
   const events = useQuery(api.agentEvents.recent, { limit: 20 });
+  const trades = useQuery(api.trades.recent, { limit: 1 });
 
   const _setHalted  = useMutation(api.config.setHalted);
   const _setControl = useMutation(api.agentControl.set);
@@ -198,6 +200,17 @@ export default function App() {
 
   const halted = config?.halted ?? false;
   const mode   = config?.trading_mode;
+
+  // Post-trade tour — fires once when trade count transitions 0→1
+  const tradeCountRef = useRef<number | null>(null);
+  useEffect(() => {
+    if (trades === undefined) return;
+    const count = trades.length;
+    if (tradeCountRef.current === 0 && count === 1 && !hasPostTradeTourBeenSeen()) {
+      setTimeout(startPostTradeTour, 800);
+    }
+    tradeCountRef.current = count;
+  }, [trades]);
 
   // Generalized toast router — fires once per unique event _id
   const seenEventIds = useRef<Set<string>>(new Set());
@@ -261,6 +274,7 @@ export default function App() {
     switch (view) {
       case "overview":      return <OverviewView  onAgentClick={onAgentClick} onCopilot={() => setCopilotOpen(true)} />;
       case "trackers":      return <TrackersView />;
+      case "deposit":       return <DepositView />;
       case "chart":         return <ChartView />;
       case "portfolio":     return <PortfolioView />;
       case "pipeline":      return <PipelineView />;
@@ -285,6 +299,7 @@ export default function App() {
         onKillToggle={onKillToggle}
         selectedSymbol={selectedSymbol}
         onSymbolChange={setSelectedSymbol}
+        onDeposit={() => setView("deposit")}
       >
         <AnimatePresence mode="wait">
           <motion.div

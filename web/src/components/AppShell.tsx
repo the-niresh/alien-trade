@@ -16,6 +16,7 @@ type Props = {
   onKillToggle: () => void;
   selectedSymbol?: string;
   onSymbolChange?: (s: string) => void;
+  onDeposit?: () => void;
 };
 
 export function AppShell({
@@ -29,6 +30,7 @@ export function AppShell({
   onKillToggle,
   selectedSymbol,
   onSymbolChange,
+  onDeposit,
 }: Props) {
   return (
     <div className="flex flex-col h-screen">
@@ -38,6 +40,7 @@ export function AppShell({
         onKillToggle={onKillToggle}
         selectedSymbol={selectedSymbol}
         onSymbolChange={onSymbolChange}
+        onDeposit={onDeposit}
       />
       <div className="flex flex-1 overflow-hidden">
         {/* Sidebar — hidden on mobile */}

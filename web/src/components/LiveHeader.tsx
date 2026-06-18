@@ -38,13 +38,18 @@ export function LiveHeader({ halted, mode, onKillToggle, selectedSymbol = "ALL",
     <header className="chrome h-14 border-b border-border flex items-center px-3 sm:px-4 gap-2 sm:gap-3.5 flex-shrink-0 z-20 overflow-hidden">
       {/* Brand mark */}
       <div className="flex items-center gap-2 sm:gap-2.5 flex-shrink-0" data-tour="brand">
-        <span className="relative flex h-2 w-2">
+        <div className="relative flex-shrink-0">
+          <img
+            src="/logo.png"
+            alt="Alien-Trade"
+            className="logo-blend w-7 h-7"
+          />
+          {/* Status pulse overlaid at bottom-right of logo */}
           <span className={cn(
-            "absolute inline-flex h-full w-full rounded-full opacity-70 animate-ping",
-            halted ? "bg-red" : "bg-green",
+            "absolute bottom-0 right-0 w-2 h-2 rounded-full border border-[#050508]",
+            halted ? "bg-red" : "bg-green animate-pulse",
           )} />
-          <span className={cn("relative inline-flex h-2 w-2 rounded-full", halted ? "bg-red" : "bg-green")} />
-        </span>
+        </div>
         <span className="font-display text-[13px] sm:text-[15px] font-bold tracking-[0.18em] sm:tracking-[0.22em] text-green glow-green whitespace-nowrap">
           ALIEN<span className="text-text/40">·</span>TRADE
         </span>

@@ -394,3 +394,10 @@
   color: #e6f1f5 !important;
   background: transparent !important;
 }
+
+/* ── Logo — screen blend removes the dark background on dark surfaces ──── */
+.logo-blend {
+  mix-blend-mode: screen;
+  border-radius: 50%;
+  object-fit: cover;
+}

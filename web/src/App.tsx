@@ -89,8 +89,15 @@ function PairingScreen({ onPaired }: { onPaired: (t: string) => void }) {
           {step === "welcome" && (
             <div className="px-6 py-5 text-center">
               <DialogHeader>
-                <div className="font-display text-[28px] font-bold text-green glow-green tracking-[0.16em] mb-1">
-                  ALIEN<span className="text-text/40">·</span>TRADE
+                <div className="flex flex-col items-center gap-3 mb-1">
+                  <img
+                    src="/logo.png"
+                    alt="Alien-Trade"
+                    className="logo-blend w-20 h-20"
+                  />
+                  <div className="font-display text-[28px] font-bold text-green glow-green tracking-[0.16em]">
+                    ALIEN<span className="text-text/40">·</span>TRADE
+                  </div>
                 </div>
                 <DialogTitle className="text-[16px] font-semibold text-text">
                   Autonomous trading cockpit

@@ -150,6 +150,169 @@ class TwakCli:
         return TwakSwapResult(tx_hash=tx, raw=data)
 
 
+    # ── portfolio + market data ────────────────────────────────────────────────
+
+    def portfolio(self, chains: Optional[list[str]] = None) -> dict:
+        """Full multi-chain portfolio: native + token holdings + USD values."""
+        args = ["wallet", "portfolio", "--json"]
+        if chains:
+            args += ["--chains", ",".join(chains)]
+        return self._run(*args)
+
+    def price(self, token: str, chain: Optional[str] = None) -> dict:
+        """Spot price for a token (TWAK asset ID or ticker)."""
+        args = ["price", token, "--json"]
+        if chain:
+            args += ["--chain", chain]
+        return self._run(*args)
+
+    def risk(self, asset_id: str) -> dict:
+        """Token security / rug-risk check."""
+        return self._run("risk", asset_id, "--json")
+
+    def trending(
+        self,
+        category: str = "bnb",
+        sort: str = "price_change",
+        limit: int = 10,
+    ) -> list:
+        data = self._run(
+            "trending",
+            "--category", category,
+            "--sort", sort,
+            "--limit", str(limit),
+            "--json",
+        )
+        return data if isinstance(data, list) else data.get("items", [])
+
+    def search(self, query: str, networks: Optional[list[str]] = None, limit: int = 10) -> list:
+        args = ["search", query, "--limit", str(limit), "--json"]
+        if networks:
+            args += ["--networks", ",".join(networks)]
+        data = self._run(*args)
+        return data if isinstance(data, list) else data.get("results", [])
+
+    # ── automate (DCA + limit orders) ─────────────────────────────────────────
+
+    def automate_list(self) -> list:
+        data = self._run("automate", "list", "--json")
+        return data if isinstance(data, list) else data.get("automations", [])
+
+    def automate_add(
+        self,
+        from_token: str,
+        to_token: str,
+        amount: str,
+        *,
+        chain: Optional[str] = None,
+        interval: Optional[str] = None,
+        price: Optional[float] = None,
+        condition: str = "below",
+        max_runs: Optional[int] = None,
+    ) -> dict:
+        if interval is None and price is None:
+            raise ValueError("automate_add: supply interval or price (not neither)")
+        if interval is not None and price is not None:
+            raise ValueError("automate_add: interval and price are mutually exclusive")
+        args = [
+            "automate", "add",
+            "--from", from_token,
+            "--to", to_token,
+            "--amount", amount,
+            "--chain", chain or self.chain,
+            "--json",
+        ]
+        if interval is not None:
+            args += ["--interval", interval]
+        if price is not None:
+            args += ["--price", str(price), "--condition", condition]
+        if max_runs is not None:
+            args += ["--max-runs", str(max_runs)]
+        return self._run(*args)
+
+    def automate_pause(self, automation_id: str) -> dict:
+        return self._run("automate", "pause", automation_id, "--json")
+
+    def automate_resume(self, automation_id: str) -> dict:
+        return self._run("automate", "resume", automation_id, "--json")
+
+    def automate_delete(self, automation_id: str) -> dict:
+        return self._run("automate", "delete", automation_id, "--json")
+
+    # ── alerts ────────────────────────────────────────────────────────────────
+
+    def alert_list(self) -> list:
+        data = self._run("alert", "list", "--json")
+        return data if isinstance(data, list) else data.get("alerts", [])
+
+    def alert_create(
+        self,
+        token: str,
+        chain: str,
+        *,
+        above: Optional[float] = None,
+        below: Optional[float] = None,
+    ) -> dict:
+        if above is None and below is None:
+            raise ValueError("alert_create: supply above or below price threshold")
+        args = ["alert", "create", "--token", token, "--chain", chain, "--json"]
+        if above is not None:
+            args += ["--above", str(above)]
+        if below is not None:
+            args += ["--below", str(below)]
+        return self._run(*args)
+
+    def alert_delete(self, alert_id: str) -> dict:
+        return self._run("alert", "delete", alert_id, "--json")
+
+    # ── erc20 ─────────────────────────────────────────────────────────────────
+
+    def erc20_allowance(self, token: str, owner: str, spender: str) -> dict:
+        return self._run(
+            "erc20", "allowance",
+            "--token", token, "--owner", owner, "--spender", spender, "--json",
+        )
+
+    def erc20_approve(self, token: str, spender: str, amount: str) -> dict:
+        return self._run(
+            "erc20", "approve",
+            "--token", token, "--spender", spender, "--amount", amount, "--json",
+        )
+
+    def erc20_revoke(self, token: str, spender: str) -> dict:
+        return self._run(
+            "erc20", "revoke",
+            "--token", token, "--spender", spender, "--json",
+        )
+
+    # ── x402 ──────────────────────────────────────────────────────────────────
+
+    def x402_quote(self, url: str, method: str = "GET") -> dict:
+        return self._run("x402", "quote", url, "--method", method, "--json")
+
+    def x402_request(
+        self,
+        url: str,
+        max_payment: str,
+        *,
+        method: str = "POST",
+        body: Optional[dict] = None,
+        prefer_network: Optional[str] = None,
+    ) -> dict:
+        args = [
+            "x402", "request", url,
+            "--max-payment", max_payment,
+            "--method", method,
+            "--yes", "--json",
+        ]
+        if body is not None:
+            import json as _json
+            args += ["--body", _json.dumps(body)]
+        if prefer_network:
+            args += ["--prefer-network", prefer_network]
+        return self._run(*args)
+
+
 def _parse_quote(data: dict, from_token: str, to_token: str) -> TwakQuote:
     # The CLI's JSON shape varies by version; pull fields defensively.
     amount_in = _to_float(data.get("amountIn") or data.get("fromAmount") or data.get("amount"))

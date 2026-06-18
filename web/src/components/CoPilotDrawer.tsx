@@ -48,6 +48,7 @@ export function CoPilotDrawer({ isOpen, onClose, prefill = "" }: Props) {
   const [loading, setLoading]   = useState(false);
   const [lastPrefill, setLastPrefill] = useState("");
   const [activeThreadId, setActiveThreadId] = useState<Id<"copilot_threads"> | null>(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   const threads      = useQuery(api.copilot.threads) ?? [];
@@ -100,14 +101,18 @@ export function CoPilotDrawer({ isOpen, onClose, prefill = "" }: Props) {
   return (
     <Sheet open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
       <SheetContent side="right" showCloseButton={false}
-        className="w-[560px] max-sm:w-full p-0 flex flex-col gap-0 border-l-0 shadow-none bg-transparent overflow-hidden">
+        className="w-[720px] max-sm:w-full p-0 flex flex-col gap-0 border-l-0 shadow-none bg-transparent overflow-hidden">
         <div className="absolute inset-0 bg-[#050508]" />
         <div className="absolute -top-16 -left-16 w-56 h-56 rounded-full pointer-events-none"
           style={{ background: "radial-gradient(circle, rgba(120,40,220,0.18) 0%, transparent 70%)", filter: "blur(32px)" }} />
 
         <div className="relative flex h-full">
           {/* Thread sidebar */}
-          <div className="w-[160px] border-r border-border/40 flex flex-col flex-shrink-0 overflow-hidden">
+          <div className={cn(
+            "w-[140px] border-r border-border/40 flex flex-col flex-shrink-0 overflow-hidden transition-all",
+            "max-sm:absolute max-sm:inset-y-0 max-sm:left-0 max-sm:z-20 max-sm:w-[200px] max-sm:bg-[#050508]",
+            !sidebarOpen && "max-sm:hidden",
+          )}>
             <div className="flex items-center justify-between px-3 py-2.5 border-b border-border/40">
               <span className="font-mono text-[10px] text-muted-fg uppercase tracking-widest">Threads</span>
               <button onClick={newThread}
@@ -158,6 +163,16 @@ export function CoPilotDrawer({ isOpen, onClose, prefill = "" }: Props) {
             {/* Header */}
             <div className="flex items-center justify-between px-4 py-3 border-b border-border/40">
               <div className="flex items-center gap-2">
+                {/* Mobile sidebar toggle */}
+                <button
+                  onClick={() => setSidebarOpen((v) => !v)}
+                  className="sm:hidden w-6 h-6 flex items-center justify-center text-muted-fg hover:text-text transition-colors cursor-pointer mr-1"
+                  aria-label="Toggle threads"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 6h16M4 12h16M4 18h16" />
+                  </svg>
+                </button>
                 <div className="w-2 h-2 rounded-full bg-purple" style={{ boxShadow: "0 0 8px var(--purple)" }} />
                 <span className="font-display text-[14px] font-bold text-text">Co-Pilot</span>
               </div>

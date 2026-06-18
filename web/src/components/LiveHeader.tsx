@@ -42,11 +42,11 @@ export function LiveHeader({ halted, mode, onKillToggle, selectedSymbol = "ALL",
           <img
             src="/logo.png"
             alt="Alien-Trade"
-            className="logo-blend w-7 h-7"
+            className="w-8 h-8 rounded-full object-contain"
+            style={{ mixBlendMode: "screen" }}
           />
-          {/* Status pulse overlaid at bottom-right of logo */}
           <span className={cn(
-            "absolute bottom-0 right-0 w-2 h-2 rounded-full border border-[#050508]",
+            "absolute bottom-0 right-0 w-2 h-2 rounded-full border-[1.5px] border-[#050508]",
             halted ? "bg-red" : "bg-green animate-pulse",
           )} />
         </div>

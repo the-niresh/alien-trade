@@ -92,6 +92,7 @@ export function CoPilotDrawer({ isOpen, onClose, prefill = "" }: Props) {
   const [actionLoading, setActionLoading] = useState(false);
   const [withdrawConfirmStep, setWithdrawConfirmStep] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const threads      = useQuery(api.copilot.threads) ?? [];
   const flatMsgs     = useQuery(api.copilot.messages, { limit: 40 }) ?? [];
@@ -152,6 +153,7 @@ export function CoPilotDrawer({ isOpen, onClose, prefill = "" }: Props) {
       setPendingAction(null);
       setWithdrawConfirmStep(false);
     } catch (e) {
+      setWithdrawConfirmStep(false);
       await addMessage(withToken({ role: "assistant", content: `❌ Action failed: ${String(e)}`, sources_json: "[]", thread_id: activeThreadId ?? undefined }));
     } finally {
       setActionLoading(false);
@@ -321,7 +323,7 @@ export function CoPilotDrawer({ isOpen, onClose, prefill = "" }: Props) {
                     <button key={card.label}
                       onClick={() => {
                         if (card.action === null) {
-                          // focus input — no-op here, user types naturally
+                          inputRef.current?.focus();
                         } else {
                           const proposed = card.action();
                           setPendingAction(proposed);
@@ -335,6 +337,7 @@ export function CoPilotDrawer({ isOpen, onClose, prefill = "" }: Props) {
               )}
               <div className="flex gap-2">
                 <input
+                  ref={inputRef}
                   className="flex-1 bg-bg border border-border/60 rounded-lg px-3 py-2 font-mono text-[12px] text-text placeholder:text-muted-fg focus:outline-none focus:border-purple/50"
                   placeholder="Ask the agent…"
                   value={question}

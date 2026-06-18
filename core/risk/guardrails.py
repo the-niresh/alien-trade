@@ -36,6 +36,11 @@ class RiskConfig:
     target_vol_ann: float = 0.15            # 15% annualized target vol
     base_position_usd: float = 1_000.0      # base trade size before sizing adjustment
 
+    # ── Stop-loss (exit rules — the WS1 drawdown lever) ───────────────────────
+    atr_stop_mult: float = 2.0       # hard stop at entry - mult*ATR; 0 disables
+    atr_trail_mult: float = 3.0      # trailing stop at high_water - mult*ATR; 0 disables
+    atr_period: int = 14             # ATR lookback in bars
+
 
 # ── Guard result ──────────────────────────────────────────────────────────────
 

@@ -23,7 +23,7 @@ class RiskConfig:
     max_trade_usd: float = 2_000.0          # per-trade size cap
     max_position_pct: float = 0.25          # max single position as % of capital
     max_open_exposure_pct: float = 0.30     # max CUMULATIVE open exposure as % of equity
-    max_slippage_pct: float = 0.03          # abort if simulated slippage > 3% (0x router requires ≥3% to route correctly on BSC)
+    max_slippage_pct: float = 0.02          # abort if simulated slippage > 2% (executor retries at 5%/8% on TX_FAILED)
     token_allowlist: frozenset = field(default_factory=lambda: TOKEN_ALLOWLIST)
 
     # Daily-loss kill switch

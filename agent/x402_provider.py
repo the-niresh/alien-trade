@@ -130,3 +130,35 @@ def register(app: "FastAPI", wallet_address: Optional[str] = None) -> bool:
 def route_config(wallet_address: str) -> dict:
     """Return the route config dict (for inspection / tests / docs)."""
     return _build_routes(wallet_address)
+
+
+# ── x402 consumer (CMC data calls) ───────────────────────────────────────────
+
+def _get_twak():
+    """Construct a TwakCli instance. Extracted so tests can patch it."""
+    from agent.twak_cli import TwakCli  # noqa: PLC0415
+    return TwakCli()
+
+
+def x402_gated_call(
+    url: str,
+    max_payment: str,
+    body: dict,
+    enabled: bool,
+    budget_usd: float,
+    spent_usd: float,
+) -> "dict | None":
+    """
+    Call a CMC x402 endpoint via TWAK x402_request with a daily budget cap.
+
+    Returns the parsed JSON response dict, or None if skipped
+    (disabled / over budget / error).  Never raises.
+    """
+    if not enabled:
+        return None
+    if spent_usd >= budget_usd:
+        return None
+    try:
+        return _get_twak().x402_request(url, max_payment, body=body)
+    except Exception:  # noqa: BLE001 — caller gets None, not a crash
+        return None

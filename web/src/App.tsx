@@ -192,10 +192,13 @@ export default function App() {
   const seenEventIds = useRef<Set<string>>(new Set());
   useEffect(() => {
     if (!events) return;
-    // Prime on first load so historical rows don't toast in a burst.
+    const FRESH_MS = 5 * 60 * 1000; // events < 5 min old show toasts even on first load
+    const now = Date.now();
     if (seenEventIds.current.size === 0) {
-      for (const e of events) seenEventIds.current.add(e._id);
-      return;
+      for (const e of events) {
+        // Prime stale events silently; let fresh ones fall through to toast
+        if (now - e.ts_ms > FRESH_MS) seenEventIds.current.add(e._id);
+      }
     }
     for (const e of [...events].reverse()) {
       if (seenEventIds.current.has(e._id)) continue;
@@ -204,6 +207,7 @@ export default function App() {
       if (sev === "critical") toast.error(e.headline, { duration: 8000 });
       else if (sev === "risk") toast.warning(e.headline, { duration: 5000 });
       else if (sev === "trade") toast.success(e.headline, { duration: 3000 });
+      else toast.info(e.headline, { duration: 2500 });
     }
   }, [events]);
 

@@ -11,7 +11,6 @@ import { AgentsView } from "./views/AgentsView";
 import { ControlsView } from "./views/ControlsView";
 import { LogsView } from "./views/LogsView";
 import { NotificationsView } from "./views/NotificationsView";
-import { SponsorsView } from "./views/SponsorsView";
 import { ViewError } from "./components/ViewError";
 import { ErrorBoundary } from "react-error-boundary";
 import { Toaster, toast } from "sonner";
@@ -231,7 +230,6 @@ export default function App() {
       case "controls":  return <ControlsView />;
       case "logs":          return <LogsView />;
       case "notifications": return <NotificationsView />;
-      case "sponsors":      return <SponsorsView />;
     }
   };
 

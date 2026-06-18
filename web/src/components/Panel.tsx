@@ -24,7 +24,7 @@ export function Panel({ label, action, tick = "green", children, className, body
   return (
     <section className={cn("panel", className)}>
       {(label || action) && (
-        <header className="flex items-center justify-between gap-3 px-4 pt-3.5 pb-2.5">
+        <header className="flex items-center justify-between gap-3 px-3.5 pt-3 pb-2">
           {label ? (
             <span
               className="panel-label"
@@ -36,7 +36,7 @@ export function Panel({ label, action, tick = "green", children, className, body
           {action}
         </header>
       )}
-      <div className={cn("px-4 pb-4", !label && !action && "pt-4", bodyClassName)}>
+      <div className={cn("px-3.5 pb-3", !label && !action && "pt-3.5", bodyClassName)}>
         {children}
       </div>
     </section>

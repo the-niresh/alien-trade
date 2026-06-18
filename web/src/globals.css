@@ -51,12 +51,15 @@
 /* ── Design tokens ── */
 @layer base {
   :root {
-    /* Deep-space void — true-black base, faint green-blue undertone */
-    --bg:           #03060a;
-    --surface:      #070c13;
-    --elevated:     #0c121b;
-    --border:       #18222f;
-    --border-hi:    #2b3d52;
+    /* True-black operator console */
+    --bg:           oklch(2% 0 0);
+    --chrome:       oklch(3.5% 0 0);
+    --surface:      oklch(5.5% 0 0);
+    --elevated:     oklch(6% 0 0);
+    --panel:        oklch(5.5% 0 0);
+    --panel-border: oklch(12% 0 0);
+    --border:       oklch(14% 0 0);
+    --border-hi:    oklch(20% 0 0);
     --green:        #34ffae;   /* signature alien green — alive / profit */
     --red:          #ff2d6e;   /* danger / halt / loss */
     --cyan:         #36d6ff;   /* data / info */

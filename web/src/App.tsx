@@ -258,7 +258,7 @@ export default function App() {
 
   const renderView = () => {
     switch (view) {
-      case "overview":      return <OverviewView  onAgentClick={onAgentClick} />;
+      case "overview":      return <OverviewView  onAgentClick={onAgentClick} onCopilot={() => setCopilotOpen(true)} />;
       case "chart":         return <ChartView />;
       case "portfolio":     return <PortfolioView />;
       case "pipeline":      return <PipelineView />;

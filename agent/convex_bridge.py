@@ -328,8 +328,11 @@ class ConvexBridge:
         self._call("mutation", "riskState:update", kw)
 
     def update_wallet_state(self, *, usdt: float, eth: float, bnb: float,
-                             bnb_usd: float, total_usd: float, updated_ms: int) -> None:
+                             bnb_usd: float, total_usd: float, updated_ms: int,
+                             address: str = "") -> None:
+        addr = address or os.environ.get("WALLET_ADDRESS", "")
         self._call("mutation", "walletState:upsert", {
+            "address": addr,
             "usdt": usdt, "eth": eth, "bnb": bnb,
             "bnb_usd": bnb_usd, "total_usd": total_usd, "updated_ms": updated_ms,
         })

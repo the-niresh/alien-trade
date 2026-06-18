@@ -401,6 +401,7 @@ export default defineSchema({
 
   // Live wallet balances — agent writes each cycle; cockpit reads for balance panel
   wallet_state: defineTable({
+    address:   v.optional(v.string()),
     usdt: v.number(),
     eth: v.number(),
     bnb: v.number(),

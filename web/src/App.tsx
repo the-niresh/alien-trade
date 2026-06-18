@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { loadToken, setToken, withToken } from "./lib/control";
+import { startTour, hasTourBeenSeen } from "./lib/tour";
 import { AppShell } from "./components/AppShell";
 import { CoPilotDrawer } from "./components/CoPilotDrawer";
 import { OverviewView } from "./views/OverviewView";
@@ -231,7 +232,18 @@ export default function App() {
   if (!token) {
     const hasDeepLink = location.hash.startsWith("#t=");
     if (hasDeepLink || showPairing) {
-      return <PairingScreen onPaired={(t) => { setToken(t); setTokenState(t); }} />;
+      return (
+        <PairingScreen
+          onPaired={(t) => {
+            setToken(t);
+            setTokenState(t);
+            if (!hasTourBeenSeen()) {
+              // Small delay to let the app shell mount before driver.js tries to find elements
+              setTimeout(startTour, 600);
+            }
+          }}
+        />
+      );
     }
     return <LandingView onConnect={() => setShowPairing(true)} />;
   }
@@ -257,6 +269,7 @@ export default function App() {
         activeView={view}
         onViewChange={setView}
         onCopilot={() => setCopilotOpen(true)}
+        onTour={startTour}
         halted={halted}
         mode={mode}
         onKillToggle={onKillToggle}

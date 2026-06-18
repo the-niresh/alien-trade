@@ -58,11 +58,12 @@ export function CoPilotDrawer({ isOpen, onClose, prefill = "" }: Props) {
   ) ?? [];
   const msgs: MsgDoc[] = (activeThreadId ? threadMsgs : flatMsgs) as MsgDoc[];
 
-  const addMessage    = useMutation(api.copilot.addMessage);
-  const createThread  = useMutation(api.copilot.createThread);
-  const startStream   = useMutation(api.copilot.startStreamingMessage);
+  const addMessage     = useMutation(api.copilot.addMessage);
+  const createThread   = useMutation(api.copilot.createThread);
+  const deleteThread   = useMutation(api.copilot.deleteThread);
+  const startStream    = useMutation(api.copilot.startStreamingMessage);
   const finaliseStream = useMutation(api.copilot.finaliseStream);
-  const ask           = useAction(api.copilot.ask);
+  const ask            = useAction(api.copilot.ask);
 
   if (prefill && prefill !== lastPrefill) {
     setQuestion(prefill);
@@ -72,6 +73,11 @@ export function CoPilotDrawer({ isOpen, onClose, prefill = "" }: Props) {
   const newThread = async () => {
     const id = await createThread(withToken({ title: "New conversation" }));
     setActiveThreadId(id);
+  };
+
+  const handleDeleteThread = async (id: Id<"copilot_threads">) => {
+    if (activeThreadId === id) setActiveThreadId(null);
+    await deleteThread(withToken({ id }));
   };
 
   const send = async (q = question) => {
@@ -119,14 +125,30 @@ export function CoPilotDrawer({ isOpen, onClose, prefill = "" }: Props) {
                 Default
               </button>
               {(threads as ThreadDoc[]).map((t) => (
-                <button key={t._id}
-                  onClick={() => setActiveThreadId(t._id as Id<"copilot_threads">)}
+                <div
+                  key={t._id}
                   className={cn(
-                    "w-full text-left px-3 py-2 font-mono text-[11px] truncate cursor-pointer transition-colors",
+                    "group relative w-full flex items-center transition-colors",
                     activeThreadId === t._id ? "text-purple bg-purple/10" : "text-muted-fg hover:text-text hover:bg-elevated/50",
-                  )}>
-                  {t.title}
-                </button>
+                  )}
+                >
+                  <button
+                    onClick={() => setActiveThreadId(t._id as Id<"copilot_threads">)}
+                    className="flex-1 text-left px-3 py-2 font-mono text-[11px] truncate cursor-pointer"
+                  >
+                    {t.title}
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeleteThread(t._id as Id<"copilot_threads">);
+                    }}
+                    className="opacity-0 group-hover:opacity-100 flex-shrink-0 w-6 h-6 flex items-center justify-center text-muted-fg hover:text-red transition-all cursor-pointer mr-1"
+                    aria-label="Delete thread"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
               ))}
             </div>
           </div>

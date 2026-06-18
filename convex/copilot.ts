@@ -55,6 +55,28 @@ export const createThread = mutation({
   },
 });
 
+/** Delete a thread and all its messages. */
+export const deleteThread = mutation({
+  args: {
+    control_token: v.optional(v.string()),
+    id: v.id("copilot_threads"),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    assertControlToken(args.control_token);
+    // Delete all messages belonging to this thread first
+    const msgs = await ctx.db
+      .query("copilot_messages")
+      .withIndex("by_thread", (q) => q.eq("thread_id", args.id))
+      .collect();
+    for (const msg of msgs) {
+      await ctx.db.delete(msg._id);
+    }
+    await ctx.db.delete(args.id);
+    return null;
+  },
+});
+
 /** List all threads, most-recently-active first. */
 export const threads = query({
   args: {},

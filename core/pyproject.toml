@@ -33,6 +33,10 @@ build-backend = "hatchling.build"
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
+markers = [
+    "unit: unit test",
+    "integration: integration test",
+]
 
 [tool.ruff]
 line-length = 100

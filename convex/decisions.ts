@@ -50,6 +50,35 @@ export const record = mutation({
   },
 });
 
+export const latest = query({
+  args: {},
+  returns: v.union(
+    v.null(),
+    v.object({
+      _id: v.id("decisions"),
+      _creationTime: v.number(),
+      cycle_id: v.string(),
+      symbol: v.string(),
+      timestamp_ms: v.number(),
+      regime: v.string(),
+      signals,
+      target_position_usd: v.number(),
+      risk_verdict: verdict,
+      risk_reason: v.optional(v.string()),
+      final_size_usd: v.number(),
+      trade_id: v.optional(v.id("trades")),
+      setup_key: v.optional(v.string()),
+    }),
+  ),
+  handler: async (ctx) => {
+    return await ctx.db
+      .query("decisions")
+      .withIndex("by_timestamp")
+      .order("desc")
+      .first();
+  },
+});
+
 export const recent = query({
   args: { limit: v.optional(v.number()) },
   returns: v.array(

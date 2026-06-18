@@ -90,7 +90,7 @@ export function CoPilotDrawer({ isOpen, onClose, prefill = "" }: Props) {
       await addMessage(withToken({ role: "user", content: text, sources_json: "[]", thread_id: activeThreadId ?? undefined }));
       // Start streaming assistant message
       const streamId = await startStream(withToken({ thread_id: activeThreadId ?? undefined }));
-      const res = await ask({ question: text });
+      const res = await ask(withToken({ question: text }));
       await finaliseStream(withToken({ id: streamId, content: res.answer, sources_json: JSON.stringify(res.sources) }));
     } finally {
       setLoading(false);

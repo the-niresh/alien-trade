@@ -30,12 +30,12 @@ export function startTour(): void {
         },
       },
       {
-        element: '[data-tour="kill-switch"]',
+        element: '[data-tour="brand"]',
         popover: {
           title: "Kill Switch",
-          description: "Halt all trading instantly. Hold again to resume. Red = halted, Green = live.",
+          description: "The kill switch (top-right on desktop) halts all trading instantly. Hold again to resume. Red = halted, Green = live.",
           side: "bottom",
-          align: "end",
+          align: "start",
         },
       },
       {

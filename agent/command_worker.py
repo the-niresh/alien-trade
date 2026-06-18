@@ -47,37 +47,40 @@ def run_one_command(bridge: "ConvexBridge") -> bool:
 
 def _dispatch(cmd_type: str, params: dict) -> dict:
     from agent.twak_cli import TwakCli
-    twak = TwakCli()
-    if cmd_type == "automate_add":
-        return twak.automate_add(
-            params["from_token"], params["to_token"], params["amount"],
-            chain=params.get("chain"),
-            interval=params.get("interval"),
-            price=params.get("price"),
-            condition=params.get("condition", "below"),
-            max_runs=params.get("max_runs"),
-        )
-    if cmd_type == "automate_pause":
-        return twak.automate_pause(params["id"])
-    if cmd_type == "automate_resume":
-        return twak.automate_resume(params["id"])
-    if cmd_type == "automate_delete":
-        return twak.automate_delete(params["id"])
-    if cmd_type == "alert_create":
-        return twak.alert_create(
-            params["token"], params["chain"],
-            above=params.get("above"), below=params.get("below"),
-        )
-    if cmd_type == "alert_delete":
-        return twak.alert_delete(params["id"])
-    if cmd_type == "erc20_approve":
-        return twak.erc20_approve(params["token"], params["spender"], params["amount"])
-    if cmd_type == "erc20_revoke":
-        return twak.erc20_revoke(params["token"], params["spender"])
-    if cmd_type == "x402_request":
-        return twak.x402_request(
-            params["url"], params["max_payment"],
-            method=params.get("method", "POST"),
-            body=params.get("body"),
-        )
-    raise ValueError(f"unknown command_type: {cmd_type!r}")
+    try:
+        twak = TwakCli()
+        if cmd_type == "automate_add":
+            return twak.automate_add(
+                params["from_token"], params["to_token"], params["amount"],
+                chain=params.get("chain"),
+                interval=params.get("interval"),
+                price=params.get("price"),
+                condition=params.get("condition", "below"),
+                max_runs=params.get("max_runs"),
+            )
+        if cmd_type == "automate_pause":
+            return twak.automate_pause(params["id"])
+        if cmd_type == "automate_resume":
+            return twak.automate_resume(params["id"])
+        if cmd_type == "automate_delete":
+            return twak.automate_delete(params["id"])
+        if cmd_type == "alert_create":
+            return twak.alert_create(
+                params["token"], params["chain"],
+                above=params.get("above"), below=params.get("below"),
+            )
+        if cmd_type == "alert_delete":
+            return twak.alert_delete(params["id"])
+        if cmd_type == "erc20_approve":
+            return twak.erc20_approve(params["token"], params["spender"], params["amount"])
+        if cmd_type == "erc20_revoke":
+            return twak.erc20_revoke(params["token"], params["spender"])
+        if cmd_type == "x402_request":
+            return twak.x402_request(
+                params["url"], params["max_payment"],
+                method=params.get("method", "POST"),
+                body=params.get("body"),
+            )
+        raise ValueError(f"unknown command_type: {cmd_type!r}")
+    except KeyError as e:
+        raise ValueError(f"command {cmd_type!r} missing required param: {e}") from e

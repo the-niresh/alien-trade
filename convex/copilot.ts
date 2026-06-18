@@ -1,5 +1,6 @@
 import { action, mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import { assertControlToken } from "./control";
 
 /**
  * Persist one message (user or assistant) to the co-pilot thread.
@@ -7,6 +8,7 @@ import { v } from "convex/values";
  */
 export const addMessage = mutation({
   args: {
+    control_token: v.optional(v.string()),
     role: v.union(v.literal("user"), v.literal("assistant")),
     content: v.string(),
     sources_json: v.optional(v.string()),
@@ -14,6 +16,7 @@ export const addMessage = mutation({
   },
   returns: v.id("copilot_messages"),
   handler: async (ctx, args) => {
+    assertControlToken(args.control_token);
     return await ctx.db.insert("copilot_messages", {
       role: args.role,
       content: args.content,
@@ -39,9 +42,10 @@ export const messages = query({
 
 /** Create a new co-pilot thread. */
 export const createThread = mutation({
-  args: { title: v.string() },
+  args: { control_token: v.optional(v.string()), title: v.string() },
   returns: v.id("copilot_threads"),
   handler: async (ctx, args) => {
+    assertControlToken(args.control_token);
     const now = Date.now();
     return await ctx.db.insert("copilot_threads", {
       title: args.title,
@@ -79,9 +83,10 @@ export const threadMessages = query({
 
 /** Write an assistant message row to start streaming. Returns the message id. */
 export const startStreamingMessage = mutation({
-  args: { thread_id: v.optional(v.id("copilot_threads")) },
+  args: { control_token: v.optional(v.string()), thread_id: v.optional(v.id("copilot_threads")) },
   returns: v.id("copilot_messages"),
   handler: async (ctx, args) => {
+    assertControlToken(args.control_token);
     return await ctx.db.insert("copilot_messages", {
       role: "assistant",
       content: "",
@@ -96,9 +101,10 @@ export const startStreamingMessage = mutation({
 
 /** Append a token chunk to a streaming assistant message. */
 export const updatePartial = mutation({
-  args: { id: v.id("copilot_messages"), chunk: v.string() },
+  args: { control_token: v.optional(v.string()), id: v.id("copilot_messages"), chunk: v.string() },
   returns: v.null(),
   handler: async (ctx, args) => {
+    assertControlToken(args.control_token);
     const msg = await ctx.db.get(args.id);
     if (!msg) return null;
     await ctx.db.patch(args.id, {
@@ -111,12 +117,14 @@ export const updatePartial = mutation({
 /** Finalise a streaming message — set full content and clear streaming flag. */
 export const finaliseStream = mutation({
   args: {
+    control_token: v.optional(v.string()),
     id:           v.id("copilot_messages"),
     content:      v.string(),
     sources_json: v.optional(v.string()),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
+    assertControlToken(args.control_token);
     await ctx.db.patch(args.id, {
       content:         args.content,
       partial_content: undefined,

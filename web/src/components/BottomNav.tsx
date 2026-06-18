@@ -1,13 +1,13 @@
-import { LayoutDashboard, List, Users, Settings, FileText } from "lucide-react";
+import { LayoutDashboard, List, Users, Settings, LineChart } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { View } from "./SideNav";
 
 const TABS: { view: View; icon: React.ComponentType<{ className?: string }>; label: string }[] = [
   { view: "overview",  icon: LayoutDashboard, label: "Overview" },
+  { view: "chart",     icon: LineChart,       label: "Chart" },
   { view: "positions", icon: List,            label: "Positions" },
   { view: "agents",    icon: Users,           label: "Agents" },
   { view: "controls",  icon: Settings,        label: "Controls" },
-  { view: "logs",      icon: FileText,        label: "Logs" },
 ];
 
 type Props = {

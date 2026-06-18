@@ -347,6 +347,61 @@ def skill_manifest() -> dict:
         return {"error": str(exc)}
 
 
+# ── TWAK read endpoints (no signing) ─────────────────────────────────────────
+
+def _get_twak() -> "TwakCli":
+    from agent.twak_cli import TwakCli
+    return TwakCli()
+
+
+@app.get("/twak/portfolio")
+def twak_portfolio() -> dict:
+    """Full multi-chain portfolio from TWAK wallet portfolio command."""
+    try:
+        return {"ok": True, "data": _get_twak().portfolio()}
+    except Exception as e:  # noqa: BLE001
+        return {"ok": False, "error": str(e), "data": {}}
+
+
+@app.get("/twak/risk")
+def twak_risk(asset_id: str) -> dict:
+    """Token rug-risk check. GET /twak/risk?asset_id=c60"""
+    try:
+        return {"ok": True, "data": _get_twak().risk(asset_id)}
+    except Exception as e:  # noqa: BLE001
+        return {"ok": False, "error": str(e), "data": {}}
+
+
+@app.get("/twak/price")
+def twak_price(token: str, chain: str = "bsc") -> dict:
+    """Spot price for a token. GET /twak/price?token=ETH"""
+    try:
+        return {"ok": True, "data": _get_twak().price(token, chain)}
+    except Exception as e:  # noqa: BLE001
+        return {"ok": False, "error": str(e), "data": {}}
+
+
+@app.get("/twak/trending")
+def twak_trending(category: str = "bnb", limit: int = 10) -> dict:
+    """Trending tokens on BNB. GET /twak/trending?category=bnb"""
+    try:
+        return {"ok": True, "data": _get_twak().trending(category=category, limit=limit)}
+    except Exception as e:  # noqa: BLE001
+        return {"ok": False, "error": str(e), "data": []}
+
+
+@app.post("/twak/drain")
+def twak_drain(request: Request) -> dict:
+    """Pull next queued agent_command and execute it. Called by the command worker."""
+    _require_api_token(request)
+    from agent.command_worker import run_one_command
+    try:
+        result = run_one_command(get_loop().bridge)
+        return {"ok": True, "ran": result}
+    except Exception as e:  # noqa: BLE001
+        return {"ok": False, "error": str(e), "ran": False}
+
+
 @app.get("/skill/manifests")
 def skill_manifests() -> list:
     """Return all published CMC Skills Marketplace manifests (Track-2 score + thesis-check)."""

@@ -431,3 +431,34 @@ class ConvexBridge:
             "payload": json.dumps(payload, default=str),
             "severity": severity,
         })
+
+    def append_audit(self, *, event_type: str, payload: str, severity: str = "info") -> None:
+        """Keyword-arg variant used by the command worker (payload already JSON-encoded)."""
+        self._call("mutation", "audit:log", {
+            "event_type": event_type,
+            "cycle_id": None,
+            "payload": payload,
+            "severity": severity,
+        })
+
+    def pop_queued_command(self) -> Optional[dict]:
+        """Fetch the oldest queued agent_command. Returns None if queue is empty."""
+        rows = self._call("query", "agentCommands:list", {"limit": 1})
+        if not rows:
+            return None
+        cmd = rows[0]
+        if cmd.get("status") != "queued":
+            return None
+        return cmd
+
+    def update_command_status(
+        self,
+        cmd_id: str,
+        status: str,
+        result: Optional[str] = None,
+        error: Optional[str] = None,
+    ) -> None:
+        self._call("mutation", "agentCommands:updateStatus", {
+            "id": cmd_id, "status": status,
+            "result": result, "error": error,
+        })

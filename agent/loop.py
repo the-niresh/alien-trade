@@ -981,6 +981,7 @@ class DecisionLoop:
             _bnb = float(_bal.get("available", 0))
             _bnb_price = bar.close if self.symbol == "BNB" else 650.0  # rough BNB price
             self.bridge.update_wallet_state(
+                address=_bal.get("address", ""),
                 usdt=_tokens.get("USDT", 0.0),
                 eth=_tokens.get("ETH", 0.0),
                 bnb=_bnb,

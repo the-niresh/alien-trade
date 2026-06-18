@@ -16,12 +16,13 @@ import { FearGreedGauge } from "../components/FearGreedGauge";
 import { AgentHeartbeat } from "../components/AgentHeartbeat";
 import { WalletBalance } from "../components/WalletBalance";
 import { FeesGasSummary } from "../components/FeesGasSummary";
+import { StartTradingCTA } from "../components/StartTradingCTA";
 import { cn } from "@/lib/utils";
 import { usd, pct, ts } from "../lib/formatters";
 
-type Props = { onAgentClick: (name: string) => void };
+type Props = { onAgentClick: (name: string) => void; onCopilot: () => void };
 
-export function OverviewView({ onAgentClick }: Props) {
+export function OverviewView({ onAgentClick, onCopilot }: Props) {
   const ledger    = useQuery(api.ledger.latest);
   const risk      = useQuery(api.riskState.get);
   const decisions = useQuery(api.decisions.recent, { limit: 3 });
@@ -70,6 +71,9 @@ export function OverviewView({ onAgentClick }: Props) {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Start Trading CTA — always visible as the primary entry point */}
+      <StartTradingCTA onStart={onCopilot} />
 
       {/* Stats grid — 4 core + 2 daily */}
       <div className="grid grid-cols-4 gap-3 items-stretch max-[900px]:grid-cols-2">

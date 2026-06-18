@@ -93,7 +93,8 @@ function PairingScreen({ onPaired }: { onPaired: (t: string) => void }) {
                   <img
                     src="/logo.png"
                     alt="Alien-Trade"
-                    className="logo-blend w-20 h-20"
+                    className="w-20 h-20 rounded-full object-contain"
+                    style={{ mixBlendMode: "screen" }}
                   />
                   <div className="font-display text-[28px] font-bold text-green glow-green tracking-[0.16em]">
                     ALIEN<span className="text-text/40">·</span>TRADE

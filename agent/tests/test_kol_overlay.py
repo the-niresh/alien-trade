@@ -47,7 +47,9 @@ def test_bullish_kol_opens_long_through_executor():
     loop = _loop(reading)
     # Stub the bits _apply_kol_signal calls on a real loop:
     loop.ledger = type("L", (), {"open_exposure": lambda self, p: 0.0,
-                                 "mark": lambda self, p: 1000.0})()
+                                 "mark": lambda self, p: 1000.0,
+                                 "daily_loss_usd": lambda self, p: 0.0,
+                                 "consecutive_losses": 0})()
     handled = {}
     loop._handle_execution = lambda *a, **k: ("allow", "ok", "t1")
     loop._finalise = lambda *a, **k: handled.setdefault("done", True)

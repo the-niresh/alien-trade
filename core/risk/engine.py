@@ -101,6 +101,7 @@ class RiskEngine:
         self._config = config
         self._pos = _PosTracker(cash=initial_capital, day_start_equity=initial_capital)
         self.last_stop_exit: Optional[dict] = None
+        self._held_symbol: str = "BNB"  # updated at buy; used by stop-exit order
 
     # StrategyFn interface
     def __call__(self, history: list[Bar]) -> Optional[Order]:
@@ -126,7 +127,7 @@ class RiskEngine:
                     "stop": round(stop, 6), "price": round(price, 6),
                 }
                 return Order(side="sell", size_usd=exit_usd,
-                             symbol="ETH", timestamp=bar.timestamp)
+                             symbol=self._held_symbol, timestamp=bar.timestamp)
 
         # ── Daily bookkeeping ─────────────────────────────────────────────────
         day = bar.timestamp // 86_400_000
@@ -202,6 +203,7 @@ class RiskEngine:
         # ── Update internal tracker + emit order ──────────────────────────────
         if order.side == "buy":
             self._pos.apply_buy(sized_usd, price)
+            self._held_symbol = order.symbol
         else:
             self._pos.apply_sell(sized_usd, price)
 

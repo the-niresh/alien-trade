@@ -7,7 +7,10 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 from typing import TYPE_CHECKING
+
+from agent.twak_cli import TwakCli
 
 if TYPE_CHECKING:
     from agent.convex_bridge import ConvexBridge
@@ -46,7 +49,6 @@ def run_one_command(bridge: "ConvexBridge") -> bool:
 
 
 def _dispatch(cmd_type: str, params: dict) -> dict:
-    from agent.twak_cli import TwakCli
     try:
         twak = TwakCli()
         if cmd_type == "automate_add":
@@ -81,6 +83,24 @@ def _dispatch(cmd_type: str, params: dict) -> dict:
                 method=params.get("method", "POST"),
                 body=params.get("body"),
             )
+        if cmd_type == "withdraw":
+            to_addr = params.get("to_address", "")
+            amount  = float(params.get("amount", 0))
+            token   = params.get("token", "USDT")
+            # Validate before calling TWAK — irreversible on-chain tx
+            if not re.match(r"^0x[0-9a-fA-F]{40}$", to_addr):
+                raise ValueError(f"invalid BSC address: {to_addr!r}")
+            if amount <= 0:
+                raise ValueError(f"amount must be > 0, got {amount}")
+            result = twak.transfer(to_addr, amount, token, chain="bsc")
+            tx_hash = result.get("hash") or result.get("txHash") or ""
+            return {
+                "tx_hash": tx_hash,
+                "explorer": result.get("explorer", ""),
+                "amount": amount,
+                "token": token,
+                "to": to_addr,
+            }
         raise ValueError(f"unknown command_type: {cmd_type!r}")
     except KeyError as e:
         raise ValueError(f"command {cmd_type!r} missing required param: {e}") from e

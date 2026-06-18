@@ -18,6 +18,7 @@ import { DocsView } from "./views/DocsView";
 import { ChartView } from "./views/ChartView";
 import { TrackersView } from "./views/TrackersView";
 import { DepositView } from "./views/DepositView";
+import { WithdrawView } from "./views/WithdrawView";
 import { LandingView } from "./views/LandingView";
 import { ViewError } from "./components/ViewError";
 import { ErrorBoundary } from "react-error-boundary";
@@ -275,6 +276,7 @@ export default function App() {
       case "overview":      return <OverviewView  onAgentClick={onAgentClick} onCopilot={() => setCopilotOpen(true)} />;
       case "trackers":      return <TrackersView />;
       case "deposit":       return <DepositView />;
+      case "withdraw":      return <WithdrawView />;
       case "chart":         return <ChartView />;
       case "portfolio":     return <PortfolioView />;
       case "pipeline":      return <PipelineView />;

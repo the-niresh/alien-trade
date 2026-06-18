@@ -250,14 +250,35 @@ class TwakSwapExecutor(_IdempotentBase):
         bnb_exec=None,        # optional: confirm receipt + real gas
         chain: str = "bsc",
         dry_run: bool = False,
+        bridge=None,          # ConvexBridge — for rug-check config lookups
     ):
         super().__init__()
         self._twak = twak
+        self.bridge = bridge
         self._risk = risk_config
         self._cost = cost_model or BSCCostModel()
         self._bnb = bnb_exec
         self._chain = chain
         self._dry_run = dry_run
+
+    def _rug_check(self, asset_id: str) -> None:
+        """Block the swap if TWAK risk endpoint flags the token as a rug.
+        No-op when rug_check_enabled=False in Convex config or bridge is absent."""
+        cfg = self.bridge.get_config() if self.bridge is not None else {}
+        cfg = cfg or {}
+        if not cfg.get("rug_check_enabled", True):
+            return
+        threshold = float(cfg.get("rug_risk_threshold") or 75)
+        try:
+            data = self._twak.risk(asset_id)
+        except Exception:
+            return   # risk check offline → don't block the trade
+        is_rug = bool(data.get("isRug") or data.get("is_rug"))
+        score = float(data.get("riskScore") or data.get("risk_score") or 0)
+        if is_rug or score >= threshold:
+            raise RuntimeError(
+                f"rug risk blocked: asset={asset_id} isRug={is_rug} score={score:.0f}"
+            )
 
     def execute(self, order: Order, bar: Bar, idempotency_key: str) -> ExecutionReport:
         from agent.twak_cli import TwakError
@@ -293,7 +314,10 @@ class TwakSwapExecutor(_IdempotentBase):
                                 reason=f"dry-run: quote ok, impact {quote.price_impact_pct:.2%}"),
             )
 
-        # 3. execute (sign on-device + broadcast)
+        # 3. rug-check gate (capital preservation — abort if TWAK flags the token)
+        self._rug_check(to_tok)
+
+        # 4. execute (sign on-device + broadcast)
         try:
             res = self._twak.swap_execute(
                 from_tok, to_tok, usd=order.size_usd,
@@ -304,7 +328,7 @@ class TwakSwapExecutor(_IdempotentBase):
         if not res.tx_hash:
             return ExecutionReport(FAILED, order, reason="twak swap returned no tx hash")
 
-        # 4. confirm on-chain (BNB SDK receipt = source of truth)
+        # 5. confirm on-chain (BNB SDK receipt = source of truth)
         gas_usd = 0.0
         if self._bnb is not None:
             try:

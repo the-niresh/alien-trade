@@ -119,6 +119,9 @@ export default defineSchema({
     max_drawdown_pct: v.number(),
     token_allowlist: v.array(v.string()),
     equity_floor: v.optional(v.number()),   // halt if portfolio drops below this USD value (0 = disabled)
+    rug_check_enabled:  v.optional(v.boolean()),   // pre-trade rug-check gate via TWAK (default true)
+    rug_risk_threshold: v.optional(v.number()),    // 0–100, block swap if score >= threshold (default 75)
+    x402_budget_usd:    v.optional(v.number()),    // per-cycle x402 spend cap
     // Strategy pick from the registry (momentum|contrarian|balanced|defensive)
     strategy_name: v.optional(v.string()),
     // Autopilot capital manager — user-set targets (cockpit). enabled=false -> off.

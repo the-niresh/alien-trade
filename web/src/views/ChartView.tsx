@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { Panel } from "../components/Panel";
@@ -8,22 +8,66 @@ import { cn } from "@/lib/utils";
 const SYMBOLS = ["ETH", "CAKE", "UNI", "LINK", "AAVE"] as const;
 type Sym = (typeof SYMBOLS)[number];
 
+// Binance spot symbol mapping (free public API, CORS-allowed)
+const BINANCE_PAIR: Record<Sym, string> = {
+  ETH:  "ETHUSDT",
+  CAKE: "CAKEUSDT",
+  UNI:  "UNIUSDT",
+  LINK: "LINKUSDT",
+  AAVE: "AAVEUSDT",
+};
+
+type PriceTick = { timestamp_ms: number; price: number };
+
+async function fetchBinanceHistory(symbol: Sym, limit = 200): Promise<PriceTick[]> {
+  const pair = BINANCE_PAIR[symbol];
+  const url = `https://api.binance.com/api/v3/klines?symbol=${pair}&interval=1h&limit=${limit}`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Binance ${res.status}`);
+  const data = await res.json() as [number, string, string, string, string, ...unknown[]][];
+  // kline format: [openTime, open, high, low, close, volume, closeTime, ...]
+  return data.map(([openTime, , , , close]) => ({
+    timestamp_ms: openTime,
+    price: parseFloat(close as string),
+  }));
+}
+
 export function ChartView() {
   const [symbol, setSymbol] = useState<Sym>("ETH");
+  const [fallbackTicks, setFallbackTicks] = useState<PriceTick[]>([]);
+  const [fallbackLoading, setFallbackLoading] = useState(false);
+  const [fallbackError, setFallbackError] = useState("");
+  const [source, setSource] = useState<"convex" | "binance">("convex");
 
-  const ticks  = useQuery(api.priceTicks.forSymbol, { symbol, limit: 200 }) ?? [];
-  const trades = useQuery(api.trades.recent, { limit: 100 }) ?? [];
-
+  const convexTicks = useQuery(api.priceTicks.forSymbol, { symbol, limit: 200 }) ?? [];
+  const trades      = useQuery(api.trades.recent, { limit: 100 }) ?? [];
   const filteredTrades = trades.filter((t) => t.symbol === symbol);
+
+  // When Convex has fewer than 2 ticks, fall back to Binance history
+  useEffect(() => {
+    if (convexTicks.length >= 2) {
+      setSource("convex");
+      setFallbackTicks([]);
+      return;
+    }
+    setFallbackLoading(true);
+    setFallbackError("");
+    fetchBinanceHistory(symbol)
+      .then((ticks) => {
+        setFallbackTicks(ticks);
+        setSource("binance");
+      })
+      .catch((e) => setFallbackError(String(e)))
+      .finally(() => setFallbackLoading(false));
+  }, [symbol, convexTicks.length]);
+
+  const ticks = convexTicks.length >= 2 ? convexTicks : fallbackTicks;
 
   return (
     <div className="max-w-[1180px] mx-auto space-y-4">
       <div className="mb-2">
         <div className="font-mono text-[10px] text-muted-fg tracking-[0.22em] uppercase mb-1.5 flex items-center gap-2">
-          <span
-            className="h-[2px] w-4 bg-cyan rounded-full inline-block"
-            style={{ boxShadow: "0 0 6px var(--cyan)" }}
-          />
+          <span className="h-[2px] w-4 bg-cyan rounded-full inline-block" style={{ boxShadow: "0 0 6px var(--cyan)" }} />
           Price Chart
         </div>
         <h1 className="font-display text-[22px] font-bold tracking-wide text-text">Chart</h1>
@@ -32,16 +76,13 @@ export function ChartView() {
       {/* Symbol pills */}
       <div className="flex gap-2 flex-wrap">
         {SYMBOLS.map((s) => (
-          <button
-            key={s}
-            onClick={() => setSymbol(s)}
+          <button key={s} onClick={() => setSymbol(s)}
             className={cn(
               "font-mono text-[11px] px-3 py-1.5 rounded-lg border transition-colors cursor-pointer",
               symbol === s
                 ? "bg-cyan/10 border-cyan/30 text-cyan"
                 : "border-border text-muted-fg hover:border-border-hi hover:text-text",
-            )}
-          >
+            )}>
             {s}
           </button>
         ))}
@@ -51,12 +92,24 @@ export function ChartView() {
         label={`${symbol} / USDT`}
         tick="cyan"
         action={
-          <span className="font-mono text-[10px] text-muted-fg">
-            {ticks.length} ticks · {filteredTrades.length} trades
+          <span className="font-mono text-[10px] text-muted-fg flex items-center gap-2">
+            {source === "binance" && !fallbackLoading && (
+              <span className="text-yellow/70">Binance 1h · last 200 candles</span>
+            )}
+            {fallbackLoading && <span className="text-muted-fg animate-pulse">Loading…</span>}
+            {!fallbackLoading && ticks.length > 0 && (
+              <span>{ticks.length} ticks · {filteredTrades.length} trades</span>
+            )}
           </span>
         }
       >
-        <TradingChart ticks={ticks} trades={filteredTrades} height={480} />
+        {fallbackError ? (
+          <div className="flex items-center justify-center font-mono text-[12px] text-red" style={{ height: 480 }}>
+            Failed to load price data: {fallbackError}
+          </div>
+        ) : (
+          <TradingChart ticks={ticks} trades={filteredTrades} height={480} />
+        )}
       </Panel>
     </div>
   );

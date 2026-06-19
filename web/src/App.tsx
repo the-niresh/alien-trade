@@ -32,6 +32,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { View } from "./components/SideNav";
 import { eventSeverity } from "./lib/eventSeverity";
+import type { Id } from "../../convex/_generated/dataModel";
 
 // ── Pairing wizard ────────────────────────────────────────────────────────────
 
@@ -198,6 +199,7 @@ export default function App() {
   const [view, setView]                     = useState<View>("overview");
   const [copilotOpen, setCopilotOpen]       = useState(false);
   const [copilotPrefill, setCopilotPrefill] = useState("");
+  const [copilotThreadId, setCopilotThreadId] = useState<string | undefined>(undefined);
   const [selectedSymbol, setSelectedSymbol] = useState("ETH");
   const copilotCycleRef = useRef<((dir: 1 | -1) => void) | null>(null);
 
@@ -319,6 +321,14 @@ export default function App() {
         selectedSymbol={selectedSymbol}
         onSymbolChange={setSelectedSymbol}
         onDeposit={() => setView("deposit")}
+        onAgentOpen={(threadId) => {
+          setCopilotThreadId(threadId);
+          setCopilotOpen(true);
+        }}
+        onSpawnAgent={() => {
+          setCopilotThreadId(undefined);
+          setCopilotOpen(true);
+        }}
       >
         <AnimatePresence mode="wait">
           <motion.div
@@ -337,8 +347,9 @@ export default function App() {
 
       <CoPilotDrawer
         isOpen={copilotOpen}
-        onClose={() => { setCopilotOpen(false); setCopilotPrefill(""); }}
+        onClose={() => { setCopilotOpen(false); setCopilotPrefill(""); setCopilotThreadId(undefined); }}
         prefill={copilotPrefill}
+        initialThreadId={copilotThreadId as Id<"copilot_threads"> | undefined}
         onRegisterCycle={(fn) => { copilotCycleRef.current = fn; }}
       />
 

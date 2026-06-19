@@ -1,6 +1,7 @@
 import { useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { Panel } from "../components/Panel";
+import { RealizedPnlChart } from "../components/RealizedPnlChart";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { usd, pct, elapsed, ts } from "../lib/formatters";
@@ -69,6 +70,11 @@ export function PortfolioView() {
           )}
         </Panel>
       </div>
+
+      {/* Realized PnL per-trade chart */}
+      <Panel label="Realized PnL per Trade" tick="green">
+        <RealizedPnlChart />
+      </Panel>
 
       {/* Holdings breakdown */}
       <Panel label="Holdings" tick="cyan">

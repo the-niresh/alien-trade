@@ -26,9 +26,9 @@ const MODE_CLASS: Record<string, string> = {
 export function LiveHeader({ halted, mode, onKillToggle, selectedSymbol = "ALL", onSymbolChange, onDeposit }: Props) {
   const ledger      = useQuery(api.ledger.latest);
   const decisions   = useQuery(api.decisions.recent, { limit: 1 });
-  const symbols     = useQuery(api.symbolList.list) ?? [];
+  const symbols     = useQuery(api.symbolList.eligible) ?? [];
   const walletState = useQuery(api.walletState.get);
-  const ticks       = useQuery(api.priceTicks.forSymbol, { symbol: selectedSymbol === "ALL" ? "ETH" : selectedSymbol, limit: 2 }) ?? [];
+  const ticks       = useQuery(api.priceTicks.forSymbol, { symbol: selectedSymbol || "ETH", limit: 2 }) ?? [];
 
   const pnl      = ledger?.cumulative_pnl_usd;
   const regime   = decisions?.[0]?.regime ?? null;
@@ -68,7 +68,7 @@ export function LiveHeader({ halted, mode, onKillToggle, selectedSymbol = "ALL",
             <div className="w-px h-7 bg-border" />
             <div className="flex items-baseline gap-1.5">
               <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-muted-fg">
-                {selectedSymbol === "ALL" ? "ETH" : selectedSymbol}
+                {selectedSymbol || "ETH"}
               </span>
               <span className={cn(
                 "font-display text-[18px] font-bold leading-none tabular-nums",
@@ -125,14 +125,13 @@ export function LiveHeader({ halted, mode, onKillToggle, selectedSymbol = "ALL",
       <div className="flex-1" />
 
       {/* Symbol select — hidden on mobile */}
-      {symbols.length > 0 && onSymbolChange && (
+      {onSymbolChange && (
         <div className="hidden sm:block flex-shrink-0">
           <Select value={selectedSymbol} onValueChange={onSymbolChange}>
             <SelectTrigger className="w-28 h-7 font-mono text-[11px] bg-elevated/60 border-border text-text focus:ring-green">
-              <SelectValue placeholder="ALL" />
+              <SelectValue placeholder="ETH" />
             </SelectTrigger>
             <SelectContent className="bg-surface border-border text-text">
-              <SelectItem value="ALL" className="font-mono text-[11px]">ALL</SelectItem>
               {symbols.map((s) => (
                 <SelectItem key={s} value={s} className="font-mono text-[11px] text-cyan font-bold">{s}</SelectItem>
               ))}

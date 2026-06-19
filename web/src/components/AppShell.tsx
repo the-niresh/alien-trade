@@ -46,6 +46,7 @@ export function AppShell({
         onSymbolChange={onSymbolChange}
         onDeposit={onDeposit}
       />
+      <AgentTicker />
       <div className="flex flex-1 overflow-hidden">
         {/* Sidebar — hidden on mobile */}
         <div className="hidden sm:flex">
@@ -62,7 +63,6 @@ export function AppShell({
           {children}
         </main>
       </div>
-      <AgentTicker />
       {/* Kill switch FAB — mobile only, floats above the bottom nav */}
       <div className="fixed bottom-[60px] right-6 sm:hidden z-30">
         <KillSwitch halted={halted} onToggle={onKillToggle} size="md" />

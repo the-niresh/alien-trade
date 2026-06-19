@@ -6,7 +6,7 @@ import { toggleTheme, getTheme } from "../lib/theme";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { eventSeverity } from "../lib/eventSeverity";
-import { LayoutDashboard, List, Users, Settings, FileText, Bot, Sun, Moon, Bell, Wallet, Activity, BookOpen, LineChart, GraduationCap, ArrowDownToLine, ArrowUpFromLine } from "lucide-react";
+import { LayoutDashboard, List, Users, Settings, FileText, Bot, Sun, Moon, Bell, Activity, BookOpen, LineChart, GraduationCap, ArrowDownToLine, ArrowUpFromLine, PieChart } from "lucide-react";
 
 export type View = "overview" | "trackers" | "deposit" | "withdraw" | "chart" | "positions" | "agents" | "controls" | "pipeline" | "portfolio" | "logs" | "notifications" | "docs";
 
@@ -14,7 +14,7 @@ const NAV_ITEMS: { view: View; icon: React.ComponentType<{ className?: string }>
   { view: "overview",      icon: LayoutDashboard, label: "Overview" },
   { view: "trackers",      icon: Activity,        label: "Trackers" },
   { view: "chart",         icon: LineChart,       label: "Chart" },
-  { view: "portfolio",     icon: Wallet,          label: "Portfolio" },
+  { view: "portfolio",     icon: PieChart,        label: "Portfolio" },
   { view: "deposit",       icon: ArrowDownToLine,  label: "Deposit" },
   { view: "withdraw",      icon: ArrowUpFromLine,  label: "Withdraw" },
   { view: "pipeline",      icon: Activity,        label: "Pipeline" },

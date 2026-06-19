@@ -8,14 +8,15 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { withToken } from "@/lib/control";
 import { Check, Plus, X } from "lucide-react";
-import { parseIntent, dispatchAction, type ProposedAction, suggestionConservative, suggestionAdjustRisk, suggestionTakeProfit } from "@/lib/concierge";
+import { parseIntent, dispatchAction, type ProposedAction } from "@/lib/concierge";
 
-const SUGGESTION_CARDS = [
-  { label: "🛡️ Start a conservative run", action: () => suggestionConservative() },
-  { label: "🎚️ Adjust risk & size",        action: () => suggestionAdjustRisk(4, 4) },
-  { label: "💰 Take profit at 5%",          action: () => suggestionTakeProfit(0.05) },
-  { label: "➕ Type my own…",               action: null },
+const QUICK_ACTIONS = [
+  { id: "spawn",       emoji: "🤖", label: "Spawn a new agent",   sub: "Set up a new focused co-pilot" },
+  { id: "configure",   emoji: "⚙️", label: "Configure strategy",   sub: "Tune risk params or strategy" },
+  { id: "performance", emoji: "📊", label: "Check performance",    sub: "Ask about PnL, drawdown, trades" },
+  { id: "custom",      emoji: "➕", label: "Type my own…",         sub: null },
 ] as const;
+type QuickActionId = typeof QUICK_ACTIONS[number]["id"];
 
 type MsgDoc = {
   _id: string;
@@ -33,6 +34,7 @@ type Props = {
   onClose: () => void;
   prefill?: string;
   onRegisterCycle?: (fn: (dir: 1 | -1) => void) => void;
+  initialThreadId?: Id<"copilot_threads">;
 };
 
 function ActionConfirmCard({
@@ -87,11 +89,13 @@ function ThinkingDots() {
   );
 }
 
-export function CoPilotDrawer({ isOpen, onClose, prefill = "", onRegisterCycle }: Props) {
+export function CoPilotDrawer({ isOpen, onClose, prefill = "", onRegisterCycle, initialThreadId }: Props) {
   const [question, setQuestion] = useState("");
   const [loading, setLoading]   = useState(false);
   const [lastPrefill, setLastPrefill] = useState("");
-  const [activeThreadId, setActiveThreadId] = useState<Id<"copilot_threads"> | null>(null);
+  const [activeThreadId, setActiveThreadId] = useState<Id<"copilot_threads"> | null>(
+    initialThreadId ?? null
+  );
   const [pendingAction, setPendingAction] = useState<ProposedAction | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
   const [withdrawConfirmStep, setWithdrawConfirmStep] = useState(false);
@@ -119,6 +123,17 @@ export function CoPilotDrawer({ isOpen, onClose, prefill = "", onRegisterCycle }
   const setControl     = useMutation(api.agentControl.set);
   const recordFeedback = useMutation(api.feedback.record);
   const enqueueCommand = useMutation(api.agentCommands.enqueue);
+
+  // Spawn state machine
+  type SpawnStep = "idle" | "awaiting_task" | "awaiting_name";
+  const [spawnStep, setSpawnStep]        = useState<SpawnStep>("idle");
+  const [spawnTaskSummary, setSpawnTask] = useState("");
+  const createAgent = useMutation(api.spawnedAgents.create);
+
+  // Sync initialThreadId prop changes
+  useEffect(() => {
+    if (initialThreadId) setActiveThreadId(initialThreadId);
+  }, [initialThreadId]);
 
   // Register Ctrl+Tab thread cycling with parent
   useEffect(() => {
@@ -175,10 +190,69 @@ export function CoPilotDrawer({ isOpen, onClose, prefill = "", onRegisterCycle }
     }
   };
 
+  const handleQuickAction = (id: QuickActionId) => {
+    if (id === "spawn") {
+      // Start spawn flow — inject a Co-Pilot message asking for the task
+      void addMessage(withToken({
+        role: "assistant",
+        content: "Sure! What should this agent focus on? Describe its job in one or two sentences.",
+        sources_json: "[]",
+        thread_id: activeThreadId ?? undefined,
+      }));
+      setSpawnStep("awaiting_task");
+    } else if (id === "custom") {
+      inputRef.current?.focus();
+    } else {
+      const prefills: Record<string, string> = {
+        configure:   "Help me configure the strategy and risk parameters.",
+        performance: "How is the agent performing? Show me PnL and drawdown.",
+      };
+      setQuestion(prefills[id] ?? "");
+      inputRef.current?.focus();
+    }
+  };
+
   const send = async (q = question) => {
     const text = q.trim();
     if (!text || loading) return;
     setQuestion("");
+
+    // ── Spawn state machine ────────────────────────────────────
+    if (spawnStep === "awaiting_task") {
+      setSpawnTask(text);
+      await addMessage(withToken({ role: "user", content: text, sources_json: "[]", thread_id: activeThreadId ?? undefined }));
+      await addMessage(withToken({
+        role: "assistant",
+        content: "Got it. What should I call this agent?",
+        sources_json: "[]",
+        thread_id: activeThreadId ?? undefined,
+      }));
+      setSpawnStep("awaiting_name");
+      return;
+    }
+
+    if (spawnStep === "awaiting_name") {
+      const name = text;
+      await addMessage(withToken({ role: "user", content: name, sources_json: "[]", thread_id: activeThreadId ?? undefined }));
+      // Create the agent record
+      const agentId = await createAgent({
+        name,
+        task_summary: spawnTaskSummary,
+        thread_id: activeThreadId ?? undefined,
+      });
+      await addMessage(withToken({
+        role: "assistant",
+        content: `✅ **${name}** is live. I'll work on: "${spawnTaskSummary}". You can find this agent in the Agents tab and your sidebar.`,
+        sources_json: "[]",
+        thread_id: activeThreadId ?? undefined,
+      }));
+      setSpawnStep("idle");
+      setSpawnTask("");
+      console.log("Spawned agent:", agentId);
+      return;
+    }
+    // ── End spawn state machine ────────────────────────────────
+
     setLoading(true);
     try {
       const intent = parseIntent(text);
@@ -330,20 +404,21 @@ export function CoPilotDrawer({ isOpen, onClose, prefill = "", onRegisterCycle }
 
             {/* Chips + Input */}
             <div className="px-4 py-3 border-t border-border/40 space-y-2">
-              {msgs.length === 0 && !pendingAction && (
-                <div className="space-y-1.5">
-                  {SUGGESTION_CARDS.map((card) => (
-                    <button key={card.label}
-                      onClick={() => {
-                        if (card.action === null) {
-                          inputRef.current?.focus();
-                        } else {
-                          const proposed = card.action();
-                          setPendingAction(proposed);
-                        }
-                      }}
-                      className="w-full text-left font-mono text-[11px] text-text/80 border border-border/60 rounded-lg px-3 py-2 hover:bg-elevated/70 hover:border-border transition-colors cursor-pointer">
-                      {card.label}
+              {msgs.length === 0 && !pendingAction && spawnStep === "idle" && (
+                <div className="space-y-1.5 mb-2">
+                  {QUICK_ACTIONS.map((card) => (
+                    <button
+                      key={card.id}
+                      onClick={() => handleQuickAction(card.id)}
+                      className="w-full text-left border border-border/60 rounded-xl px-3 py-2.5 hover:bg-elevated/70 hover:border-border transition-colors cursor-pointer group"
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <span className="text-[16px]">{card.emoji}</span>
+                        <div>
+                          <p className="font-mono text-[12px] text-text font-bold">{card.label}</p>
+                          {card.sub && <p className="font-mono text-[10px] text-muted-fg mt-0.5">{card.sub}</p>}
+                        </div>
+                      </div>
                     </button>
                   ))}
                 </div>

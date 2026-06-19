@@ -144,6 +144,10 @@ export function CoPilotDrawer({ isOpen, onClose, prefill = "", initialThreadId }
     }
   }, [isOpen]);
 
+  // Auto-scroll to bottom whenever messages change (streaming updates included)
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [msgs]);
 
   if (prefill && prefill !== lastPrefill) {
     setQuestion(prefill);

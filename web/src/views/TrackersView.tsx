@@ -1,3 +1,4 @@
+import { useState, useMemo } from "react";
 import { useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { Panel } from "../components/Panel";
@@ -5,7 +6,15 @@ import { RegimeBadge } from "../components/RegimeBadge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { usd, ts } from "../lib/formatters";
-import { Activity, Clock, CheckCircle2, XCircle, Loader2 } from "lucide-react";
+import { Activity, Clock, CheckCircle2, XCircle, Loader2, Users } from "lucide-react";
+import RAW_KOLS from "../data/kols.json";
+
+type KolEntry = { taskId: string | null; handle: string; numListeners: number; numBoosts: number };
+
+const KOLS: KolEntry[] = (RAW_KOLS as KolEntry[])
+  .map((k) => ({ ...k, influence: k.numListeners * Math.log10(Math.max(k.numBoosts, 10)) }))
+  .sort((a, b) => (b as KolEntry & { influence: number }).influence - (a as KolEntry & { influence: number }).influence)
+  .slice(0, 100) as KolEntry[];
 
 const STATUS_STYLE: Record<string, string> = {
   queued:  "text-yellow border-yellow/30 bg-yellow/8",
@@ -52,7 +61,10 @@ type Decision = {
   timestamp_ms: number;
 };
 
+type Tab = "activity" | "kols";
+
 export function TrackersView() {
+  const [tab, setTab] = useState<Tab>("activity");
   const positions = useQuery(api.positions.open) ?? [];
   const commands  = useQuery(api.agentCommands.list, { limit: 20 }) ?? [];
   const decisions = useQuery(api.decisions.recent, { limit: 1 }) ?? [];
@@ -60,6 +72,14 @@ export function TrackersView() {
   const typedPositions = positions as Position[];
   const typedCommands  = commands as AgentCommand[];
   const typedDecisions = decisions as Decision[];
+
+  const kolsWithInfluence = useMemo(() =>
+    KOLS.map((k) => ({
+      ...k,
+      influence: Math.round(k.numListeners * Math.log10(Math.max(k.numBoosts, 10))),
+    })),
+    []
+  );
 
   const ongoing = typedCommands.filter((c) => c.status === "running");
   const pending = typedCommands.filter((c) => c.status === "queued");
@@ -82,6 +102,81 @@ export function TrackersView() {
         <h1 className="font-display text-[22px] font-bold tracking-wide text-text">Trackers</h1>
       </div>
 
+      {/* Tab switcher */}
+      <div className="flex gap-1 border-b border-border pb-0">
+        {(["activity", "kols"] as Tab[]).map((t) => (
+          <button
+            key={t}
+            onClick={() => setTab(t)}
+            className={cn(
+              "font-mono text-[11px] px-3 py-2 border-b-2 -mb-px transition-colors cursor-pointer",
+              tab === t
+                ? "border-cyan text-cyan"
+                : "border-transparent text-muted-fg hover:text-text",
+            )}
+          >
+            {t === "activity" ? "Activity" : "KOL Feed"}
+          </button>
+        ))}
+      </div>
+
+      {tab === "kols" && (
+        <Panel
+          label="KOL Signal Feed"
+          tick="cyan"
+          action={
+            <span className="font-mono text-[10px] text-muted-fg flex items-center gap-1.5">
+              <Users className="w-3 h-3" />
+              {kolsWithInfluence.length} handles · S3 sentiment source
+            </span>
+          }
+        >
+          <div className="mb-3 font-mono text-[10px] text-muted-fg border border-border/50 rounded-lg px-3 py-2 bg-elevated/30">
+            These crypto KOL handles feed the S3 social-sentiment signal. Ranked by influence score (listeners × log boosts).
+          </div>
+          {/* Column headers */}
+          <div className="grid grid-cols-[1fr_auto_auto_auto] gap-x-4 px-3 pb-2 font-mono text-[9px] uppercase tracking-[0.18em] text-muted-fg/60 border-b border-border/40">
+            <span>Handle</span>
+            <span className="text-right">Listeners</span>
+            <span className="text-right">Boosts</span>
+            <span className="text-right w-20">Influence</span>
+          </div>
+          <div className="max-h-[520px] overflow-y-auto space-y-0.5 mt-1">
+            {kolsWithInfluence.map((k, i) => (
+              <div
+                key={k.handle}
+                className="grid grid-cols-[1fr_auto_auto_auto] gap-x-4 items-center px-3 py-1.5 rounded hover:bg-elevated/40 transition-colors"
+              >
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="font-mono text-[9px] text-muted-fg/50 w-5 flex-shrink-0">
+                    {i + 1}
+                  </span>
+                  <span className="font-mono text-[12px] text-cyan font-bold truncate">
+                    @{k.handle}
+                  </span>
+                </div>
+                <span className="font-mono text-[11px] text-text tabular-nums text-right">
+                  {k.numListeners.toLocaleString()}
+                </span>
+                <span className="font-mono text-[11px] text-muted-fg tabular-nums text-right">
+                  {(k.numBoosts / 1000).toFixed(0)}k
+                </span>
+                <div className="w-20 flex items-center gap-1.5 justify-end">
+                  <div className="flex-1 h-1.5 bg-border rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-cyan/50 rounded-full"
+                      style={{ width: `${Math.min(100, (k.influence / kolsWithInfluence[0].influence) * 100)}%` }}
+                    />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </Panel>
+      )}
+
+      {tab === "activity" && (
+      <>
       {/* Ongoing — open positions */}
       <Panel
         label="Ongoing Trades"
@@ -236,6 +331,8 @@ export function TrackersView() {
             </p>
           </div>
         </Panel>
+      )}
+      </>
       )}
     </div>
   );

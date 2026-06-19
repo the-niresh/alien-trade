@@ -297,7 +297,7 @@ export default function App() {
         activeView={view}
         onViewChange={setView}
         onCopilot={() => setCopilotOpen(true)}
-        onTour={startTour}
+        onTour={() => startTour(view)}
         halted={halted}
         mode={mode}
         onKillToggle={onKillToggle}

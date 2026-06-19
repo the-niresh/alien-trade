@@ -359,6 +359,17 @@ export default defineSchema({
   })
     .index("by_last_active", ["last_active_ms"]),
 
+  spawned_agents: defineTable({
+    name:              v.string(),
+    task_summary:      v.string(),
+    thread_id:         v.optional(v.id("copilot_threads")),
+    status:            v.union(v.literal("active"), v.literal("idle"), v.literal("archived")),
+    created_at:        v.number(),
+    last_activity_ms:  v.optional(v.number()),
+  })
+    .index("by_status",  ["status"])
+    .index("by_created", ["created_at"]),
+
   // Live positions singleton — agent writes each cycle; cockpit reads for the
   // holdings panel. One row per symbol, keyed by symbol string. Flat = quantity 0.
   positions: defineTable({

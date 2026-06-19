@@ -33,7 +33,6 @@ type Props = {
   isOpen: boolean;
   onClose: () => void;
   prefill?: string;
-  onRegisterCycle?: (fn: (dir: 1 | -1) => void) => void;
   initialThreadId?: Id<"copilot_threads">;
 };
 
@@ -89,7 +88,7 @@ function ThinkingDots() {
   );
 }
 
-export function CoPilotDrawer({ isOpen, onClose, prefill = "", onRegisterCycle, initialThreadId }: Props) {
+export function CoPilotDrawer({ isOpen, onClose, prefill = "", initialThreadId }: Props) {
   const [question, setQuestion] = useState("");
   const [loading, setLoading]   = useState(false);
   const [lastPrefill, setLastPrefill] = useState("");
@@ -143,16 +142,6 @@ export function CoPilotDrawer({ isOpen, onClose, prefill = "", onRegisterCycle, 
     }
   }, [isOpen]);
 
-  // Register Ctrl+Tab thread cycling with parent
-  useEffect(() => {
-    if (!onRegisterCycle) return;
-    onRegisterCycle((dir) => {
-      const all = [null, ...(threads as ThreadDoc[]).map((t) => t._id as Id<"copilot_threads">)];
-      const current = all.indexOf(activeThreadId);
-      const next = (current + dir + all.length) % all.length;
-      setActiveThreadId(all[next]);
-    });
-  }, [onRegisterCycle, threads, activeThreadId]);
 
   if (prefill && prefill !== lastPrefill) {
     setQuestion(prefill);
@@ -243,7 +232,7 @@ export function CoPilotDrawer({ isOpen, onClose, prefill = "", onRegisterCycle, 
       const name = text;
       await addMessage(withToken({ role: "user", content: name, sources_json: "[]", thread_id: activeThreadId ?? undefined }));
       // Create the agent record
-      const agentId = await createAgent({
+      await createAgent({
         name,
         task_summary: spawnTaskSummary,
         thread_id: activeThreadId ?? undefined,

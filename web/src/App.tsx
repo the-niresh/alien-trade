@@ -201,7 +201,6 @@ export default function App() {
   const [copilotPrefill, setCopilotPrefill] = useState("");
   const [copilotThreadId, setCopilotThreadId] = useState<string | undefined>(undefined);
   const [selectedSymbol, setSelectedSymbol] = useState("ETH");
-  const copilotCycleRef = useRef<((dir: 1 | -1) => void) | null>(null);
 
   const halted = config?.halted ?? false;
   const mode   = config?.trading_mode;
@@ -244,15 +243,11 @@ export default function App() {
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       const mod = e.ctrlKey || e.metaKey;
-      if (mod && e.key === "k") { e.preventDefault(); setCopilotOpen((o) => !o); return; }
-      if (copilotOpen && mod && e.key === "Tab") {
-        e.preventDefault();
-        copilotCycleRef.current?.(e.shiftKey ? -1 : 1);
-      }
+      if (mod && e.key === "k") { e.preventDefault(); setCopilotOpen((o) => !o); }
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [copilotOpen]);
+  }, []);
 
   const onKillToggle = () => {
     const willHalt = !halted;
@@ -358,7 +353,6 @@ export default function App() {
         onClose={() => { setCopilotOpen(false); setCopilotPrefill(""); setCopilotThreadId(undefined); }}
         prefill={copilotPrefill}
         initialThreadId={copilotThreadId as Id<"copilot_threads"> | undefined}
-        onRegisterCycle={(fn) => { copilotCycleRef.current = fn; }}
       />
 
       <Toaster position="bottom-right" theme="dark" richColors />

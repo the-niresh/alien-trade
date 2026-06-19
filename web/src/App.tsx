@@ -198,7 +198,7 @@ export default function App() {
   const [view, setView]                     = useState<View>("overview");
   const [copilotOpen, setCopilotOpen]       = useState(false);
   const [copilotPrefill, setCopilotPrefill] = useState("");
-  const [selectedSymbol, setSelectedSymbol] = useState("ALL");
+  const [selectedSymbol, setSelectedSymbol] = useState("ETH");
 
   const halted = config?.halted ?? false;
   const mode   = config?.trading_mode;
@@ -279,7 +279,7 @@ export default function App() {
       case "intelligence":  return <IntelligenceView />;
       case "deposit":       return <DepositView />;
       case "withdraw":      return <WithdrawView />;
-      case "chart":         return <ChartView />;
+      case "chart":         return <ChartView symbol={selectedSymbol} onSymbolChange={setSelectedSymbol} />;
       case "portfolio":     return <PortfolioView />;
       case "pipeline":      return <PipelineView />;
       case "positions":     return <PositionsView />;

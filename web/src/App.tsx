@@ -199,6 +199,7 @@ export default function App() {
   const [copilotOpen, setCopilotOpen]       = useState(false);
   const [copilotPrefill, setCopilotPrefill] = useState("");
   const [selectedSymbol, setSelectedSymbol] = useState("ETH");
+  const copilotCycleRef = useRef<((dir: 1 | -1) => void) | null>(null);
 
   const halted = config?.halted ?? false;
   const mode   = config?.trading_mode;
@@ -236,6 +237,20 @@ export default function App() {
       else toast.info(e.headline, { duration: 2500 });
     }
   }, [events]);
+
+  // Global keyboard shortcuts
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      const mod = e.ctrlKey || e.metaKey;
+      if (mod && e.key === "k") { e.preventDefault(); setCopilotOpen((o) => !o); return; }
+      if (copilotOpen && mod && e.key === "Tab") {
+        e.preventDefault();
+        copilotCycleRef.current?.(e.shiftKey ? -1 : 1);
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [copilotOpen]);
 
   const onKillToggle = () => {
     const willHalt = !halted;
@@ -324,6 +339,7 @@ export default function App() {
         isOpen={copilotOpen}
         onClose={() => { setCopilotOpen(false); setCopilotPrefill(""); }}
         prefill={copilotPrefill}
+        onRegisterCycle={(fn) => { copilotCycleRef.current = fn; }}
       />
 
       <Toaster position="bottom-right" theme="dark" richColors />

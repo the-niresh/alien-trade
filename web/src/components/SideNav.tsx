@@ -6,13 +6,14 @@ import { toggleTheme, getTheme } from "../lib/theme";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { eventSeverity } from "../lib/eventSeverity";
-import { LayoutDashboard, List, Users, Settings, FileText, Bot, Sun, Moon, Bell, Activity, BookOpen, LineChart, GraduationCap, ArrowDownToLine, ArrowUpFromLine, PieChart } from "lucide-react";
+import { LayoutDashboard, List, Users, Settings, FileText, Bot, Sun, Moon, Bell, Activity, BookOpen, LineChart, GraduationCap, ArrowDownToLine, ArrowUpFromLine, PieChart, Brain } from "lucide-react";
 
-export type View = "overview" | "trackers" | "deposit" | "withdraw" | "chart" | "positions" | "agents" | "controls" | "pipeline" | "portfolio" | "logs" | "notifications" | "docs";
+export type View = "overview" | "trackers" | "intelligence" | "deposit" | "withdraw" | "chart" | "positions" | "agents" | "controls" | "pipeline" | "portfolio" | "logs" | "notifications" | "docs";
 
 const NAV_ITEMS: { view: View; icon: React.ComponentType<{ className?: string }>; label: string }[] = [
   { view: "overview",      icon: LayoutDashboard, label: "Overview" },
   { view: "trackers",      icon: Activity,        label: "Trackers" },
+  { view: "intelligence",  icon: Brain,           label: "Intelligence" },
   { view: "chart",         icon: LineChart,       label: "Chart" },
   { view: "portfolio",     icon: PieChart,        label: "Portfolio" },
   { view: "deposit",       icon: ArrowDownToLine,  label: "Deposit" },

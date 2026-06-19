@@ -17,6 +17,7 @@ import { PipelineView } from "./views/PipelineView";
 import { DocsView } from "./views/DocsView";
 import { ChartView } from "./views/ChartView";
 import { TrackersView } from "./views/TrackersView";
+import { IntelligenceView } from "./views/IntelligenceView";
 import { DepositView } from "./views/DepositView";
 import { WithdrawView } from "./views/WithdrawView";
 import { LandingView } from "./views/LandingView";
@@ -275,6 +276,7 @@ export default function App() {
     switch (view) {
       case "overview":      return <OverviewView  onAgentClick={onAgentClick} onCopilot={() => setCopilotOpen(true)} />;
       case "trackers":      return <TrackersView />;
+      case "intelligence":  return <IntelligenceView />;
       case "deposit":       return <DepositView />;
       case "withdraw":      return <WithdrawView />;
       case "chart":         return <ChartView />;

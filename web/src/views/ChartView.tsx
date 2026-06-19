@@ -36,8 +36,19 @@ function formatPrice(price: number): string {
   return price.toFixed(6);
 }
 
-export function ChartView() {
-  const [symbol, setSymbol] = useState<Sym>("ETH");
+type Props = {
+  symbol?: string;
+  onSymbolChange?: (s: string) => void;
+};
+
+export function ChartView({ symbol: propSymbol, onSymbolChange }: Props = {}) {
+  const [symbol, setSymbol] = useState<Sym>((propSymbol as Sym) ?? "ETH");
+
+  useEffect(() => {
+    if (propSymbol && SYMBOLS.includes(propSymbol as Sym) && propSymbol !== symbol) {
+      setSymbol(propSymbol as Sym);
+    }
+  }, [propSymbol]);
   const [fallbackTicks, setFallbackTicks] = useState<PriceTick[]>([]);
   const [fallbackLoading, setFallbackLoading] = useState(false);
   const [fallbackError, setFallbackError] = useState("");
@@ -116,7 +127,7 @@ export function ChartView() {
       {/* Symbol pills */}
       <div className="flex gap-2 flex-wrap">
         {SYMBOLS.map((s) => (
-          <button key={s} onClick={() => setSymbol(s)}
+          <button key={s} onClick={() => { setSymbol(s); onSymbolChange?.(s); }}
             className={cn(
               "font-mono text-[11px] px-3 py-1.5 rounded-lg border transition-colors cursor-pointer",
               symbol === s

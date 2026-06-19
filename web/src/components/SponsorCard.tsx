@@ -12,13 +12,13 @@ interface SponsorCardProps {
 }
 
 const SPONSOR_COLORS: Record<SponsorCardProps["sponsor"], string> = {
-  CMC:     "bg-blue/10 text-blue border-blue/25",
+  CMC:     "bg-cyan/10 text-cyan border-cyan/25",
   TWAK:    "bg-cyan/10 text-cyan border-cyan/25",
   BNB_SDK: "bg-yellow/10 text-yellow border-yellow/25",
 };
 
 const SPONSOR_TICK: Record<SponsorCardProps["sponsor"], string> = {
-  CMC:     "var(--blue, #3b82f6)",
+  CMC:     "var(--cyan)",
   TWAK:    "var(--cyan)",
   BNB_SDK: "var(--yellow)",
 };

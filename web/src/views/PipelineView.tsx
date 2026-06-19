@@ -1,8 +1,13 @@
-import { useQuery } from "convex/react";
+import { useQuery, useMutation } from "convex/react";
+import { useState } from "react";
 import { api } from "../../../convex/_generated/api";
 import { Panel } from "../components/Panel";
 import { cn } from "@/lib/utils";
 import { usd } from "../lib/formatters";
+import { withToken } from "@/lib/control";
+import { Play, Pencil, Check } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 type StageStatus = "pass" | "block" | "stale" | "running";
 
@@ -78,30 +83,56 @@ export function PipelineView() {
   const riskState = useQuery(api.riskState.get);
   const events    = useQuery(api.agentEvents.recent, { limit: 5 });
 
+  const enqueueCommand = useMutation(api.agentCommands.enqueue);
+  const updateLimits   = useMutation(api.config.updateLimits);
+
+  const [editingField, setEditingField] = useState<string | null>(null);
+  const [editValue, setEditValue]       = useState("");
+  const [forceRunning, setForceRunning] = useState(false);
+
   const ageMs  = decision ? Date.now() - decision.timestamp_ms : null;
   const ageSec = ageMs != null ? (ageMs / 1000).toFixed(0) : "—";
 
   return (
     <div className="max-w-[680px] mx-auto space-y-4">
       {/* Header */}
-      <div className="mb-2">
-        <div className="font-mono text-[10px] text-muted-fg tracking-[0.22em] uppercase mb-1.5 flex items-center gap-2">
-          <span
-            className="h-[2px] w-4 bg-cyan rounded-full inline-block"
-            style={{ boxShadow: "0 0 6px var(--cyan)" }}
-          />
-          Deterministic Pipeline
+      <div className="flex items-center justify-between mb-2">
+        <div>
+          <div className="font-mono text-[10px] text-muted-fg tracking-[0.22em] uppercase mb-1.5 flex items-center gap-2">
+            <span
+              className="h-[2px] w-4 bg-cyan rounded-full inline-block"
+              style={{ boxShadow: "0 0 6px var(--cyan)" }}
+            />
+            Deterministic Pipeline
+          </div>
+          <div className="flex items-baseline gap-3">
+            <h1 className="font-display text-[22px] font-bold tracking-wide text-text">
+              Decision Pipeline
+            </h1>
+            {ageMs != null && (
+              <span className="font-mono text-[11px] text-muted-fg">
+                last cycle {ageSec}s ago
+              </span>
+            )}
+          </div>
         </div>
-        <div className="flex items-baseline gap-3">
-          <h1 className="font-display text-[22px] font-bold tracking-wide text-text">
-            Decision Pipeline
-          </h1>
-          {ageMs != null && (
-            <span className="font-mono text-[11px] text-muted-fg">
-              last cycle {ageSec}s ago
-            </span>
-          )}
-        </div>
+        <Button
+          size="sm"
+          variant="outline"
+          disabled={forceRunning}
+          onClick={async () => {
+            setForceRunning(true);
+            await enqueueCommand(withToken({
+              command_type: "force_cycle",
+              params: "{}",
+            }));
+            setTimeout(() => setForceRunning(false), 3000);
+          }}
+          className="flex items-center gap-1.5 font-mono text-[11px] border-cyan/30 text-cyan hover:bg-cyan/10 cursor-pointer"
+        >
+          <Play className="w-3 h-3" />
+          {forceRunning ? "Queued…" : "Run now"}
+        </Button>
       </div>
 
       {/* 5-stage pipeline */}
@@ -141,28 +172,100 @@ export function PipelineView() {
           ]}
         />
 
-        <Stage
-          n={4}
-          title="Risk Check"
-          badge={
-            riskState?.circuit_breaker_active
-              ? "block"
-              : riskState
-              ? "pass"
-              : "stale"
-          }
-          rows={[
-            {
-              label: "Drawdown",
-              value: riskState
-                ? `${(riskState.current_drawdown_pct * 100).toFixed(1)}%`
-                : "—",
-            },
-            { label: "Daily loss", value: riskState ? usd(riskState.daily_loss_usd) : "—" },
-            { label: "Exposure",   value: riskState ? usd(riskState.open_exposure_usd) : "—" },
-            { label: "Breaker",    value: riskState?.circuit_breaker_active ? "ACTIVE" : "off" },
-          ]}
-        />
+        {/* Stage 4 — Risk Check (inline editable) */}
+        <div className="flex gap-4 items-start">
+          <div className="flex flex-col items-center gap-1 flex-shrink-0">
+            <div className="w-7 h-7 rounded-full border border-border flex items-center justify-center font-mono text-[11px] text-muted-fg">4</div>
+            <div className="w-px flex-1 bg-border min-h-[24px]" />
+          </div>
+          <div className="panel flex-1 mb-3 p-3">
+            <div className="flex items-center justify-between mb-2">
+              <span className="font-display text-[13px] font-bold text-text">Risk Check</span>
+              <StageBadge status={riskState?.circuit_breaker_active ? "block" : riskState ? "pass" : "stale"} />
+            </div>
+            <div className="grid grid-cols-2 gap-x-6 gap-y-1.5">
+              {/* Editable: Drawdown */}
+              <div className="flex items-baseline justify-between gap-2">
+                <span className="font-mono text-[11px] text-muted-fg">Drawdown</span>
+                {editingField === "drawdown" ? (
+                  <form onSubmit={async (e) => {
+                    e.preventDefault();
+                    const val = parseFloat(editValue);
+                    if (!isNaN(val)) await updateLimits(withToken({ max_drawdown_pct: val / 100 }));
+                    setEditingField(null);
+                  }} className="flex items-center gap-1">
+                    <Input
+                      autoFocus
+                      value={editValue}
+                      onChange={(e) => setEditValue(e.target.value)}
+                      onBlur={() => setEditingField(null)}
+                      className="w-16 h-5 text-[11px] font-mono px-1 py-0 bg-bg border-green/50 text-text"
+                    />
+                    <span className="font-mono text-[10px] text-muted-fg">%</span>
+                    <button type="submit" className="text-green cursor-pointer"><Check className="w-3 h-3" /></button>
+                  </form>
+                ) : (
+                  <button
+                    className="flex items-center gap-1 group cursor-pointer"
+                    onClick={() => { setEditingField("drawdown"); setEditValue(riskState ? (riskState.current_drawdown_pct * 100).toFixed(1) : ""); }}
+                  >
+                    <span className="font-mono text-[12px] text-text tabular-nums">
+                      {riskState ? `${(riskState.current_drawdown_pct * 100).toFixed(1)}%` : "—"}
+                    </span>
+                    <Pencil className="w-2.5 h-2.5 text-muted-fg/0 group-hover:text-muted-fg/60 transition-colors" />
+                  </button>
+                )}
+              </div>
+
+              {/* Editable: Daily loss */}
+              <div className="flex items-baseline justify-between gap-2">
+                <span className="font-mono text-[11px] text-muted-fg">Daily loss</span>
+                {editingField === "daily_loss" ? (
+                  <form onSubmit={async (e) => {
+                    e.preventDefault();
+                    const val = parseFloat(editValue);
+                    if (!isNaN(val)) await updateLimits(withToken({ daily_loss_limit_usd: val }));
+                    setEditingField(null);
+                  }} className="flex items-center gap-1">
+                    <span className="font-mono text-[10px] text-muted-fg">$</span>
+                    <Input
+                      autoFocus
+                      value={editValue}
+                      onChange={(e) => setEditValue(e.target.value)}
+                      onBlur={() => setEditingField(null)}
+                      className="w-16 h-5 text-[11px] font-mono px-1 py-0 bg-bg border-green/50 text-text"
+                    />
+                    <button type="submit" className="text-green cursor-pointer"><Check className="w-3 h-3" /></button>
+                  </form>
+                ) : (
+                  <button
+                    className="flex items-center gap-1 group cursor-pointer"
+                    onClick={() => { setEditingField("daily_loss"); setEditValue(riskState ? riskState.daily_loss_usd.toFixed(2) : ""); }}
+                  >
+                    <span className="font-mono text-[12px] text-text tabular-nums">
+                      {riskState ? usd(riskState.daily_loss_usd) : "—"}
+                    </span>
+                    <Pencil className="w-2.5 h-2.5 text-muted-fg/0 group-hover:text-muted-fg/60 transition-colors" />
+                  </button>
+                )}
+              </div>
+
+              {/* Read-only: Exposure */}
+              <div className="flex items-baseline justify-between gap-2">
+                <span className="font-mono text-[11px] text-muted-fg">Exposure</span>
+                <span className="font-mono text-[12px] text-text tabular-nums">{riskState ? usd(riskState.open_exposure_usd) : "—"}</span>
+              </div>
+
+              {/* Read-only: Circuit breaker */}
+              <div className="flex items-baseline justify-between gap-2">
+                <span className="font-mono text-[11px] text-muted-fg">Breaker</span>
+                <span className={cn("font-mono text-[12px] tabular-nums", riskState?.circuit_breaker_active ? "text-red" : "text-muted-fg")}>
+                  {riskState?.circuit_breaker_active ? "ACTIVE" : "off"}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
 
         <Stage
           n={5}

@@ -17,6 +17,8 @@ type Props = {
   selectedSymbol?: string;
   onSymbolChange?: (s: string) => void;
   onDeposit?: () => void;
+  onAgentOpen?: (threadId: string) => void;
+  onSpawnAgent?: () => void;
 };
 
 export function AppShell({
@@ -31,6 +33,8 @@ export function AppShell({
   selectedSymbol,
   onSymbolChange,
   onDeposit,
+  onAgentOpen,
+  onSpawnAgent,
 }: Props) {
   return (
     <div className="flex flex-col h-screen">
@@ -50,6 +54,8 @@ export function AppShell({
             onSelect={onViewChange}
             onCopilot={onCopilot}
             onTour={onTour}
+            onAgentOpen={onAgentOpen}
+            onSpawnAgent={onSpawnAgent}
           />
         </div>
         <main className="flex-1 overflow-y-auto px-6 py-5 pb-12">

@@ -27,11 +27,19 @@ const NAV_ITEMS: { view: View; icon: React.ComponentType<{ className?: string }>
   { view: "docs",          icon: BookOpen,        label: "Docs" },
 ];
 
-type Props = { active: View; onSelect: (v: View) => void; onCopilot: () => void; onTour: () => void };
+type Props = {
+  active: View;
+  onSelect: (v: View) => void;
+  onCopilot: () => void;
+  onTour: () => void;
+  onAgentOpen?: (threadId: string) => void;
+  onSpawnAgent?: () => void;
+};
 
-export function SideNav({ active, onSelect, onCopilot, onTour }: Props) {
+export function SideNav({ active, onSelect, onCopilot, onTour, onAgentOpen, onSpawnAgent }: Props) {
   const [theme, setTheme] = useState(getTheme);
   const events = useQuery(api.agentEvents.recent, { limit: 20 }) ?? [];
+  const spawnedAgents = useQuery(api.spawnedAgents.list) ?? [];
 
   // Count events in the last 30 minutes that are non-info
   const BADGE_WINDOW_MS = 30 * 60 * 1000;
@@ -93,6 +101,62 @@ export function SideNav({ active, onSelect, onCopilot, onTour }: Props) {
             </Tooltip>
           );
         })}
+
+        {/* My Agents section */}
+        {spawnedAgents.length > 0 && (
+          <>
+            <div className="w-full px-2 py-1">
+              <div className="h-px bg-border/50 w-full" />
+            </div>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="w-full px-1">
+                  <span className="block font-mono text-[8px] tracking-[0.18em] uppercase text-muted-fg/50 text-center px-1 pb-0.5">
+                    agents
+                  </span>
+                </div>
+              </TooltipTrigger>
+              <TooltipContent side="right">Your spawned agents</TooltipContent>
+            </Tooltip>
+            {spawnedAgents.slice(0, 5).map((agent) => (
+              <Tooltip key={agent._id}>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={() => onAgentOpen?.(agent.thread_id ?? "")}
+                    className="relative w-10 h-8 rounded-[8px] flex items-center justify-center transition-colors cursor-pointer text-muted-fg hover:bg-elevated hover:text-text group"
+                    aria-label={agent.name}
+                  >
+                    <span
+                      className={cn(
+                        "w-2 h-2 rounded-full flex-shrink-0",
+                        agent.status === "active" ? "bg-green" : "bg-muted-fg/30"
+                      )}
+                      style={agent.status === "active" ? { boxShadow: "0 0 6px var(--green)" } : {}}
+                    />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="right">
+                  <span className="font-mono text-[11px]">{agent.name}</span>
+                  <span className="block font-mono text-[10px] text-muted-fg truncate max-w-[160px]">
+                    {agent.task_summary}
+                  </span>
+                </TooltipContent>
+              </Tooltip>
+            ))}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={() => onSpawnAgent?.()}
+                  className="w-10 h-7 rounded-[8px] flex items-center justify-center text-muted-fg/40 hover:text-muted-fg hover:bg-elevated transition-colors cursor-pointer text-[16px]"
+                  aria-label="Spawn agent"
+                >
+                  +
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="right">Spawn a new agent</TooltipContent>
+            </Tooltip>
+          </>
+        )}
 
         <div className="flex-1" />
 

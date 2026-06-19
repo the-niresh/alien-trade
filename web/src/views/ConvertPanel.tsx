@@ -69,6 +69,7 @@ export function ConvertPanel() {
   const [fromPrice, setFromPrice]     = useState(0);
   const [toPrice, setToPrice]         = useState(0);
   const [rateLoading, setRateLoading] = useState(false);
+  const [rateAge, setRateAge] = useState(0); // seconds since last rate fetch
   const [step, setStep]               = useState<Step>("form");
   const [loading, setLoading]         = useState(false);
   const [error, setError]             = useState("");
@@ -84,9 +85,20 @@ export function ConvertPanel() {
         setToPrice(r.ok ? r.toPrice : 0);
       })
       .catch(() => { if (!cancelled) { setFromPrice(0); setToPrice(0); } })
-      .finally(() => { if (!cancelled) setRateLoading(false); });
+      .finally(() => {
+        if (!cancelled) {
+          setRateLoading(false);
+          setRateAge(0); // reset age when fetch completes
+        }
+      });
     return () => { cancelled = true; };
   }, [from, to, quote]);
+
+  useEffect(() => {
+    if (rateLoading) return;
+    const id = setInterval(() => setRateAge((a) => a + 1), 1000);
+    return () => clearInterval(id);
+  }, [rateLoading]);
 
   const amtNum   = parseFloat(amount) || 0;
   const maxFrom  = maxOf(from, wallet);
@@ -162,6 +174,11 @@ export function ConvertPanel() {
           <p className="font-mono text-[10px] text-muted-fg">
             The agent runs a live quote first and aborts if price impact exceeds 5%. On-chain swaps are irreversible.
           </p>
+          {rateAge > 60 && (
+            <p className="font-mono text-[10px] text-yellow">
+              Rate fetched {Math.floor(rateAge / 60)}m {rateAge % 60}s ago — price may have shifted.
+            </p>
+          )}
           {error && <p className="font-mono text-[11px] text-red">{error}</p>}
           <div className="flex gap-2">
             <Button

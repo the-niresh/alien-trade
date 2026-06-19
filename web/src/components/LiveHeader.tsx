@@ -4,6 +4,7 @@ import { KillSwitch } from "./KillSwitch";
 import { RegimeBadge } from "./RegimeBadge";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Wallet } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { usd } from "../lib/formatters";
 
@@ -23,10 +24,11 @@ const MODE_CLASS: Record<string, string> = {
 };
 
 export function LiveHeader({ halted, mode, onKillToggle, selectedSymbol = "ALL", onSymbolChange, onDeposit }: Props) {
-  const ledger    = useQuery(api.ledger.latest);
-  const decisions = useQuery(api.decisions.recent, { limit: 1 });
-  const symbols   = useQuery(api.symbolList.list) ?? [];
-  const ticks     = useQuery(api.priceTicks.forSymbol, { symbol: selectedSymbol === "ALL" ? "ETH" : selectedSymbol, limit: 2 }) ?? [];
+  const ledger      = useQuery(api.ledger.latest);
+  const decisions   = useQuery(api.decisions.recent, { limit: 1 });
+  const symbols     = useQuery(api.symbolList.list) ?? [];
+  const walletState = useQuery(api.walletState.get);
+  const ticks       = useQuery(api.priceTicks.forSymbol, { symbol: selectedSymbol === "ALL" ? "ETH" : selectedSymbol, limit: 2 }) ?? [];
 
   const pnl      = ledger?.cumulative_pnl_usd;
   const regime   = decisions?.[0]?.regime ?? null;
@@ -102,6 +104,19 @@ export function LiveHeader({ halted, mode, onKillToggle, selectedSymbol = "ALL",
             <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-muted-fg">PnL</span>
             <span className={cn("font-display text-[22px] font-bold leading-none tabular-nums", pnlPos ? "text-green glow-green" : "text-red glow-red")}>
               {usd(pnl)}
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* Wallet balance — hidden on mobile */}
+      {walletState != null && (
+        <div className="hidden sm:flex items-center gap-3.5 flex-shrink-0">
+          <div className="w-px h-7 bg-border" />
+          <div className="flex items-center gap-1.5">
+            <Wallet className="w-3 h-3 text-muted-fg" />
+            <span className="font-mono text-[11px] text-muted-fg tabular-nums">
+              {usd(walletState.total_usd)}
             </span>
           </div>
         </div>

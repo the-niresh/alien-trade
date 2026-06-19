@@ -135,6 +135,14 @@ export function CoPilotDrawer({ isOpen, onClose, prefill = "", onRegisterCycle, 
     if (initialThreadId) setActiveThreadId(initialThreadId);
   }, [initialThreadId]);
 
+  // Reset spawn state machine when drawer closes
+  useEffect(() => {
+    if (!isOpen) {
+      setSpawnStep("idle");
+      setSpawnTask("");
+    }
+  }, [isOpen]);
+
   // Register Ctrl+Tab thread cycling with parent
   useEffect(() => {
     if (!onRegisterCycle) return;
@@ -248,7 +256,6 @@ export function CoPilotDrawer({ isOpen, onClose, prefill = "", onRegisterCycle, 
       }));
       setSpawnStep("idle");
       setSpawnTask("");
-      console.log("Spawned agent:", agentId);
       return;
     }
     // ── End spawn state machine ────────────────────────────────

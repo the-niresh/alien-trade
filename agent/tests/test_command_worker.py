@@ -60,3 +60,10 @@ def test_convert_rejects_same_from_and_to():
     with patch("agent.command_worker.TwakCli") as MockCli:
         with pytest.raises(ValueError, match="differ"):
             _dispatch("convert", _convert_params(from_token="USDT", to_token="USDT"))
+
+
+def test_convert_rejects_unsupported_token():
+    import pytest
+    with patch("agent.command_worker.TwakCli"):
+        with pytest.raises(ValueError, match="unsupported"):
+            _dispatch("convert", {"from_token": "CAKE", "to_token": "USDT", "usd": 4.0})

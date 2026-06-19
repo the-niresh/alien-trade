@@ -18,6 +18,7 @@ if TYPE_CHECKING:
 log = logging.getLogger(__name__)
 
 MAX_CONVERT_IMPACT = 0.05  # abort a convert whose quoted price impact exceeds 5%
+CONVERT_ALLOWLIST = {"BNB", "ETH", "USDT"}
 
 
 def run_one_command(bridge: "ConvexBridge") -> bool:
@@ -111,6 +112,10 @@ def _dispatch(cmd_type: str, params: dict) -> dict:
                 raise ValueError("convert requires from_token and to_token")
             if from_token == to_token:
                 raise ValueError(f"convert from and to must differ: {from_token}")
+            if from_token not in CONVERT_ALLOWLIST:
+                raise ValueError(f"convert: unsupported from_token {from_token!r}")
+            if to_token not in CONVERT_ALLOWLIST:
+                raise ValueError(f"convert: unsupported to_token {to_token!r}")
             if usd <= 0:
                 raise ValueError(f"convert usd must be > 0, got {usd}")
             # simulate-before-send (locked architectural decision L3)

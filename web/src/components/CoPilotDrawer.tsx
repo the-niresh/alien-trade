@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAction, useMutation, useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
@@ -28,7 +28,12 @@ type MsgDoc = {
 
 type ThreadDoc = { _id: string; title: string };
 
-type Props = { isOpen: boolean; onClose: () => void; prefill?: string };
+type Props = {
+  isOpen: boolean;
+  onClose: () => void;
+  prefill?: string;
+  onRegisterCycle?: (fn: (dir: 1 | -1) => void) => void;
+};
 
 function ActionConfirmCard({
   action, onConfirm, onCancel, loading, withdrawStep,
@@ -82,7 +87,7 @@ function ThinkingDots() {
   );
 }
 
-export function CoPilotDrawer({ isOpen, onClose, prefill = "" }: Props) {
+export function CoPilotDrawer({ isOpen, onClose, prefill = "", onRegisterCycle }: Props) {
   const [question, setQuestion] = useState("");
   const [loading, setLoading]   = useState(false);
   const [lastPrefill, setLastPrefill] = useState("");
@@ -114,6 +119,17 @@ export function CoPilotDrawer({ isOpen, onClose, prefill = "" }: Props) {
   const setControl     = useMutation(api.agentControl.set);
   const recordFeedback = useMutation(api.feedback.record);
   const enqueueCommand = useMutation(api.agentCommands.enqueue);
+
+  // Register Ctrl+Tab thread cycling with parent
+  useEffect(() => {
+    if (!onRegisterCycle) return;
+    onRegisterCycle((dir) => {
+      const all = [null, ...(threads as ThreadDoc[]).map((t) => t._id as Id<"copilot_threads">)];
+      const current = all.indexOf(activeThreadId);
+      const next = (current + dir + all.length) % all.length;
+      setActiveThreadId(all[next]);
+    });
+  }, [onRegisterCycle, threads, activeThreadId]);
 
   if (prefill && prefill !== lastPrefill) {
     setQuestion(prefill);
@@ -336,10 +352,15 @@ export function CoPilotDrawer({ isOpen, onClose, prefill = "" }: Props) {
                 <input
                   ref={inputRef}
                   className="flex-1 bg-bg border border-border/60 rounded-lg px-3 py-2 font-mono text-[12px] text-text placeholder:text-muted-fg focus:outline-none focus:border-purple/50"
-                  placeholder="Ask the agent…"
+                  placeholder="Ask the agent… (⌃↵ to send)"
                   value={question}
                   onChange={(e) => setQuestion(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && (!e.shiftKey || e.ctrlKey || e.metaKey)) {
+                      e.preventDefault();
+                      send();
+                    }
+                  }}
                   disabled={loading}
                 />
                 <Button size="sm"

@@ -121,7 +121,12 @@ export function SideNav({ active, onSelect, onCopilot, onTour }: Props) {
               <Bot className="w-[18px] h-[18px]" />
             </button>
           </TooltipTrigger>
-          <TooltipContent side="right">Co-Pilot</TooltipContent>
+          <TooltipContent side="right">
+            <span className="flex items-center gap-2">
+              Co-Pilot
+              <kbd className="font-mono text-[10px] bg-elevated border border-border rounded px-1 py-0.5">⌃K</kbd>
+            </span>
+          </TooltipContent>
         </Tooltip>
 
         <Tooltip>

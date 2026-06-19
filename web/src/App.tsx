@@ -300,7 +300,15 @@ export default function App() {
       case "portfolio":     return <PortfolioView />;
       case "pipeline":      return <PipelineView />;
       case "positions":     return <PositionsView />;
-      case "agents":        return <AgentsView    onAgentClick={onAgentClick} />;
+      case "agents":        return (
+        <AgentsView
+          onAgentClick={onAgentClick}
+          onAgentOpen={(threadId) => {
+            setCopilotThreadId(threadId);
+            setCopilotOpen(true);
+          }}
+        />
+      );
       case "controls":      return <ControlsView />;
       case "logs":          return <LogsView />;
       case "notifications": return <NotificationsView />;

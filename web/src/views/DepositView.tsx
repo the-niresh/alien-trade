@@ -6,8 +6,9 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Copy, Check, ExternalLink } from "lucide-react";
 import QRCode from "qrcode";
+import { ConvertPanel } from "./ConvertPanel";
 
-type Tab = "deposit" | "buy";
+type Tab = "deposit" | "buy" | "convert";
 
 export function DepositView() {
   // getAddress reads from Convex row first, falls back to WALLET_ADDRESS env var —
@@ -46,13 +47,13 @@ export function DepositView() {
 
       {/* Tab selector */}
       <div className="flex gap-1 p-1 bg-elevated rounded-xl border border-border">
-        {(["deposit", "buy"] as Tab[]).map((t) => (
+        {(["deposit", "buy", "convert"] as Tab[]).map((t) => (
           <button key={t} onClick={() => setTab(t)}
             className={cn(
               "flex-1 font-mono text-[12px] font-bold py-1.5 rounded-lg transition-colors cursor-pointer capitalize",
               tab === t ? "bg-bg text-text border border-border shadow-sm" : "text-muted-fg hover:text-text",
             )}>
-            {t === "deposit" ? "Deposit" : "Buy Crypto"}
+            {t === "deposit" ? "Deposit" : t === "buy" ? "Buy Crypto" : "Convert"}
           </button>
         ))}
       </div>
@@ -125,6 +126,8 @@ export function DepositView() {
           </div>
         </Panel>
       )}
+
+      {tab === "convert" && <ConvertPanel />}
     </div>
   );
 }

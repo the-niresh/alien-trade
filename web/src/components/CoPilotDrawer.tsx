@@ -134,11 +134,13 @@ export function CoPilotDrawer({ isOpen, onClose, prefill = "", initialThreadId }
     if (initialThreadId) setActiveThreadId(initialThreadId);
   }, [initialThreadId]);
 
-  // Reset spawn state machine when drawer closes
+  // Reset spawn state on close; focus input on open
   useEffect(() => {
     if (!isOpen) {
       setSpawnStep("idle");
       setSpawnTask("");
+    } else {
+      setTimeout(() => inputRef.current?.focus(), 80);
     }
   }, [isOpen]);
 

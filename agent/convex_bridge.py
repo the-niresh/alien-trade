@@ -377,6 +377,12 @@ class ConvexBridge:
             return
         self._call("mutation", "agentControl:set", {"agents_paused": paused})
 
+    def get_social_sources(self) -> list[dict]:
+        """Return all rows from social_sources. Offline / empty → []."""
+        if not self.enabled:
+            return []
+        return self._call("query", "social:getSources", {}) or []
+
     def get_sentiment_state(self, symbol: str) -> Optional[dict]:
         """Read the latest SentimentReading for a symbol. Offline / missing → None."""
         if not self.enabled:

@@ -182,6 +182,13 @@ function PairingScreen({ onPaired }: { onPaired: (t: string) => void }) {
   );
 }
 
+// ── History API routing helpers ────────────────────────────────────────────────
+const VALID_VIEWS = new Set(["overview","trackers","intelligence","deposit","withdraw","chart","positions","agents","controls","pipeline","portfolio","logs","notifications","docs"]);
+function pathToView(): View {
+  const seg = window.location.pathname.slice(1); // strip leading /
+  return (VALID_VIEWS.has(seg) ? seg : "overview") as View;
+}
+
 // ── Main app ──────────────────────────────────────────────────────────────────
 
 export default function App() {
@@ -196,7 +203,8 @@ export default function App() {
 
   const [token, setTokenState]              = useState<string | null>(loadToken());
   const [showPairing, setShowPairing]       = useState(false);
-  const [view, setView]                     = useState<View>("overview");
+  const [view, setViewState]                = useState<View>(pathToView);
+  const setView = (v: View) => { history.pushState(null, "", "/" + v); setViewState(v); };
   const [copilotOpen, setCopilotOpen]       = useState(false);
   const [copilotPrefill, setCopilotPrefill] = useState("");
   const [copilotThreadId, setCopilotThreadId] = useState<string | undefined>(undefined);
@@ -247,6 +255,13 @@ export default function App() {
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
+  }, []);
+
+  // History routing — back/forward button support
+  useEffect(() => {
+    const handler = () => setViewState(pathToView());
+    window.addEventListener("popstate", handler);
+    return () => window.removeEventListener("popstate", handler);
   }, []);
 
   const onKillToggle = () => {

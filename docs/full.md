@@ -246,3 +246,22 @@ What Is Alien-Trade?
   The wisdom in how they fit together: CMC is the data edge (orthogonal signals), TWAK is the safety layer (self-custody, zero key
   exposure), BNB SDK is the execution layer (actual trades). None of them make the trading decision — that lives in pure
   deterministic Python that can be backtested, validated, and optimized.
+
+
+ S1 — Momentum / Trend
+  Is the price going up or down consistently? Uses EMA (moving average) crossovers + rate of change. If ETH has been climbing for the
+  last 8 hours faster than the last 21 hours → bullish signal. The backbone — tells you the direction.
+
+  S2 — Derivatives (Funding Rate + Open Interest)
+  What are futures traders betting on? Funding rate = when longs are paying shorts, everyone is over-leveraged long → contrarian
+  signal to expect a dump. Open Interest = total money in futures positions — rising OI confirms a move, falling OI means the move is
+  fake. Tells you if the trend has conviction or is about to reverse.
+
+  S3 — Sentiment (Social + Fear & Greed)
+  What is the crowd feeling? Rising social mentions of ETH + fear & greed index swinging from extreme fear to neutral = people
+  starting to buy in. The trick is rate-of-change, not the absolute level — a sentiment spike is more useful than a high sentiment
+  that's been flat for days.
+
+  S4 — On-chain Flow (Exchange Flow + Whale Activity)
+  Are big wallets moving coins onto exchanges (to sell) or off exchanges (to hold)? Net outflow from exchanges = whales accumulating
+  = bullish precursor. This is the "smart money" signal.

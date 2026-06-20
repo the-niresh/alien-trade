@@ -37,7 +37,10 @@ class BSCCostModel:
     def __call__(self, order: Order, bar: Bar) -> tuple[float, float, float]:
         fee = order.size_usd * self.swap_fee_rate
         gas_bnb = self.gas_units * self.gas_price_gwei * _GWEI
-        gas_usd = gas_bnb * max(bar.close, self.bnb_price_usd)
+        # Gas on BSC is ALWAYS paid in BNB — price it in BNB regardless of the traded
+        # symbol. The previous max(bar.close, bnb_price) used the ETH price (~$3000) as
+        # if it were the BNB price, overstating gas ~5x on ETH trades.
+        gas_usd = gas_bnb * self.bnb_price_usd
         slippage = amm_slippage(order.size_usd, self.pool_liquidity_usd)
         return fee, gas_usd, slippage
 

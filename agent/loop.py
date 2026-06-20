@@ -74,6 +74,7 @@ class DecisionLoop:
         autopilot_config: Optional["AutopilotConfig"] = None,
         kol_enabled: bool = False,
         kol_min_conf: float = 0.5,
+        symbol_scanner=None,
     ):
         self.feed = feed
         self.strategy = strategy            # the SAME risk-wrapped /core strategy
@@ -81,6 +82,7 @@ class DecisionLoop:
         self.bridge = bridge
         self.params = params
         self.symbol = symbol
+        self._scanner = symbol_scanner
         self.mode = mode
         self.notifier = notifier
         # Live mode toggle (the UI writes config.trading_mode). When a factory is
@@ -113,6 +115,7 @@ class DecisionLoop:
         # Passthrough facts the curve can't reveal (autonomy + rule adherence).
         self._cycles_total = 0
         self._blocks_fired = 0
+        self._chain_cycle_n = 0   # cycles since last setup_scorer chain fire
         self._kill_switch_activations = 0
         self._circuit_breaker_activations = 0
         self._peak_exposure_pct = 0.0
@@ -210,6 +213,21 @@ class DecisionLoop:
             )
         else:
             self.notifier.send(text)
+
+    # ── cross-sectional rotation ─────────────────────────────────────────────
+
+    def _switch_symbol(self, new_symbol: str) -> None:
+        """Rotate to a new symbol.  Only safe to call when FLAT (no open position)."""
+        old = self.symbol
+        self.symbol = new_symbol
+        interval = getattr(self.feed, "interval", "1h")
+        history_bars = getattr(self.feed, "history_bars", 200)
+        from agent.feed import BinanceLiveFeed
+        self.feed = BinanceLiveFeed(new_symbol, interval=interval, history_bars=history_bars)
+        from agent.observability import jlog
+        jlog("symbol_switch", old_symbol=old, new_symbol=new_symbol)
+        if self.notifier:
+            self._notify(f"Rotating {old} → {new_symbol} (scanner)")
 
     # ── one cycle ────────────────────────────────────────────────────────────
 
@@ -1266,6 +1284,17 @@ class DecisionLoop:
                         run_live_ingest(self.bridge)
                     except Exception:  # noqa: BLE001
                         pass
+                # Cross-sectional rotation: when flat, pick the strongest signal
+                # across the full universe instead of being locked to one symbol.
+                if self._scanner is not None:
+                    try:
+                        flat = self.ledger.open_exposure <= self._exposure_epsilon
+                        if flat:
+                            best = self._scanner.best_symbol()
+                            if best and best != self.symbol:
+                                self._switch_symbol(best)
+                    except Exception:  # noqa: BLE001 — never block the trade cycle
+                        pass
                 history = self.feed.next()
                 if history:
                     res = self.run_cycle(history)
@@ -1274,6 +1303,17 @@ class DecisionLoop:
                          drawdown=round(res.drawdown_pct, 4),
                          filled=bool(res.execution and res.execution.is_fill),
                          halted=res.halted, reason=res.reason)
+                    # Neural Mesh chain trace — fire setup_scorer every N cycles
+                    self._chain_cycle_n += 1
+                    try:
+                        from agent.agents.loop_chain import (
+                            fire_setup_scorer, CHAIN_EVERY_N_CYCLES,
+                        )
+                        if self._chain_cycle_n >= CHAIN_EVERY_N_CYCLES:
+                            self._chain_cycle_n = 0
+                            fire_setup_scorer(self.bridge, self.symbol, res.cycle_id)
+                    except Exception:  # noqa: BLE001 — chain trace is telemetry only
+                        pass
             except Exception as e:  # noqa: BLE001 — shadow-run resilience
                 jlog("cycle_error", level="error",
                      error=str(e), error_type=type(e).__name__)

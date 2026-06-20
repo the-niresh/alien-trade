@@ -79,6 +79,7 @@ RESEARCHER = "Researcher"
 REFLECTOR = "Reflector"
 COPILOT = "Co-pilot"
 DREAMER = "Dreamer"
+WALLET_MANAGER = "WalletManager"
 USER = "User"  # control-surface events ("User paused the agents")
 SUPERVISOR = "Supervisor"  # orchestrator endpoint failure events
 
@@ -86,7 +87,7 @@ TIER0_AGENTS = frozenset({STRATEGIST, RISK_OFFICER, TRADE_HANDLER})
 TIER1_AGENTS = frozenset({HISTORIAN, RESEARCHER, REFLECTOR, COPILOT, DREAMER})
 # Guardrails / infrastructure agents — in AGENTS but not in either tier
 # (they observe, enforce limits, and emit events; they don't make trade decisions)
-AGENTS = frozenset({ORCHESTRATOR, USER, SUPERVISOR, RISK_GUARD, SCOUT}) | TIER0_AGENTS | TIER1_AGENTS
+AGENTS = frozenset({ORCHESTRATOR, USER, SUPERVISOR, RISK_GUARD, SCOUT, WALLET_MANAGER}) | TIER0_AGENTS | TIER1_AGENTS
 
 
 def tier_of(agent: str) -> Optional[int]:

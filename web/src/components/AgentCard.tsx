@@ -1,21 +1,23 @@
 import { motion } from "framer-motion";
+import { Bot, BookOpen, FlaskConical, Sparkles, Wallet, type LucideIcon } from "lucide-react";
 import { ts } from "../lib/formatters";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 
 export type AgentDef = {
   name: string;
-  label: string;
+  icon: LucideIcon;
   color: string;
   bg: string;
   role: string;
 };
 
 export const AGENT_DEFS: AgentDef[] = [
-  { name: "CoPilot",    label: "CP", color: "var(--cyan)",   bg: "#00d4ff14", role: "Answers your questions about the market, regime and trades." },
-  { name: "Historian",  label: "HI", color: "var(--yellow)", bg: "#ffd60a14", role: "Queries the Second Brain for institutional memory before each trade." },
-  { name: "Researcher", label: "RE", color: "var(--purple)", bg: "#a855f714", role: "Auto-researches market anomalies and builds the research digest." },
-  { name: "Reflector",  label: "RF", color: "var(--red)",    bg: "#ff306014", role: "Writes structured reflections after every trade for Hermes learning." },
+  { name: "CoPilot",       icon: Bot,           color: "var(--cyan)",   bg: "#00d4ff14", role: "Answers your questions about the market, regime and trades." },
+  { name: "Historian",     icon: BookOpen,      color: "var(--yellow)", bg: "#ffd60a14", role: "Queries the Second Brain for institutional memory before each trade." },
+  { name: "Researcher",    icon: FlaskConical,  color: "var(--purple)", bg: "#a855f714", role: "Auto-researches market anomalies and builds the research digest." },
+  { name: "Reflector",     icon: Sparkles,      color: "var(--red)",    bg: "#ff306014", role: "Writes structured reflections after every trade for Hermes learning." },
+  { name: "WalletManager", icon: Wallet,        color: "var(--green)",  bg: "#22c55e14", role: "Monitors real wallet vs ledger, detects swap failures, auto-realigns positions." },
 ];
 
 const KIND_COLOR: Record<string, string> = {
@@ -65,14 +67,14 @@ export function AgentCard({ def, lastEvent, onClick }: Props) {
       <div className="flex items-center gap-3 mb-3.5 relative">
         {/* Avatar */}
         <motion.div
-          className="w-[46px] h-[46px] rounded-xl flex items-center justify-center font-mono text-[13px] font-bold flex-shrink-0 relative"
+          className="w-[46px] h-[46px] rounded-xl flex items-center justify-center flex-shrink-0 relative"
           style={{ color: def.color, background: def.bg, border: `1px solid color-mix(in oklab, ${def.color} 30%, transparent)` }}
           animate={isActive
             ? { boxShadow: [`0 0 4px color-mix(in oklab, ${def.color} 25%, transparent)`, `0 0 20px color-mix(in oklab, ${def.color} 65%, transparent)`, `0 0 4px color-mix(in oklab, ${def.color} 25%, transparent)`] }
             : { boxShadow: "none" }}
           transition={{ duration: 1.8, repeat: Infinity, ease: "easeInOut" }}
         >
-          {def.label}
+          <def.icon size={20} strokeWidth={1.75} />
         </motion.div>
 
         {/* Name + role */}

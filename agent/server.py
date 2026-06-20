@@ -100,6 +100,25 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="Alien-Trade Agent", version="0.1.0", lifespan=lifespan)
 
+# Routes reachable without the API token. Everything else (copilot/LLM-cost,
+# twak wallet reads, supervisor/dreamer, telemetry, skill compute) is gated by
+# the middleware below when AGENT_API_TOKEN is set. The primary protection is
+# binding uvicorn to 127.0.0.1 (see alien-api.service); this is defense in depth.
+_PUBLIC_PATHS = frozenset({"/health", "/skill/manifest", "/skill/manifests", "/docs", "/openapi.json"})
+
+
+@app.middleware("http")
+async def _api_token_guard(request: Request, call_next):
+    """Enforce AGENT_API_TOKEN on every non-public route when a token is configured.
+    No-op when the token is unset (local/paper dev) — in that mode the localhost
+    bind is what keeps these endpoints off the public internet."""
+    token = os.environ.get("AGENT_API_TOKEN", "")
+    if token and request.url.path not in _PUBLIC_PATHS:
+        if request.headers.get("X-API-Token", "") != token:
+            from fastapi.responses import JSONResponse
+            return JSONResponse(status_code=401, content={"detail": "Unauthorized"})
+    return await call_next(request)
+
 # TWAK native x402 provider: meters POST /skill/signal_score at $0.01/call.
 # No-op when X402_WALLET_ADDRESS is absent — endpoint stays free.
 from agent.x402_provider import register as _x402_register  # noqa: E402

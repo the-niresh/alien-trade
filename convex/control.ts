@@ -4,10 +4,12 @@
 // Read-only queries are intentionally NOT gated (the cockpit shows state to anyone paired).
 export function assertControlToken(provided: string | undefined): void {
   const expected = process.env.CONTROL_TOKEN;
+  // Fail CLOSED: if the deployment has no CONTROL_TOKEN configured, reject every
+  // state-changing call rather than waving them through. A missing secret (rotation,
+  // fresh redeploy, accidental dashboard deletion) must never silently disable the gate,
+  // since Convex deployment URLs are publicly addressable. Onboarding sets CONTROL_TOKEN.
   if (!expected) {
-    // Fail-OPEN only when no token is configured yet (pre-onboarding dev), so we never
-    // brick the agent's own control path. Onboarding sets CONTROL_TOKEN -> fail-closed.
-    return;
+    throw new Error("unauthorized: CONTROL_TOKEN not configured in deployment");
   }
   if (!provided || provided !== expected) {
     throw new Error("unauthorized: invalid or missing control token");

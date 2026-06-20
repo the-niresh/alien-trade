@@ -112,7 +112,7 @@ def test_approve_callback_fires_on_approve(monkeypatch):
     with patch.object(bot, "_answer_callback"):
         bot._handle_callback({
             "id": "cq1", "data": "approve",
-            "message": {"message_id": 55},
+            "message": {"message_id": 55, "chat": {"id": 1}},
         })
     assert approved == ["yes"] and rejected == []
 
@@ -122,9 +122,39 @@ def test_reject_callback_fires_on_reject(monkeypatch):
     with patch.object(bot, "_answer_callback"):
         bot._handle_callback({
             "id": "cq2", "data": "reject",
-            "message": {"message_id": 66},
+            "message": {"message_id": 66, "chat": {"id": 1}},
         })
     assert rejected == ["no"] and approved == []
+
+
+def test_callback_from_unauthorized_chat_is_ignored(monkeypatch):
+    # Operator chat is "1"; a callback from chat 999 must not fire the approval.
+    bot, approved, rejected = _bot_with_pending(monkeypatch, 88)
+    with patch.object(bot, "_answer_callback"):
+        bot._handle_callback({
+            "id": "cq3", "data": "approve",
+            "message": {"message_id": 88, "chat": {"id": 999}},
+        })
+    assert approved == [] and rejected == []
+
+
+def test_command_from_unauthorized_chat_is_ignored(monkeypatch):
+    monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "tok")
+    monkeypatch.setenv("TELEGRAM_CHAT_ID", "1")
+    bridge = MagicMock()
+    bot = TelegramBot(bridge=bridge)
+    bot._handle_message({"text": "/halt", "chat": {"id": 999}})
+    bridge.set_halted.assert_not_called()
+
+
+def test_command_from_operator_chat_is_handled(monkeypatch):
+    monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "tok")
+    monkeypatch.setenv("TELEGRAM_CHAT_ID", "1")
+    bridge = MagicMock()
+    bot = TelegramBot(bridge=bridge)
+    with patch.object(bot, "send"):
+        bot._handle_message({"text": "/halt", "chat": {"id": 1}})
+    bridge.set_halted.assert_called_once_with(True)
 
 
 def test_expired_pending_calls_on_reject(monkeypatch):

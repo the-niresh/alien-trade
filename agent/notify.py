@@ -239,7 +239,16 @@ class TelegramBot:
         elif "callback_query" in upd:
             self._handle_callback(upd["callback_query"])
 
+    def _is_authorized(self, msg_or_cb: dict) -> bool:
+        """Only the configured operator chat may issue commands. Without this, ANY
+        Telegram user who finds the bot could send /halt and stop the live agent."""
+        chat = (msg_or_cb.get("chat") or (msg_or_cb.get("message") or {}).get("chat") or {})
+        sender_chat_id = str(chat.get("id", "")).strip()
+        return sender_chat_id != "" and sender_chat_id == str(self._chat_id).strip()
+
     def _handle_message(self, msg: dict) -> None:
+        if not self._is_authorized(msg):
+            return  # silently ignore commands from any non-operator chat
         text = (msg.get("text") or "").strip()
         if not text.startswith("/"):
             return
@@ -257,6 +266,8 @@ class TelegramBot:
                 pass
 
     def _handle_callback(self, cq: dict) -> None:
+        if not self._is_authorized(cq):
+            return  # only the operator chat may approve/reject pending actions
         cq_id = cq.get("id", "")
         msg_id = (cq.get("message") or {}).get("message_id")
         data = (cq.get("data") or "").strip()

@@ -14,6 +14,7 @@ trail is complete: "if it's not in Convex, it didn't happen."
 """
 from __future__ import annotations
 
+import logging
 import time
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Callable, Optional
@@ -460,6 +461,18 @@ class DecisionLoop:
         if hour < self.activity_deadline_hour:
             return   # still early in the day — give the strategy room to trade
 
+        from risk.guardrails import check_guardrails, check_max_exposure, RiskConfig
+        cfg = RiskConfig()
+
+        # Allowlist gate FIRST — never fire a compliance swap on a non-eligible token
+        # (e.g. BNB), which would be an unscored / ineligible trade. Applies to buys
+        # AND sells: we should not be trading an off-allowlist symbol at all.
+        if self.symbol not in cfg.token_allowlist:
+            self.bridge.audit("activity_floor_blocked", cycle_id, {
+                "reason": f"symbol {self.symbol!r} not in allowlist", "hour": hour,
+            }, "warn")
+            return
+
         price = bar.close
         held_usd = self.ledger.open_exposure(price)
         if held_usd > self.activity_trade_usd:
@@ -470,6 +483,30 @@ class DecisionLoop:
             side, size = "buy", self.activity_trade_usd       # flat → open tiny
         if size <= 0.0:
             return
+
+        # For the OPENING (buy) path, run the full guardrail chain — daily-loss kill
+        # switch, circuit breaker, position/exposure caps — exactly like every other
+        # trade. Sells only trim/close, which can't breach an exposure or loss cap.
+        if side == "buy":
+            equity = self.ledger.mark(price)
+            daily_loss_usd = self.ledger.daily_loss_usd(price)
+            daily_loss_pct = daily_loss_usd / max(equity, 1.0)
+            gr = check_guardrails(symbol=self.symbol, size_usd=size,
+                                  daily_loss_pct=daily_loss_pct,
+                                  consecutive_losses=self.ledger.consecutive_losses,
+                                  capital=equity, config=cfg)
+            if not gr.allowed:
+                self.bridge.audit("activity_floor_blocked", cycle_id, {
+                    "reason": gr.reason, "hour": hour, "source": "guardrail",
+                }, "warn")
+                return
+            ex = check_max_exposure(open_exposure_usd=held_usd, new_size_usd=size,
+                                    equity=equity, config=cfg)
+            if not ex.allowed:
+                self.bridge.audit("activity_floor_blocked", cycle_id, {
+                    "reason": ex.reason, "hour": hour, "source": "exposure",
+                }, "warn")
+                return
 
         order = Order(side=side, size_usd=size, symbol=self.symbol, timestamp=bar.timestamp)
         execution = self.executor.execute(order, bar, idempotency_key=f"{cycle_id}-activity")
@@ -976,21 +1013,33 @@ class DecisionLoop:
         try:
             from agent.twak_cli import TwakCli
             _twak = TwakCli()
-            _bal = _twak.wallet_balance(self._chain if hasattr(self, "_chain") else "bsc")
+            _chain = self._chain if hasattr(self, "_chain") else "bsc"
+            _bal = _twak.balance(_chain)
             _tokens = {t["symbol"]: float(t["balance"]) for t in _bal.get("tokens", [])}
             _bnb = float(_bal.get("available", 0))
-            _bnb_price = bar.close if self.symbol == "BNB" else 650.0  # rough BNB price
+
+            def _live_price(sym: str, fallback: float) -> float:
+                # Live USD price via twak; fall back to `fallback` on any failure.
+                try:
+                    return float(_twak.price(sym, _chain).get("priceUsd") or 0) or fallback
+                except Exception:
+                    return fallback
+
+            _eth_price = _live_price("ETH", bar.close if self.symbol == "ETH" else 0.0)
+            _bnb_price = _live_price("BNB", bar.close if self.symbol == "BNB" else 650.0)
+            _usdt = _tokens.get("USDT", 0.0)
+            _eth = _tokens.get("ETH", 0.0)
             self.bridge.update_wallet_state(
                 address=_bal.get("address", ""),
-                usdt=_tokens.get("USDT", 0.0),
-                eth=_tokens.get("ETH", 0.0),
+                usdt=_usdt,
+                eth=_eth,
                 bnb=_bnb,
                 bnb_usd=round(_bnb * _bnb_price, 4),
-                total_usd=round(_tokens.get("USDT", 0.0) + _tokens.get("ETH", 0.0) * bar.close + _bnb * _bnb_price, 2),
+                total_usd=round(_usdt + _eth * _eth_price + _bnb * _bnb_price, 2),
                 updated_ms=bar.timestamp,
             )
-        except Exception:
-            pass  # wallet balance is display-only; never block the trade cycle
+        except Exception as exc:  # wallet balance is display-only; never block the trade cycle
+            logging.getLogger(__name__).warning("wallet_state snapshot failed: %r", exc)
 
         self.bridge.append_price_tick(
             symbol=self.symbol,

@@ -17,6 +17,22 @@ from typing import Any
 # ── Anthropic tool schemas (alphabetical order required by tests) ─────────────
 TOOLS: list[dict] = [
     {
+        "name": "create_agent",
+        "description": "Spawn a new user-owned Agent that pursues a goal using the "
+                       "specialized Agent Tools. Default mode is paper (no real trades).",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "name": {"type": "string"},
+                "goal": {"type": "string"},
+                "allowed_tools": {"type": "array", "items": {"type": "string"}},
+                "trigger": {"type": "object"},
+                "mode": {"type": "string", "enum": ["paper", "live"]},
+            },
+            "required": ["name", "goal", "allowed_tools"],
+        },
+    },
+    {
         "name": "check_token_risk",
         "description": "Security / rug-risk check for a token (TWAK asset id).",
         "input_schema": {
@@ -85,6 +101,12 @@ def execute_tool(name: str, args: dict, *, twak, skills, bridge) -> str:
 
 
 def _dispatch_tool(name: str, args: dict, *, twak, skills, bridge) -> Any:
+    if name == "create_agent":
+        from agent.agents.spec import validate_agent_spec
+        from agent.agents.registry import create_agent
+        spec = validate_agent_spec(args)
+        new_id = create_agent(bridge, spec)
+        return {"created": spec["name"], "mode": spec["mode"], "id": new_id}
     if name == "get_agent_state":
         led = bridge.latest_ledger() or {}
         cfg = bridge.get_config() or {}

@@ -10,6 +10,9 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: "autoUpdate",
+      workbox: {
+        importScripts: ["/sw-push.js"],
+      },
       manifest: {
         name: "Alien-Trade",
         short_name: "Alien-Trade",

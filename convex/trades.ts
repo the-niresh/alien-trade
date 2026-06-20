@@ -1,5 +1,6 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import { assertControlToken } from "./control";
 
 const mode = v.union(
   v.literal("testnet"),
@@ -23,9 +24,11 @@ export const record = mutation({
     tx_hash: v.optional(v.string()),
     mode,
     timestamp_ms: v.optional(v.number()),
+    control_token: v.optional(v.string()),
   },
   returns: v.id("trades"),
   handler: async (ctx, args) => {
+    assertControlToken(args.control_token);
     return await ctx.db.insert("trades", {
       symbol: args.symbol,
       side: args.side,

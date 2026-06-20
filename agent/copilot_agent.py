@@ -14,7 +14,7 @@ from __future__ import annotations
 import json
 from typing import Any
 
-# ── Anthropic tool schemas ──────────────────────────────────────────────────
+# ── Anthropic tool schemas (alphabetical order required by tests) ─────────────
 TOOLS: list[dict] = [
     {
         "name": "check_token_risk",

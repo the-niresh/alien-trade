@@ -36,9 +36,21 @@ export function StatCard({ label, value, tone = "neutral", sub, unit, featured =
         style={{
           background: `linear-gradient(to bottom, transparent 0%, ${t.ring} 20%, ${t.ring} 80%, transparent 100%)`,
           opacity: 0.9,
-          boxShadow: featured ? `2px 0 16px ${t.ring}60` : `2px 0 8px ${t.ring}40`,
+          boxShadow: featured ? `2px 0 20px ${t.ring}80, 4px 0 40px ${t.ring}30` : `2px 0 8px ${t.ring}40`,
         }}
       />
+
+      {/* Featured: top-right corner dot indicator */}
+      {featured && (
+        <span
+          className="absolute top-3 right-3 w-1.5 h-1.5 rounded-full"
+          style={{
+            background: t.ring,
+            boxShadow: `0 0 6px ${t.ring}, 0 0 12px ${t.ring}60`,
+            animation: "live-dot 2s ease-in-out infinite",
+          }}
+        />
+      )}
 
       {/* Header row */}
       <div className="flex items-center justify-between relative z-10">
@@ -70,13 +82,17 @@ export function StatCard({ label, value, tone = "neutral", sub, unit, featured =
         )}
         {featured && (
           <span
-            className="font-mono text-[9px] font-bold tracking-[0.18em] uppercase px-1.5 py-0.5 rounded"
+            className="font-mono text-[9px] font-bold tracking-[0.18em] uppercase px-1.5 py-0.5 rounded flex items-center gap-1"
             style={{
               color: t.ring,
               background: `color-mix(in oklab, ${t.ring} 10%, transparent)`,
               border: `1px solid color-mix(in oklab, ${t.ring} 25%, transparent)`,
             }}
           >
+            <span
+              className="w-1.5 h-1.5 rounded-full bg-current"
+              style={{ animation: "live-dot 1.4s ease-in-out infinite" }}
+            />
             LIVE
           </span>
         )}

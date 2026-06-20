@@ -241,10 +241,10 @@
   }
 
   /* Diagonal colour washes used inside stat cards */
-  .tone-wash-positive { background: linear-gradient(115deg, color-mix(in oklab, var(--green)    14%, transparent) 0%, transparent 52%); }
-  .tone-wash-negative { background: linear-gradient(115deg, color-mix(in oklab, var(--red)      14%, transparent) 0%, transparent 52%); }
-  .tone-wash-warn     { background: linear-gradient(115deg, color-mix(in oklab, var(--yellow)   12%, transparent) 0%, transparent 52%); }
-  .tone-wash-neutral  { background: linear-gradient(115deg, color-mix(in oklab, var(--border-hi) 16%, transparent) 0%, transparent 52%); }
+  .tone-wash-positive { background: linear-gradient(125deg, color-mix(in oklab, var(--green)    22%, transparent) 0%, transparent 55%); }
+  .tone-wash-negative { background: linear-gradient(125deg, color-mix(in oklab, var(--red)      22%, transparent) 0%, transparent 55%); }
+  .tone-wash-warn     { background: linear-gradient(125deg, color-mix(in oklab, var(--yellow)   18%, transparent) 0%, transparent 55%); }
+  .tone-wash-neutral  { background: linear-gradient(125deg, color-mix(in oklab, var(--border-hi) 22%, transparent) 0%, transparent 55%); }
 }
 
 /* ── Preserved / new hand-rolled rules ── */
@@ -327,6 +327,17 @@
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--border-hi); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+
+/* LIVE badge — pulsing dot */
+@keyframes live-dot {
+  0%, 100% { opacity: 1;   transform: scale(1); }
+  50%       { opacity: 0.3; transform: scale(0.8); }
+}
+
+/* Fear & greed radar sweep reuse */
+@keyframes radar-sweep-sm {
+  to { transform: rotate(360deg); }
+}
 
 /* Reduced motion */
 @media (prefers-reduced-motion: reduce) {

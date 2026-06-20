@@ -206,28 +206,77 @@ def _second_brain():
     return getattr(get_loop(), "second_brain", None)
 
 
+def _copilot_fallback(question: str) -> str:
+    """Call Claude directly with live trading context when Second Brain is offline."""
+    import os, anthropic as _anthropic
+    loop = get_loop()
+    led = loop.ledger
+    halted = loop.bridge.is_halted()
+    position_str = (
+        f"{led.units:.6f} units @ ${led.avg_entry:.2f} avg entry"
+        if led.units > 0 else "flat (no open position)"
+    )
+    system = (
+        "You are the Co-Pilot for an autonomous BSC trading agent called Alien-Trade. "
+        "You have access to the agent's live state. Answer the operator's question "
+        "concisely and helpfully. Use markdown. Do not make up data not provided below.\n\n"
+        f"## Live Agent State\n"
+        f"- Mode: {loop.mode} | Symbol: {loop.symbol}\n"
+        f"- Cash: ${led.cash:,.2f} | Position: {position_str}\n"
+        f"- Realized PnL: ${led.realized_pnl_total:+,.2f} | Peak equity: ${led.peak_equity:,.2f}\n"
+        f"- Current drawdown: {led.current_drawdown_pct * 100:.2f}%\n"
+        f"- Status: {'HALTED' if halted else 'running'} | Consecutive losses: {led.consecutive_losses}\n"
+    )
+    api_key = os.environ.get("ANTHROPIC_API_KEY", "")
+    if not api_key:
+        return "_Co-Pilot unavailable: ANTHROPIC_API_KEY not set._"
+    client = _anthropic.Anthropic(api_key=api_key)
+    msg = client.messages.create(
+        model="claude-haiku-4-5-20251001",
+        max_tokens=512,
+        system=system,
+        messages=[{"role": "user", "content": question}],
+    )
+    return msg.content[0].text
+
+
+def _copilot_read_loop(question: str) -> dict | None:
+    """Live-read tool-loop brain for the co-pilot. Returns the loop result, or
+    None when no ANTHROPIC_API_KEY (caller falls back to the narrator)."""
+    import os
+    api_key = os.environ.get("ANTHROPIC_API_KEY", "")
+    if not api_key:
+        return None
+    import anthropic
+    from agent.copilot_agent import run_read_loop
+    from agent.skills import SkillHub
+    from agent.twak_cli import TwakCli
+
+    client = anthropic.Anthropic(api_key=api_key)
+    return run_read_loop(
+        question,
+        twak=TwakCli(),
+        skills=SkillHub(),
+        bridge=get_loop().bridge,
+        client=client,
+    )
+
+
 @app.post("/copilot")
 def copilot(body: dict) -> dict:
     """Grounded Q&A over the Second Brain. POST {"question": "..."}.
-    Falls back to live status snapshot when SECOND_BRAIN=0."""
+    Falls back to live-read tool-loop when SECOND_BRAIN=0 and API key present,
+    then to the narrator."""
     question = str(body.get("question", ""))
     sb = _second_brain()
     if sb is None:
-        loop = get_loop()
-        led = loop.ledger
-        halted = loop.bridge.is_halted()
-        lines = [
-            f"Agent: **{loop.mode}** mode · symbol **{loop.symbol}**",
-            f"Cash: ${led.cash:,.2f} | Position: {led.units:.6f} units"
-            + (f" @ ${led.avg_entry:.2f} avg entry" if led.units > 0 else " (flat)"),
-            f"Realized PnL: ${led.realized_pnl_total:+,.2f} | Peak equity: ${led.peak_equity:,.2f}",
-            f"Status: {'HALTED' if halted else 'running'} | Losses streak: {led.consecutive_losses}",
-            "",
-            "_(Full grounded Q&A requires SECOND_BRAIN=1 + Anthropic + Upstash keys.)_",
-        ]
-        answer = "\n".join(lines)
+        loop_res = _copilot_read_loop(question)
+        if loop_res is not None:
+            loop_res["action"] = _extract_action(question, loop_res["answer"])
+            return loop_res
+        answer = _copilot_fallback(question)
         action = _extract_action(question, answer)
-        return {"answer": answer, "grounded": True, "sources": [], "action": action}
+        return {"answer": answer, "grounded": False, "sources": [], "action": action}
     res = sb.copilot().ask(question)
     action = _extract_action(question, res.get("answer", ""))
     res["action"] = action

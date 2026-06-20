@@ -22,3 +22,18 @@ export const recent = query({
     await ctx.db.query("agent_runs").withIndex("by_agent", q => q.eq("agent_id", a.agent_id))
       .order("desc").take(20),
 });
+
+export const latestAllAgents = query({
+  args: {},
+  handler: async (ctx) => {
+    // Scan the most recent runs and return one (the latest) per agent_id.
+    const runs = await ctx.db.query("agent_runs").order("desc").take(200);
+    const seen = new Set<string>();
+    const result: typeof runs = [];
+    for (const r of runs) {
+      const key = r.agent_id as string;
+      if (!seen.has(key)) { seen.add(key); result.push(r); }
+    }
+    return result;
+  },
+});

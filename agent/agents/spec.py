@@ -18,6 +18,9 @@ def validate_agent_spec(raw: dict) -> dict:
 
     tools = list(raw.get("allowed_tools") or [])
     for t in tools:
+        # Level-2 delegation: "agent:<id>" tools reference other spawned agents
+        if t.startswith("agent:"):
+            continue
         if t not in AGENT_TOOL_NAMES:
             raise ValueError(f"unknown tool: {t!r}")
 

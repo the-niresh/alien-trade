@@ -50,7 +50,7 @@ const TAB_TOURS: Record<string, DriveStep[]> = {
     {
       element: '[data-tour="nav-chart"]',
       popover: {
-        title: "Price Chart",
+        title: "Markets",
         description: "OHLCV candles for each eligible token (ETH / CAKE / UNI / LINK / AAVE). Your agent's buys (▲) and sells (▼) are marked on the chart.",
         side: "right",
       },
@@ -131,6 +131,115 @@ const TAB_TOURS: Record<string, DriveStep[]> = {
       },
     },
   ],
+  pipeline: [
+    {
+      element: '[data-tour="nav-pipeline"]',
+      popover: {
+        title: "Decision Pipeline",
+        description: "The agent's full decision flow, stage by stage: data ingest → signals → regime → risk gate → execution. Each stage lights up as the cycle runs.",
+        side: "right",
+      },
+    },
+    {
+      element: '[data-tour="nav-intelligence"]',
+      popover: {
+        title: "What feeds it",
+        description: "Intelligence shows the sponsor data sources — CMC OHLCV, funding/OI, and social — powering the signals at the top of this pipeline.",
+        side: "right",
+      },
+    },
+  ],
+  positions: [
+    {
+      element: '[data-tour="nav-positions"]',
+      popover: {
+        title: "Positions",
+        description: "Every open and closed position — size, entry price, and live unrealized PnL. Your per-trade ground truth.",
+        side: "right",
+      },
+    },
+    {
+      element: '[data-tour="nav-portfolio"]',
+      popover: {
+        title: "Rolled up in Portfolio",
+        description: "Portfolio aggregates these positions into your total TWAK self-custody wallet equity.",
+        side: "right",
+      },
+    },
+  ],
+  agents: [
+    {
+      element: '[data-tour="nav-agents"]',
+      popover: {
+        title: "Your Agent Team",
+        description: "Each agent composes the specialized, sponsor-powered Agent Tools — CMC research, TWAK signing, and Hermes memory — to pursue a goal you set.",
+        side: "right",
+      },
+    },
+    {
+      element: '[data-tour="nav-copilot"]',
+      popover: {
+        title: "Spawn one here",
+        description: 'Tell the Co-Pilot "make an agent that watches CAKE and alerts me when funding flips negative" — it spawns a new agent for you.',
+        side: "right",
+      },
+    },
+  ],
+  logs: [
+    {
+      element: '[data-tour="nav-logs"]',
+      popover: {
+        title: "Decision & Audit Logs",
+        description: "The raw decision/audit JSON stream, one entry per cycle — exactly what the agent did and why. Nothing hidden.",
+        side: "right",
+      },
+    },
+    {
+      element: '[data-tour="kill-switch"]',
+      popover: {
+        title: "Something off?",
+        description: "If a log entry looks wrong, hit the kill switch first — it halts all trading instantly — then investigate.",
+        side: "bottom",
+        align: "end",
+      },
+    },
+  ],
+  notifications: [
+    {
+      element: '[data-tour="nav-notifications"]',
+      popover: {
+        title: "Alerts",
+        description: "Every non-routine event lands here: trades, halts, stalled agents, and agent updates. A red dot on this tab means unread alerts.",
+        side: "right",
+      },
+    },
+    {
+      element: '[data-tour="nav-copilot"]',
+      popover: {
+        title: "Explain any alert",
+        description: 'Ask the Co-Pilot "why did I get that halt alert?" and it explains the event in plain language.',
+        side: "right",
+      },
+    },
+  ],
+  docs: [
+    {
+      element: '[data-tour="nav-docs"]',
+      popover: {
+        title: "Docs",
+        description: "The strategy, architecture, and sponsor-integration writeups behind the cockpit — the thinking under the hood.",
+        side: "right",
+      },
+    },
+    {
+      element: '[data-tour="nav-overview"]',
+      popover: {
+        title: "Back to live",
+        description: "Head back to Overview any time for the live snapshot of the agent's health.",
+        side: "right",
+      },
+    },
+  ],
 };
 
 // ── Main tour entry point ─────────────────────────────────────────────────────
@@ -172,7 +281,7 @@ export function startTour(view?: string): void {
       {
         element: '[data-tour="nav-chart"]',
         popover: {
-          title: "Chart",
+          title: "Markets",
           description: "Price chart for each eligible token with your entry and exit markers.",
           side: "right",
         },

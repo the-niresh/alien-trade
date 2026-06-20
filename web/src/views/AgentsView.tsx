@@ -5,6 +5,8 @@ import { AgentCard, AgentCardSkeleton, AGENT_DEFS } from "../components/AgentCar
 import { cn } from "@/lib/utils";
 import { enableAlerts } from "@/lib/push";
 
+type ToolCall = { tool: string; args?: string; summary?: string; error?: string };
+
 type Props = {
   onAgentClick: (name: string) => void;
   onAgentOpen?: (threadId: string) => void;
@@ -15,12 +17,19 @@ export function AgentsView({ onAgentClick, onAgentOpen, controlToken }: Props) {
   const roster = useQuery(api.agentEvents.latestPerAgent);
   const spawnedAgents = useQuery(api.spawnedAgents.list) ?? [];
   const pending = useQuery(api.approvals.listPending) ?? [];
+  const latestRuns = useQuery(api.agentRuns.latestAllAgents) ?? [];
   const resolveApproval = useMutation(api.approvals.resolve);
   const convex = useConvex();
   const [alertsEnabled, setAlertsEnabled] = useState(false);
+  const [expandedTrace, setExpandedTrace] = useState<string | null>(null);
   const rosterMap = new Map(
     (roster ?? []).map((e: { agent: string; ts_ms: number; kind: string; headline: string }) =>
       [e.agent, { ts_ms: e.ts_ms, kind: e.kind, headline: e.headline }]
+    )
+  );
+  const latestRunMap = new Map(
+    latestRuns.map((r: { agent_id: string; ok: boolean; summary: string; tool_calls: ToolCall[] }) =>
+      [r.agent_id, r]
     )
   );
 
@@ -137,6 +146,63 @@ export function AgentsView({ onAgentClick, onAgentOpen, controlToken }: Props) {
                   <p className="font-mono text-[11px] text-muted-fg/80 leading-relaxed line-clamp-2">
                     {agent.task_summary}
                   </p>
+
+                  {/* Neural Mesh chain trace */}
+                  {(() => {
+                    const run = latestRunMap.get(agent._id);
+                    const calls: ToolCall[] = run?.tool_calls ?? [];
+                    if (calls.length === 0) return null;
+                    const isExpanded = expandedTrace === agent._id;
+                    return (
+                      <div className="border-t border-border/30 pt-2">
+                        <button
+                          onClick={() => setExpandedTrace(isExpanded ? null : agent._id)}
+                          className="flex items-center gap-1.5 w-full group"
+                        >
+                          <span className="font-mono text-[9px] text-muted-fg/50 uppercase tracking-widest">
+                            Chain
+                          </span>
+                          <div className="flex items-center gap-0.5 flex-1 overflow-hidden">
+                            {calls.map((tc, i) => (
+                              <span key={i} className="flex items-center gap-0.5">
+                                {i > 0 && <span className="text-muted-fg/30 text-[9px]">→</span>}
+                                <span className={cn(
+                                  "font-mono text-[9px] rounded px-1.5 py-0.5 border",
+                                  tc.error
+                                    ? "bg-red/10 text-red border-red/20"
+                                    : "bg-purple/10 text-purple border-purple/20"
+                                )}>
+                                  {tc.tool}
+                                </span>
+                              </span>
+                            ))}
+                          </div>
+                          <span className="font-mono text-[9px] text-muted-fg/40 group-hover:text-muted-fg/70 transition-colors flex-shrink-0">
+                            {isExpanded ? "▲" : "▼"}
+                          </span>
+                        </button>
+                        {isExpanded && (
+                          <div className="mt-2 flex flex-col gap-1">
+                            {calls.map((tc, i) => (
+                              <div key={i} className="flex items-start gap-2">
+                                <span className={cn(
+                                  "font-mono text-[9px] rounded px-1.5 py-0.5 border flex-shrink-0 mt-0.5",
+                                  tc.error
+                                    ? "bg-red/10 text-red border-red/20"
+                                    : "bg-purple/10 text-purple border-purple/20"
+                                )}>
+                                  {tc.tool}
+                                </span>
+                                <span className="font-mono text-[10px] text-muted-fg/70 leading-relaxed line-clamp-2">
+                                  {tc.error ?? tc.summary ?? tc.args ?? ""}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
 
                   <div className="flex items-center justify-between">
                     <span className="font-mono text-[10px] text-muted-fg/50">

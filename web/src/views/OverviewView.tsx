@@ -73,10 +73,8 @@ export function OverviewView({ onAgentClick, onCopilot }: Props) {
         )}
       </AnimatePresence>
 
-      {/* Start Trading CTA — always visible as the primary entry point */}
-      <StartTradingCTA onStart={onCopilot} />
-
-      {/* Stats grid — 4 core + 2 daily */}
+      {/* Lead with the live risk metrics — this is an operator console, not a
+          landing page. PnL + Drawdown are the thesis-critical pair (featured). */}
       <div className="grid grid-cols-4 gap-3 items-stretch max-[900px]:grid-cols-2">
         {ledger === undefined
           ? Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-[104px] w-full bg-surface border border-border rounded-xl" />)
@@ -84,13 +82,17 @@ export function OverviewView({ onAgentClick, onCopilot }: Props) {
               <StatCard label="Cumulative PnL" value={usd(pnl)} unit="USD" featured
                 tone={(pnl ?? 0) >= 0 ? "positive" : "negative"} animKey={pnl ?? 0}
                 sub={(pnl ?? 0) >= 0 ? "in profit" : "drawdown"} />
-              <StatCard label="Max Drawdown" value={pct(dd)} unit="peak"
-                tone={(dd ?? 0) > 0.05 ? "negative" : (dd ?? 0) > 0 ? "warn" : "positive"} />
+              <StatCard label="Max Drawdown" value={pct(dd)} unit="peak" featured
+                tone={(dd ?? 0) > 0.05 ? "negative" : (dd ?? 0) > 0 ? "warn" : "positive"}
+                sub={(dd ?? 0) > 0.05 ? "breaching" : "within cap"} />
               <StatCard label="Open Exposure" value={usd(risk?.open_exposure_usd)} unit="USD" />
               <StatCard label="Win Rate" value={scorecard?.win_rate != null ? pct(scorecard.win_rate) : "—"} unit="hit" />
             </>
         }
       </div>
+
+      {/* Co-Pilot entry — a slim strip below the metrics, not a hero block. */}
+      <StartTradingCTA onStart={onCopilot} />
 
       {/* Daily stats */}
       <DailyStats />

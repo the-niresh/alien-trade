@@ -26,6 +26,13 @@ The seam (confirmed with the operator):
   and **the judging pitch**: *"every agent our user builds is composed from our
   sponsor-powered capability layer."*
 
+**Operator directive (2026-06-20): build this fully, not a trimmed slice — and the
+specialized Agent Tools must collaborate with each other** (multi-agent handoffs), not just
+sit as independent tools. Collaboration is specified in §5.1 and the scope is re-cut as a
+**phased full build** (§8): Phase 1 lands by freeze for safety; Phases 2–3 land through the
+Jun 29–Jul 5 judging window (legitimate — the freeze governs the *trading* path, which is the
+done deterministic `/core`; the cockpit/demo keeps improving).
+
 ### Win-gate justification
 This does **not** directly raise Track 1 PnL (one wallet, deterministic `/core`). It is a
 **maybe → build, scoped** item: its value is (a) demonstrable **sponsor depth** feeding the
@@ -113,6 +120,45 @@ locked decision #1 and the drawdown-first score. Default mode for any trade-capa
 
 ---
 
+## 5.1 Specialized Agent collaboration (the depth play)
+
+An Agent rarely wants one tool — it wants a **team that hands off**. Collaboration happens at
+two levels, both orchestrated by the existing **LangGraph supervisor** (`agent/graph/supervisor.py`),
+never by ad-hoc glue:
+
+**Level 1 — tools collaborate inside one Agent run (handoff chain).**
+The supervisor routes a goal through multiple Tier-A tools, each consuming the previous one's
+typed output via the contracts in `agent/graph/contracts.py` (locked: standardized shapes,
+`tier_of()`/`is_tier0()`). Canonical chains:
+
+```
+"is this a setup we should take?"
+   Researcher (CMC: regime, funding/OI, social)
+      → Historian (Upstash: have we lost on this setup before?)   [AvoidanceVerdict]
+      → CoPilot  (Claude: synthesize a one-paragraph call)
+      → [if live] Trade Proposer → approval request
+
+"learn from what just happened"
+   Reflector (post-trade lesson) → Historian (store + index)      [Reflection]
+```
+
+Each hop emits exactly one `AgentEvent` to the Activity Channel, capped by `MAX_HOPS`, wrapped
+in `_emit_failure`. A failing Tier-1 tool degrades the chain (skips that input) but **never**
+halts trading (failure matrix §9.3). The chain produces **one combined result + one visible
+trace** the operator can expand in the cockpit (the existing "Neural Mesh" surface in
+`web/src/views/AgentsView.tsx`).
+
+**Level 2 — Agents consult Agents (delegation).**
+A user Agent may name another Agent in its `allowed_tools` as a sub-agent (e.g. a "Daily Brief"
+Agent that consults the "CAKE-Watcher" and "Macro-Researcher" Agents and merges their findings).
+Delegation is one bounded hop, dedupe-guarded, and **cycle-protected** (an Agent cannot, directly
+or transitively, call itself). Depth is capped (`MAX_DELEGATION_DEPTH`, small) so a fan-out can't
+explode token spend.
+
+**Collaboration is observable.** Every handoff and delegation writes to `agent_runs.tool_calls[]`
+and emits an `AgentEvent`, so the cockpit shows *who called whom* — the multi-agent story is
+demoed live, not just claimed.
+
 ## 6. Data model (Convex)
 
 Extend the existing `spawned_agents` table (`convex/spawnedAgents.ts`) — additive only:
@@ -122,7 +168,7 @@ Extend the existing `spawned_agents` table (`convex/spawnedAgents.ts`) — addit
 | `name`            | string                                 | existing — user-renamable |
 | `task_summary`    | string                                 | existing → repurpose as `goal` display |
 | `goal`            | string                                 | the natural-language mandate |
-| `allowed_tools`   | string[]                               | subset of the Agent-Tool names |
+| `allowed_tools`   | string[]                               | Agent-Tool names, and/or other agent ids for Level-2 delegation (§5.1) |
 | `trigger`         | `{ kind: "schedule"\|"event", spec }`  | cadence or event key |
 | `notify_policy`   | `{ webpush: bool, severity_min }`      | when to ping |
 | `mode`            | `"paper"\|"live"`                      | default `paper` |
@@ -141,6 +187,7 @@ New tables:
 | Unit | Does | Depends on |
 |------|------|-----------|
 | `agent/agents/runner.py` | run one Agent: build tool-loop, cap hops, heartbeat, emit run record | copilot tool-loop, supervisor, ConvexBridge |
+| `agent/agents/orchestrator.py` | Level-1 tool handoff chains + Level-2 delegation, cycle/depth guards (§5.1) | supervisor, contracts, registry |
 | `agent/agents/registry.py` | CRUD over `spawned_agents` from the runtime side | ConvexBridge |
 | `agent/agents/watchdog.py` | flag silent / stalled Agents | `spawned_agents`, notify |
 | `agent/push.py` | Web Push send (VAPID) | `push_subscriptions` |
@@ -153,24 +200,34 @@ unit-tested against a fake subscription; the NL→record parse is a pure functio
 
 ---
 
-## 8. Scope for freeze (Jun 21) — thinnest slice that tells the whole story
+## 8. Scope — phased full build
 
-**In:**
+The operator wants the **full** feature, including collaboration. We phase it so the
+safety-critical pieces are correct by freeze and the depth lands through judging.
+
+**Phase 1 — Foundation + safety (by Jun 21 freeze).**
 1. Schema extension + `agent_runs`, `approval_requests`, `push_subscriptions`.
-2. Spawn-via-co-pilot (NL → Agent record) + rename/archive (build on existing
-   create/list/setStatus).
-3. **Template A — Market Watcher**, end-to-end: monitor a symbol + pattern → Web Push +
-   in-app feed. Demos Tier-A composition (CMC) + Web Push + console.
-4. **Template B — Trade Proposer**: propose→approve wired to the existing command path,
-   **paper by default**, `live` enabling propose→approve.
-5. Web Push (VAPID subscription + send) + Agent Console wiring of co-pilot.
-6. Heartbeat + watchdog for spawned Agents.
+2. `agent/agents/` runtime: `runner.py` (bounded loop, heartbeat), `registry.py` (CRUD),
+   `watchdog.py` (no-silent-failure).
+3. Spawn/name/rename/archive via co-pilot (NL → Agent record), building on existing
+   `convex/spawnedAgents.ts` create/list/setStatus.
+4. **Template A — Market Watcher** end-to-end (monitor symbol + pattern → notify).
+5. **Template B — Trade Proposer**: propose→approve through the existing control-token →
+   `command_worker` → `twak swap` path; **paper by default**.
+6. Web Push (VAPID subscribe + send) + Agent Console wiring of co-pilot.
 
-**Deferred (post-freeze polish):**
-- Arbitrary multi-tool free-planning agents.
-- Separate funded wallet for fully-autonomous live agents.
-- Visual drag-and-drop agent builder.
-- Telegram parity (kept as optional pipe only).
+**Phase 2 — Collaboration (post-freeze, before/within judging).**
+7. Supervisor orchestration of **Level-1 tool handoff chains** (§5.1) with combined result +
+   visible trace.
+8. **Level-2 Agent→Agent delegation** with cycle + depth guards.
+9. Two more templates that *require* collaboration: **Setup Scorer** (Researcher→Historian→CoPilot)
+   and **Daily Brief** (delegates to multiple Agents).
+10. Cockpit "Neural Mesh" upgrade: live who-called-whom graph from `agent_runs`.
+
+**Phase 3 — Autonomy + polish (stretch, judging window).**
+11. Separate funded wallet option for a fully-autonomous live Agent (scored wallet stays isolated).
+12. Visual agent builder (allowed-tools picker, trigger editor).
+13. Telegram restored as an optional secondary pipe.
 
 ---
 
@@ -181,6 +238,10 @@ unit-tested against a fake subscription; the NL→record parse is a pure functio
 - **Integration:** Market Watcher run against a stubbed CMC tool → emits one notification;
   Trade Proposer live-mode → writes an `approval_requests` row and **no** tx; approve →
   exactly one `agent_commands` row through the control-token gate.
+- **Collaboration:** a Level-1 chain (Researcher→Historian→CoPilot) over stubbed tools produces
+  one combined result + an ordered `tool_calls[]` trace; a degraded tool (raises) skips its input
+  and the chain still completes. Level-2 delegation rejects a cycle (A→B→A) and stops at
+  `MAX_DELEGATION_DEPTH`.
 - **Safety assertion (must pass):** in no test path does a spawned Agent write a `twak swap`
   without a prior human `approved` transition. This is the scored-wallet invariant (§4).
 

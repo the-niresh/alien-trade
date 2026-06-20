@@ -1,3 +1,4 @@
+import { motion } from "framer-motion";
 import { useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { Panel } from "./Panel";
@@ -18,30 +19,39 @@ function SignalRow({ label, score }: SignalRowProps) {
   const isPositive = hasValue && score >= 0;
   const pct = hasValue ? Math.min(Math.abs(score) * 100, 100) : 0;
 
+  const barBg = isPositive
+    ? "linear-gradient(90deg, color-mix(in oklab,var(--green) 30%,transparent), var(--green))"
+    : "linear-gradient(90deg, color-mix(in oklab,var(--red) 30%,transparent), var(--red))";
+  const barGlow = isPositive
+    ? "drop-shadow(0 0 4px color-mix(in oklab,var(--green) 70%,transparent))"
+    : "drop-shadow(0 0 4px color-mix(in oklab,var(--red) 70%,transparent))";
+
   return (
-    <div className="flex items-center gap-2">
-      <span className="font-mono text-[11px] text-muted-fg w-28 flex-shrink-0 truncate">
+    <div className="flex items-center gap-2.5">
+      <span className="font-mono text-[10.5px] text-muted-fg w-28 flex-shrink-0 truncate">
         {label}
       </span>
-      <div className="flex-1 h-1.5 bg-border/30 rounded-full overflow-hidden">
-        {hasValue && (
-          <div
-            className={cn(
-              "h-full rounded-full",
-              isPositive ? "bg-green" : "bg-red",
-            )}
-            style={{ width: `${pct}%` }}
+      <div className="flex-1 h-[7px] bg-border/20 rounded-full overflow-hidden">
+        {hasValue ? (
+          <motion.div
+            className="h-full rounded-full"
+            style={{ background: barBg, filter: barGlow }}
+            initial={{ width: 0 }}
+            animate={{ width: `${pct}%` }}
+            transition={{ duration: 0.65, ease: [0.16, 1, 0.3, 1] }}
           />
+        ) : (
+          <div className="h-full w-full rounded-full bg-border/10" />
         )}
       </div>
       <span
         className={cn(
-          "font-mono text-[12px] w-12 text-right flex-shrink-0",
+          "font-mono text-[12px] w-12 text-right flex-shrink-0 font-semibold",
           !hasValue ? "text-muted-fg" :
           isPositive ? "text-green" : "text-red",
         )}
       >
-        {hasValue ? (score >= 0 ? "+" : "") + score.toFixed(2) : "n/a"}
+        {hasValue ? (score >= 0 ? "+" : "") + score.toFixed(2) : "—"}
       </span>
     </div>
   );

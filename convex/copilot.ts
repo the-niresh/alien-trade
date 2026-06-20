@@ -1,4 +1,5 @@
-import { action, mutation, query } from "./_generated/server";
+import { action, internalAction, mutation, internalMutation, internalQuery, query } from "./_generated/server";
+import { internal } from "./_generated/api";
 import { v } from "convex/values";
 import { assertControlToken } from "./control";
 
@@ -52,6 +53,21 @@ export const createThread = mutation({
       created_ms: now,
       last_active_ms: now,
     });
+  },
+});
+
+/** Rename a thread. */
+export const renameThread = mutation({
+  args: {
+    control_token: v.optional(v.string()),
+    id: v.id("copilot_threads"),
+    title: v.string(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    assertControlToken(args.control_token);
+    await ctx.db.patch(args.id, { title: args.title, last_active_ms: Date.now() });
+    return null;
   },
 });
 
@@ -210,3 +226,71 @@ export const ask = action({
     }
   },
 });
+
+/** Fix messages stuck as is_streaming=true with no content (action timed out). */
+export const cleanupStuck = mutation({
+  args: { control_token: v.optional(v.string()) },
+  returns: v.number(),
+  handler: async (ctx, args) => {
+    assertControlToken(args.control_token);
+    const stuck = await ctx.db
+      .query("copilot_messages")
+      .withIndex("by_ts")
+      .filter((q) => q.eq(q.field("is_streaming"), true))
+      .collect();
+    let count = 0;
+    for (const m of stuck) {
+      if (!m.content && !m.partial_content) {
+        await ctx.db.patch(m._id, { content: "_[response lost — co-pilot timed out]_", is_streaming: false, partial_content: undefined });
+        count++;
+      }
+    }
+    return count;
+  },
+});
+
+// ── Internal helpers (called only from askStreaming action) ──────────────────
+
+export const renameThreadInternal = internalMutation({
+  args: { id: v.id("copilot_threads"), title: v.string() },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.id, { title: args.title, last_active_ms: Date.now() });
+    return null;
+  },
+});
+
+export const updatePartialInternal = internalMutation({
+  args: { id: v.id("copilot_messages"), chunk: v.string() },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const msg = await ctx.db.get(args.id);
+    if (!msg) return null;
+    await ctx.db.patch(args.id, { partial_content: (msg.partial_content ?? "") + args.chunk });
+    return null;
+  },
+});
+
+export const finaliseStreamInternal = internalMutation({
+  args: { id: v.id("copilot_messages"), content: v.string() },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.id, { content: args.content, partial_content: undefined, is_streaming: false, sources_json: "[]" });
+    return null;
+  },
+});
+
+export const getLiveState = internalQuery({
+  args: {},
+  returns: v.any(),
+  handler: async (ctx) => {
+    const cfg = await ctx.db.query("config").withIndex("by_key", (q) => q.eq("key", "global")).unique();
+    const rs  = await ctx.db.query("risk_state").withIndex("by_key", (q) => q.eq("key", "global")).unique();
+    const led = await ctx.db.query("ledger").withIndex("by_timestamp").order("desc").first();
+    const pos = await ctx.db.query("positions").collect();
+    const wal = await ctx.db.query("wallet_state").order("desc").first();
+    return { cfg, rs, led, pos, wal };
+  },
+});
+
+// askStreaming lives in convex/copilotNode.ts ("use node" — needed for HTTPS to api.anthropic.com)

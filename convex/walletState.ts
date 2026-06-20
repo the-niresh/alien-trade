@@ -1,5 +1,6 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import { assertControlToken } from "./control";
 
 export const upsert = mutation({
   args: {
@@ -10,14 +11,18 @@ export const upsert = mutation({
     bnb_usd:   v.number(),
     total_usd: v.number(),
     updated_ms: v.number(),
+    control_token: v.optional(v.string()),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
+    assertControlToken(args.control_token);
+    const { control_token: _ct, ...fields } = args;
+    void _ct;
     const existing = await ctx.db.query("wallet_state").first();
     if (existing) {
-      await ctx.db.patch(existing._id, args);
+      await ctx.db.patch(existing._id, fields);
     } else {
-      await ctx.db.insert("wallet_state", args);
+      await ctx.db.insert("wallet_state", fields);
     }
     return null;
   },

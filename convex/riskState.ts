@@ -1,5 +1,6 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import { assertControlToken } from "./control";
 
 const KEY = "global";
 
@@ -14,14 +15,18 @@ export const update = mutation({
     current_drawdown_pct: v.number(),
     peak_equity_usd: v.number(),
     circuit_breaker_active: v.boolean(),
+    control_token: v.optional(v.string()),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
+    assertControlToken(args.control_token);
+    const { control_token: _ct, ...fields } = args;
+    void _ct;
     const row = await ctx.db
       .query("risk_state")
       .withIndex("by_key", (q) => q.eq("key", KEY))
       .unique();
-    const doc = { key: KEY, ...args, last_updated_ms: Date.now() };
+    const doc = { key: KEY, ...fields, last_updated_ms: Date.now() };
     if (row) {
       await ctx.db.patch(row._id, doc);
     } else {

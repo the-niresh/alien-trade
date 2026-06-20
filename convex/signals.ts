@@ -1,5 +1,6 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import { assertControlToken } from "./control";
 
 /**
  * Record one signal snapshot per cycle. cycle_id is the idempotency key.
@@ -19,15 +20,19 @@ export const record = mutation({
     social_roc:        v.optional(v.number()),
     net_flow_usd:      v.optional(v.number()),
     composite_score:   v.optional(v.number()),
+    control_token:     v.optional(v.string()),
   },
   returns: v.id("signals"),
   handler: async (ctx, args) => {
+    assertControlToken(args.control_token);
+    const { control_token: _ct, ...fields } = args;
+    void _ct;
     const existing = await ctx.db
       .query("signals")
-      .withIndex("by_cycle", (q) => q.eq("cycle_id", args.cycle_id))
+      .withIndex("by_cycle", (q) => q.eq("cycle_id", fields.cycle_id))
       .unique();
     if (existing) return existing._id;
-    return await ctx.db.insert("signals", args);
+    return await ctx.db.insert("signals", fields);
   },
 });
 

@@ -35,6 +35,13 @@ _GUARDED_MUTATIONS = frozenset({
     "agentControl:set",
     "thesisLedger:record",
     "agentCommands:updateStatus",
+    # Agent-written integrity state — gated so an anonymous caller with the Convex
+    # URL can't forge trades, mask the risk-state, or inject fake cockpit events.
+    "trades:record",
+    "riskState:update",
+    "walletState:upsert",
+    "agentEvents:append",
+    "signals:record",
 })
 
 

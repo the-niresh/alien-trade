@@ -1,5 +1,6 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import { assertControlToken } from "./control";
 
 const kind = v.union(
   v.literal("observation"), v.literal("analysis"), v.literal("verdict"),
@@ -17,10 +18,14 @@ export const append = mutation({
     headline: v.string(),
     detail: v.string(),               // JSON blob, like audit.payload
     refs: v.array(v.string()),
+    control_token: v.optional(v.string()),
   },
   returns: v.id("agent_events"),
   handler: async (ctx, args) => {
-    return await ctx.db.insert("agent_events", args);
+    assertControlToken(args.control_token);
+    const { control_token: _ct, ...fields } = args;
+    void _ct;
+    return await ctx.db.insert("agent_events", fields);
   },
 });
 

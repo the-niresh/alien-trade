@@ -86,6 +86,7 @@ def run_backtest(
     initial_capital: float = 10_000.0,
     cost_model: CostModelFn = _default_cost_model,
     next_bar_open_fill: bool = False,
+    periods_per_year: float = 252.0,
 ) -> BacktestResult:
     """
     Event-driven loop: iterate bars strictly in time order.
@@ -140,6 +141,7 @@ def run_backtest(
         result.equity_curve, initial_capital,
         result.trades, total_volume, avg_equity,
         n_fills=len(result.fills),
+        periods_per_year=periods_per_year,
     )
     return result
 
@@ -192,6 +194,7 @@ def _compute_metrics(
     total_volume: float,
     avg_equity: float,
     n_fills: int = 0,
+    periods_per_year: float = 252.0,
 ) -> dict:
     if len(curve) < 2:
         return {}
@@ -201,9 +204,13 @@ def _compute_metrics(
     total_return = (arr[-1] - initial) / initial
     mean_ret = float(returns.mean())
     std_ret = float(returns.std())
-    sharpe = (mean_ret / std_ret * np.sqrt(252)) if std_ret > 0 else 0.0
+    # Annualization factor must match the bar interval of `curve`. Defaults to 252
+    # (daily). For hourly bars pass periods_per_year=252*24; for the equity curve from
+    # 1h live bars, daily annualization understates Sharpe/Sortino ~5x.
+    ann = np.sqrt(periods_per_year)
+    sharpe = (mean_ret / std_ret * ann) if std_ret > 0 else 0.0
     downside = returns[returns < 0]
-    sortino = (mean_ret / downside.std() * np.sqrt(252)) if len(downside) > 0 and downside.std() > 0 else 0.0
+    sortino = (mean_ret / downside.std() * ann) if len(downside) > 0 and downside.std() > 0 else 0.0
     rolling_max = np.maximum.accumulate(arr)
     drawdowns = (arr - rolling_max) / rolling_max
     max_drawdown = float(drawdowns.min())

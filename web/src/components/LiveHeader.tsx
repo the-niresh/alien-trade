@@ -38,7 +38,7 @@ export function LiveHeader({ halted, mode, onKillToggle, selectedSymbol = "ALL",
   const priceUp    = latestTick && prevTick ? latestTick.price >= prevTick.price : true;
 
   return (
-    <header className="chrome h-14 border-b border-border flex items-center px-3 sm:px-4 gap-2 sm:gap-3.5 flex-shrink-0 z-20 overflow-hidden">
+    <header aria-label="Agent cockpit header" className="chrome h-14 border-b border-border flex items-center px-3 sm:px-4 gap-2 sm:gap-3.5 flex-shrink-0 z-20 overflow-hidden">
       {/* Brand mark */}
       <div className="flex items-center gap-2 sm:gap-2.5 flex-shrink-0" data-tour="brand">
         <div className="relative flex-shrink-0">
@@ -96,6 +96,19 @@ export function LiveHeader({ halted, mode, onKillToggle, selectedSymbol = "ALL",
         </Badge>
       )}
 
+      {/* Wallet balance — always visible (PWA mobile too), promoted ahead of PnL */}
+      {walletState != null && (
+        <div className="flex items-center gap-2 sm:gap-3.5 flex-shrink-0">
+          <div className="hidden sm:block w-px h-7 bg-border" />
+          <div className="flex items-center gap-1.5">
+            <Wallet className="w-3 h-3 text-muted-fg" />
+            <span className="font-mono text-[11px] text-muted-fg tabular-nums">
+              {usd(walletState.total_usd)}
+            </span>
+          </div>
+        </div>
+      )}
+
       {/* PnL — hidden on mobile */}
       {pnl != null && (
         <div className="hidden sm:flex items-center gap-3.5 flex-shrink-0">
@@ -104,19 +117,6 @@ export function LiveHeader({ halted, mode, onKillToggle, selectedSymbol = "ALL",
             <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-muted-fg">PnL</span>
             <span className={cn("font-display text-[22px] font-bold leading-none tabular-nums", pnlPos ? "text-green glow-green" : "text-red glow-red")}>
               {usd(pnl)}
-            </span>
-          </div>
-        </div>
-      )}
-
-      {/* Wallet balance — hidden on mobile */}
-      {walletState != null && (
-        <div className="hidden sm:flex items-center gap-3.5 flex-shrink-0">
-          <div className="w-px h-7 bg-border" />
-          <div className="flex items-center gap-1.5">
-            <Wallet className="w-3 h-3 text-muted-fg" />
-            <span className="font-mono text-[11px] text-muted-fg tabular-nums">
-              {usd(walletState.total_usd)}
             </span>
           </div>
         </div>

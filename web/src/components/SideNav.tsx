@@ -52,7 +52,7 @@ export function SideNav({ active, onSelect, onCopilot, onTour, onAgentOpen, onSp
 
   return (
     <TooltipProvider delayDuration={300}>
-      <nav className="chrome w-[58px] border-r border-border flex flex-col items-center py-3 gap-1.5 flex-shrink-0 z-10">
+      <nav aria-label="Main navigation" className="chrome w-[58px] border-r border-border flex flex-col items-center py-3 gap-1.5 flex-shrink-0 z-10">
         {NAV_ITEMS.map((item) => {
           const Icon = item.icon;
           const isActive = active === item.view;
@@ -188,7 +188,7 @@ export function SideNav({ active, onSelect, onCopilot, onTour, onAgentOpen, onSp
           <TooltipContent side="right">
             <span className="flex items-center gap-2">
               Co-Pilot
-              <kbd className="font-mono text-[10px] bg-elevated border border-border rounded px-1 py-0.5">⌃K</kbd>
+              <kbd className="font-mono text-[10px] rounded px-1 py-0.5" style={{ background: "var(--border)", border: "1px solid var(--cyan)", color: "var(--cyan)", boxShadow: "0 0 6px color-mix(in oklab, var(--cyan) 40%, transparent)" }}>⌃K</kbd>
             </span>
           </TooltipContent>
         </Tooltip>

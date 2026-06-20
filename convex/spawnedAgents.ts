@@ -15,20 +15,34 @@ export const list = query({
 
 export const create = mutation({
   args: {
-    name:         v.string(),
-    task_summary: v.string(),
-    thread_id:    v.optional(v.id("copilot_threads")),
+    name:          v.string(),
+    goal:          v.string(),
+    allowed_tools: v.optional(v.array(v.string())),
+    trigger:       v.optional(v.object({ kind: v.string(), spec: v.string() })),
+    notify_policy: v.optional(v.object({ webpush: v.boolean(), severity_min: v.string() })),
+    mode:          v.optional(v.union(v.literal("paper"), v.literal("live"))),
+    thread_id:     v.optional(v.id("copilot_threads")),
   },
   handler: async (ctx, args) => {
     return await ctx.db.insert("spawned_agents", {
       name:             args.name,
-      task_summary:     args.task_summary,
+      task_summary:     args.goal,
+      goal:             args.goal,
+      allowed_tools:    args.allowed_tools ?? [],
+      trigger:          args.trigger,
+      notify_policy:    args.notify_policy ?? { webpush: true, severity_min: "info" },
+      mode:             args.mode ?? "paper",
       thread_id:        args.thread_id,
       status:           "active",
       created_at:       Date.now(),
       last_activity_ms: Date.now(),
     });
   },
+});
+
+export const rename = mutation({
+  args: { id: v.id("spawned_agents"), name: v.string() },
+  handler: async (ctx, args) => { await ctx.db.patch(args.id, { name: args.name }); },
 });
 
 export const setStatus = mutation({

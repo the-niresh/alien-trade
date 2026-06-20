@@ -25,6 +25,7 @@ type Props = { onAgentClick: (name: string) => void; onCopilot: () => void };
 export function OverviewView({ onAgentClick, onCopilot }: Props) {
   const ledger    = useQuery(api.ledger.latest);
   const risk      = useQuery(api.riskState.get);
+  const scorecard = useQuery(api.scorecard.get);
   const decisions = useQuery(api.decisions.recent, { limit: 3 });
   const roster    = useQuery(api.agentEvents.latestPerAgent);
   const positions = useQuery(api.positions.open) ?? [];
@@ -86,7 +87,7 @@ export function OverviewView({ onAgentClick, onCopilot }: Props) {
               <StatCard label="Max Drawdown" value={pct(dd)} unit="peak"
                 tone={(dd ?? 0) > 0.05 ? "negative" : (dd ?? 0) > 0 ? "warn" : "positive"} />
               <StatCard label="Open Exposure" value={usd(risk?.open_exposure_usd)} unit="USD" />
-              <StatCard label="Win Rate" value={risk?.win_rate != null ? pct(risk.win_rate) : "—"} unit="hit" />
+              <StatCard label="Win Rate" value={scorecard?.win_rate != null ? pct(scorecard.win_rate) : "—"} unit="hit" />
             </>
         }
       </div>

@@ -9,6 +9,7 @@ import { usd, pct, elapsed, ts } from "../lib/formatters";
 export function PortfolioView() {
   const wallet    = useQuery(api.walletState.get);
   const ledger    = useQuery(api.ledger.latest);
+  const scorecard = useQuery(api.scorecard.get);
   const positions = useQuery(api.positions.open) ?? [];
   const trades    = useQuery(api.trades.recent, { limit: 20 }) ?? [];
 
@@ -63,8 +64,8 @@ export function PortfolioView() {
                 {usd(ledger?.cumulative_pnl_usd)}
               </div>
               <div className="font-mono text-[11px] text-muted-fg mt-1.5 flex gap-3">
-                <span>drawdown {pct(ledger?.max_drawdown_pct)}</span>
-                <span>{ledger?.n_trades ?? 0} trades</span>
+                <span>drawdown {pct(ledger?.current_drawdown_pct)}</span>
+                <span>{scorecard?.n_trades ?? 0} trades</span>
               </div>
             </div>
           )}

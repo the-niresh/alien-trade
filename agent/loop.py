@@ -1282,6 +1282,24 @@ class DecisionLoop:
                                       {"error": str(e), "error_type": type(e).__name__}, "error")
                 except Exception:  # noqa: BLE001
                     pass
+            # Spawned-agent tick — run due agents + deliver push (off scored path)
+            try:
+                from agent.agents.schedule import due_agents, deliver_push
+                from agent.agents.runner import run_agent
+                from agent.push import build_push_payload
+                import os
+                _vapid = {"private_key": os.environ.get("VAPID_PRIVATE_KEY", ""),
+                          "subject": os.environ.get("VAPID_SUBJECT", "mailto:noreply@alien-trade.app")}
+                _agents = list_active(self.bridge)
+                for _a in due_agents(_agents, _now):
+                    _res = run_agent(_a, twak=self.twak, skills=getattr(self, "skills", None),
+                                     bridge=self.bridge, client=getattr(self, "anthropic_client", None))
+                    if _res["ok"] and (_a.get("notify_policy") or {}).get("webpush", True):
+                        deliver_push(self.bridge,
+                                     build_push_payload(_a["name"], _res["summary"], url="/agents"),
+                                     vapid=_vapid)
+            except Exception:  # noqa: BLE001 — never break the loop
+                pass
             # Watchdog sweep — flag stalled spawned agents (off scored path)
             try:
                 from agent.agents.watchdog import find_stalled

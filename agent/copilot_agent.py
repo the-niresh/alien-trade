@@ -122,3 +122,58 @@ def _dispatch_tool(name: str, args: dict, *, twak, skills, bridge) -> Any:
         unique = candidates[0].get("uniqueName")
         return skills.execute_skill(unique, {})
     raise ValueError(f"unknown tool: {name!r}")
+
+MAX_TOOL_TURNS = 5
+
+SYSTEM = (
+    "You are Alien-Trade's read-only co-pilot for an autonomous BSC trading agent. "
+    "Use the provided tools to fetch LIVE data when the question needs it — wallet, "
+    "price, token risk, trending tokens, CMC market data, or the agent's own state "
+    "and recent decisions. Do not invent data: if a tool returns an error or nothing, "
+    "say so plainly. You CANNOT place or close trades — if the operator wants to act, "
+    "tell them to issue a trade command. Answer concisely in markdown."
+)
+
+
+def run_read_loop(
+    question: str,
+    *,
+    twak,
+    skills,
+    bridge,
+    client,
+    model: str = "claude-haiku-4-5-20251001",
+    max_turns: int = MAX_TOOL_TURNS,
+) -> dict:
+    """Drive a bounded Anthropic tool-use loop and return the grounded answer."""
+    messages: list[dict] = [{"role": "user", "content": question}]
+    sources: list[dict] = []
+
+    resp = client.messages.create(
+        model=model, max_tokens=700, system=SYSTEM, tools=TOOLS, messages=messages,
+    )
+    turns = 1
+    while resp.stop_reason == "tool_use" and turns < max_turns:
+        messages.append({"role": "assistant", "content": resp.content})
+        tool_results = []
+        for block in resp.content:
+            if getattr(block, "type", None) != "tool_use":
+                continue
+            args = dict(block.input or {})
+            sources.append({"tool": block.name, "args": args})
+            out = execute_tool(block.name, args, twak=twak, skills=skills, bridge=bridge)
+            tool_results.append(
+                {"type": "tool_result", "tool_use_id": block.id, "content": out}
+            )
+        messages.append({"role": "user", "content": tool_results})
+        resp = client.messages.create(
+            model=model, max_tokens=700, system=SYSTEM, tools=TOOLS, messages=messages,
+        )
+        turns += 1
+
+    answer = "".join(
+        getattr(b, "text", "") for b in resp.content if getattr(b, "type", None) == "text"
+    ).strip()
+    if not answer:
+        answer = "_(no answer produced — tool budget exhausted)_"
+    return {"answer": answer, "grounded": bool(sources), "sources": sources}

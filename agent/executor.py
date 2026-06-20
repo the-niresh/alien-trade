@@ -16,6 +16,7 @@ Both share:
 """
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass, field
 from typing import Optional, Protocol
 
@@ -365,7 +366,9 @@ class TwakSwapExecutor(_IdempotentBase):
                 gas_usd = _gas_usd_from_receipt(receipt, bar)
 
             fee, model_gas, slippage_usd = self._cost(order, bar)
-            fill = Fill(order=order, fill_price=bar.close,
+            # Real executed price from the on-chain swap amounts, not the indicative bar close.
+            fill_price = _fill_price_from_swap(res.raw, order.side, fallback=bar.close)
+            fill = Fill(order=order, fill_price=fill_price,
                         fee_usd=fee, gas_usd=gas_usd or model_gas, slippage_usd=slippage_usd)
             return self._remember(
                 idempotency_key,
@@ -388,3 +391,33 @@ def _gas_usd_from_receipt(receipt, bar: Bar) -> float:
     gas_price_wei = getattr(receipt, "gas_price_wei", 0) or 0
     gas_bnb = gas_used * gas_price_wei * 1e-18
     return gas_bnb * max(bar.close, 1.0)
+
+
+def _coerce_float(v) -> float:
+    try:
+        return float(v)
+    except (TypeError, ValueError):
+        return 0.0
+
+
+def _fill_price_from_swap(raw: dict, side: str, fallback: float) -> float:
+    """Derive the REAL executed price (USD per asset unit) from a TWAK swap response.
+
+    The quote/swap JSON reports the actual token amounts moved on-chain. Since one leg is
+    always the USD-stable quote currency (USDT), price = USD_leg / asset_leg. Using this
+    instead of bar.close keeps the live ledger, drawdown, and stop levels honest — a
+    0.5-2% slippage on a volatile 1h bar otherwise compounds into wrong position accounting.
+    Falls back to bar.close only when the response lacks parseable amounts.
+    """
+    if not isinstance(raw, dict):
+        return fallback
+    amount_in = _coerce_float(raw.get("amountIn") or raw.get("fromAmount") or raw.get("amount"))
+    amount_out = _coerce_float(raw.get("amountOut") or raw.get("toAmount") or raw.get("expectedOutput"))
+    if amount_in <= 0 or amount_out <= 0:
+        return fallback
+    # buy: USDT in -> asset out (price = usd_in / asset_out)
+    # sell: asset in -> USDT out (price = usd_out / asset_in)
+    price = amount_in / amount_out if side == "buy" else amount_out / amount_in
+    if not math.isfinite(price) or price <= 0:
+        return fallback
+    return price

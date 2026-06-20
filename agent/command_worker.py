@@ -20,6 +20,37 @@ log = logging.getLogger(__name__)
 MAX_CONVERT_IMPACT = 0.05  # abort a convert whose quoted price impact exceeds 5%
 CONVERT_ALLOWLIST = {"BNB", "ETH", "USDT"}
 
+# ERC-20 approval guardrails — never grant an unlimited allowance. An over-broad
+# approval lets the spender drain the whole token balance later; cap it to a small
+# operating amount and only allow known router contracts as the spender.
+MAX_APPROVE_AMOUNT = 1000.0          # token units — well above any single trade size
+_UINT_MAX = "115792089237316195423570985008687907853269984665640564039457584007913129639935"
+_APPROVE_UNLIMITED_SENTINELS = {"max", "unlimited", "-1", _UINT_MAX}
+# PancakeSwap routers on BSC (V2 + SmartRouter). Lower-cased for comparison.
+APPROVE_SPENDER_ALLOWLIST = {
+    "0x10ed43c718714eb63d5aa57b78b54704e256024e",  # PancakeSwap V2 router
+    "0x13f4ea83d0bd40e75c8222255bc855a974568dd4",  # PancakeSwap SmartRouter
+}
+_ADDR_RE = re.compile(r"^0x[0-9a-fA-F]{40}$")
+
+
+def _validate_erc20_approve(spender: str, amount) -> float:
+    """Reject unlimited / oversized approvals and unknown spenders. Returns the
+    validated numeric amount. Raises ValueError on anything suspicious."""
+    if not _ADDR_RE.match(str(spender or "")):
+        raise ValueError(f"invalid spender address: {spender!r}")
+    if str(spender).lower() not in APPROVE_SPENDER_ALLOWLIST:
+        raise ValueError(f"spender {spender!r} not in router allowlist")
+    if str(amount).strip().lower() in _APPROVE_UNLIMITED_SENTINELS:
+        raise ValueError("unlimited ERC-20 approval rejected")
+    try:
+        amt = float(amount)
+    except (TypeError, ValueError):
+        raise ValueError(f"approval amount not numeric: {amount!r}")
+    if amt <= 0 or amt > MAX_APPROVE_AMOUNT:
+        raise ValueError(f"approval amount {amt} outside (0, {MAX_APPROVE_AMOUNT}]")
+    return amt
+
 
 def run_one_command(bridge: "ConvexBridge") -> bool:
     """Fetch and execute the oldest queued command. Returns True if one ran."""
@@ -77,7 +108,8 @@ def _dispatch(cmd_type: str, params: dict) -> dict:
         if cmd_type == "alert_delete":
             return twak.alert_delete(params["id"])
         if cmd_type == "erc20_approve":
-            return twak.erc20_approve(params["token"], params["spender"], params["amount"])
+            amt = _validate_erc20_approve(params["spender"], params["amount"])
+            return twak.erc20_approve(params["token"], params["spender"], amt)
         if cmd_type == "erc20_revoke":
             return twak.erc20_revoke(params["token"], params["spender"])
         if cmd_type == "x402_request":

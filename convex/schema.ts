@@ -361,7 +361,12 @@ export default defineSchema({
 
   spawned_agents: defineTable({
     name:              v.string(),
-    task_summary:      v.string(),
+    task_summary:      v.string(),        // kept for back-compat (display)
+    goal:              v.optional(v.string()),
+    allowed_tools:     v.optional(v.array(v.string())),
+    trigger:           v.optional(v.object({ kind: v.string(), spec: v.string() })),
+    notify_policy:     v.optional(v.object({ webpush: v.boolean(), severity_min: v.string() })),
+    mode:              v.optional(v.union(v.literal("paper"), v.literal("live"))),
     thread_id:         v.optional(v.id("copilot_threads")),
     status:            v.union(v.literal("active"), v.literal("idle"), v.literal("archived")),
     created_at:        v.number(),
@@ -369,6 +374,36 @@ export default defineSchema({
   })
     .index("by_status",  ["status"])
     .index("by_created", ["created_at"]),
+
+  agent_runs: defineTable({
+    agent_id:   v.id("spawned_agents"),
+    started_ms: v.number(),
+    ended_ms:   v.optional(v.number()),
+    ok:         v.boolean(),
+    summary:    v.string(),
+    tool_calls: v.array(v.object({ tool: v.string(), args: v.string() })),
+  })
+    .index("by_agent",   ["agent_id"])
+    .index("by_started", ["started_ms"]),
+
+  approval_requests: defineTable({
+    agent_id:    v.id("spawned_agents"),
+    kind:        v.string(),            // "trade"
+    payload:     v.string(),            // JSON: {command_type, params}
+    status:      v.union(v.literal("pending"), v.literal("approved"), v.literal("rejected")),
+    created_ms:  v.number(),
+    resolved_ms: v.optional(v.number()),
+  })
+    .index("by_status", ["status"])
+    .index("by_agent",  ["agent_id"]),
+
+  push_subscriptions: defineTable({
+    endpoint:   v.string(),
+    p256dh:     v.string(),
+    auth:       v.string(),
+    created_ms: v.number(),
+  })
+    .index("by_endpoint", ["endpoint"]),
 
   // Live positions singleton — agent writes each cycle; cockpit reads for the
   // holdings panel. One row per symbol, keyed by symbol string. Flat = quantity 0.

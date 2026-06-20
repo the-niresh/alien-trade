@@ -155,6 +155,21 @@ class DecisionLoop:
         self._autopilot_state = AutopilotState()
         self._block_entry = False           # set by the recycle gate / cooldown
         self._current_setup_key = ""        # regime+dominant-signal, for human feedback
+        # Live USDT balance cache — updated in _finalise, used in _cap_to_deployable.
+        # Starts at inf so the first cycle isn't blocked before we've fetched the balance.
+        self._cached_usdt_balance: float = float("inf")
+        self._cached_eth_balance: float = 0.0
+        # Consecutive execution failures → escalating Telegram alert after threshold.
+        self._consecutive_exec_failures: int = 0
+        self._EXEC_FAIL_ALERT_THRESHOLD: int = 3   # alert after 3 straight FAILED cycles
+        self._wallet_mismatch_alerted: bool = False  # fire once per session, not every cycle
+        # Time-based sustained-failure watchdog.
+        # Tracks when the first FAILED execution started in the current streak.
+        # Warn at 2h, auto-halt at 4h. Cleared on any confirmed fill.
+        self._first_exec_failure_ms: Optional[int] = None
+        self._sustained_warn_sent: bool = False
+        self._SUSTAINED_WARN_MS: int = 2 * 3_600_000   # 2 hours
+        self._SUSTAINED_HALT_MS: int = 4 * 3_600_000   # 4 hours
         if autopilot_config is not None and autopilot_config.enabled:
             try:
                 saved = self.bridge.get_autopilot_state()
@@ -212,6 +227,9 @@ class DecisionLoop:
             self._trades_today = 0
             self._daily_pnl_start = self.ledger.mark(bar.open)
             self._daily_max_dd = 0.0
+
+        # ── Sustained-failure watchdog: halt after 4h of unbroken FAILED execs ─
+        self._check_sustained_failure(bar, cycle_id)
 
         # ── Live trading-mode toggle: align the executor with the UI ─────────
         self._sync_trading_mode(bar, cycle_id)
@@ -421,6 +439,51 @@ class DecisionLoop:
             f" — consider adding capital or tightening caps."
         )
         return False
+
+    # ── sustained-failure watchdog ────────────────────────────────────────────
+
+    def _check_sustained_failure(self, bar: Bar, cycle_id: str) -> None:
+        """Warn at 2h and auto-halt at 4h if execution has been continuously
+        failing (FAILED status, not regime blocks). Never raises — observability
+        must not crash a cycle. No-op when no failure streak is active."""
+        if self._first_exec_failure_ms is None:
+            return
+        elapsed_ms = bar.timestamp - self._first_exec_failure_ms
+        if elapsed_ms < self._SUSTAINED_WARN_MS:
+            return
+        if not self._sustained_warn_sent:
+            elapsed_h = elapsed_ms / 3_600_000
+            self._notify(
+                f"WARNING: swap execution has been failing for {elapsed_h:.1f}h.\n"
+                f"All orders are BLOCKED until swaps succeed.\n"
+                f"Check: wallet USDT balance, TWAK status, network.\n"
+                f"Wallet manager will analyse and report shortly."
+            )
+            self._sustained_warn_sent = True
+            # Trigger the wallet manager agent in background for diagnosis
+            try:
+                from agent.wallet_manager import run_wallet_check
+                run_wallet_check(
+                    bridge=self.bridge,
+                    notifier=self.notifier,
+                    symbol=self.symbol,
+                    mode=self.mode,
+                )
+            except Exception:  # noqa: BLE001 — manager must never crash the loop
+                pass
+        if elapsed_ms >= self._SUSTAINED_HALT_MS:
+            self._notify(
+                f"AUTO-HALT: swap execution failed for "
+                f"{elapsed_ms / 3_600_000:.1f}h — halting to prevent "
+                f"further failed attempts. Resume from cockpit or Telegram."
+            )
+            self.bridge.set_halted(True)
+            self.bridge.audit("sustained_failure_halt", cycle_id, {
+                "elapsed_ms": elapsed_ms,
+                "first_failure_ms": self._first_exec_failure_ms,
+            }, "error")
+            self._first_exec_failure_ms = None   # don't re-trigger every cycle after halt
+            self._sustained_warn_sent = False
 
     # ── daily summary ─────────────────────────────────────────────────────────
 
@@ -808,23 +871,46 @@ class DecisionLoop:
         except Exception:  # noqa: BLE001 — a bad cockpit value must not crash the loop
             pass
 
+    _MIN_TRADE_USD: float = 0.05   # below this, BSC DEX fees eat the trade
+
     def _cap_to_deployable(self, order: Order, bar: Bar, cycle_id: str) -> Optional[Order]:
-        """Shrink a buy to the capital above the protected floor (capital ratchet).
-        Banked gains are never re-risked. Sells pass through untouched. Returns None
-        if there is no deployable capital left for a buy."""
-        cfg = self._autopilot_config
-        if cfg is None or not cfg.enabled or order.side != "buy":
+        """Shrink a buy to the capital above the protected floor (capital ratchet) AND
+        the live USDT balance. Banked gains are never re-risked. Sells pass through
+        untouched. Returns None if there is no deployable capital left for a buy."""
+        if order.side != "buy":
             return order
-        from risk.autopilot import deployable_capital
-        cap = deployable_capital(self.ledger.mark(bar.close), self._autopilot_state)
-        if cap <= self._exposure_epsilon:
-            self.bridge.audit("autopilot", cycle_id, {
-                "action": "block_buy", "reason": "no capital above protected floor",
-                "protected_floor": round(self._autopilot_state.protected_floor, 2),
-            }, "info")
-            return None
-        if order.size_usd > cap:
-            return Order(side="buy", size_usd=cap, symbol=order.symbol,
+
+        size = order.size_usd
+
+        # 1. Autopilot floor cap (paper-ledger equity above the protected floor)
+        cfg = self._autopilot_config
+        if cfg is not None and cfg.enabled:
+            from risk.autopilot import deployable_capital
+            cap = deployable_capital(self.ledger.mark(bar.close), self._autopilot_state)
+            if cap <= self._exposure_epsilon:
+                self.bridge.audit("autopilot", cycle_id, {
+                    "action": "block_buy", "reason": "no capital above protected floor",
+                    "protected_floor": round(self._autopilot_state.protected_floor, 2),
+                }, "info")
+                return None
+            size = min(size, cap)
+
+        # 2. Live wallet balance cap — auto-size to what USDT is actually available.
+        #    Prevents silent TWAK failures when the static position size exceeds balance.
+        usdt_avail = self._cached_usdt_balance
+        if usdt_avail != float("inf"):          # inf = not yet fetched, skip cap
+            spendable = usdt_avail * 0.95       # leave 5% buffer for price movement
+            if spendable < self._MIN_TRADE_USD:
+                self.bridge.audit("autopilot", cycle_id, {
+                    "action": "block_buy",
+                    "reason": f"insufficient USDT: ${usdt_avail:.4f} < min ${self._MIN_TRADE_USD}",
+                    "usdt_balance": round(usdt_avail, 6),
+                }, "warn")
+                return None
+            size = min(size, spendable)
+
+        if size != order.size_usd:
+            return Order(side="buy", size_usd=size, symbol=order.symbol,
                          timestamp=order.timestamp)
         return order
 
@@ -893,6 +979,10 @@ class DecisionLoop:
                           regime: str = "", breakdown: Optional[dict] = None):
         if execution.is_fill and execution.fill is not None:
             realized = self.ledger.apply(execution.fill)
+            # Clear failure streak on any confirmed fill
+            self._consecutive_exec_failures = 0
+            self._first_exec_failure_ms = None
+            self._sustained_warn_sent = False
             self._trades_today += 1   # counts toward the >= 1 trade/day floor
             # Accumulate for the live scorecard, pairing trades like the backtest.
             self._fills.append(execution.fill)
@@ -976,6 +1066,18 @@ class DecisionLoop:
             return "block", execution.reason, None
         if execution.status == FAILED:
             self.bridge.audit("error", cycle_id, {"reason": execution.reason}, "error")
+            self._consecutive_exec_failures += 1
+            if self._first_exec_failure_ms is None:
+                self._first_exec_failure_ms = int(execution.order.timestamp)
+            if self._consecutive_exec_failures >= self._EXEC_FAIL_ALERT_THRESHOLD:
+                self._notify(
+                    f"ALERT: {self._consecutive_exec_failures} consecutive swap failures.\n"
+                    f"Last error: {execution.reason}\n"
+                    f"Order: {execution.order.side.upper()} "
+                    f"${execution.order.size_usd:.2f} {execution.order.symbol}\n"
+                    f"Mode: {self.mode} — check wallet balance and TWAK status."
+                )
+                self._consecutive_exec_failures = 0   # reset so we don't spam
             return "block", execution.reason, None
         return "reduce", execution.reason, None
 
@@ -1029,6 +1131,28 @@ class DecisionLoop:
             _bnb_price = _live_price("BNB", bar.close if self.symbol == "BNB" else 650.0)
             _usdt = _tokens.get("USDT", 0.0)
             _eth = _tokens.get("ETH", 0.0)
+            self._cached_usdt_balance = _usdt   # used by _cap_to_deployable next cycle
+            self._cached_eth_balance = _eth
+
+            # Wallet mismatch watchdog: real ETH held but paper ledger thinks flat.
+            # Fires once per session so the operator knows the agent lost sync.
+            _ledger_units = self.ledger.units
+            _eth_mismatch = (
+                self.symbol == "ETH"
+                and _eth > 1e-6                         # real wallet has ETH
+                and _ledger_units < 1e-9                # but ledger says flat
+            )
+            if _eth_mismatch and not self._wallet_mismatch_alerted:
+                _eth_usd = round(_eth * _eth_price, 2)
+                self._notify(
+                    f"WALLET MISMATCH: real wallet holds {_eth:.6f} ETH (≈${_eth_usd}) "
+                    f"but paper ledger shows FLAT.\n"
+                    f"USDT remaining: ${_usdt:.4f}\n"
+                    f"This means a swap executed on-chain without a confirmed tx hash.\n"
+                    f"Action: to realign, restart the agent. The ETH is safe in your wallet."
+                )
+                self._wallet_mismatch_alerted = True
+
             self.bridge.update_wallet_state(
                 address=_bal.get("address", ""),
                 usdt=_usdt,
@@ -1158,6 +1282,20 @@ class DecisionLoop:
                                       {"error": str(e), "error_type": type(e).__name__}, "error")
                 except Exception:  # noqa: BLE001
                     pass
+            # Watchdog sweep — flag stalled spawned agents (off scored path)
+            try:
+                from agent.agents.watchdog import find_stalled
+                from agent.agents.registry import list_active
+                from agent.graph.contracts import AgentEvent, KIND_CONTROL
+                _now = int(time.time() * 1000)
+                for _a in find_stalled(list_active(self.bridge), _now):
+                    self.bridge.emit_event(AgentEvent(
+                        agent="WalletManager", kind=KIND_CONTROL,
+                        headline=f"Agent '{_a['name']}' is stalled — no activity",
+                        detail="{}", refs=[],
+                    ))
+            except Exception:  # noqa: BLE001 — never break the loop
+                pass
             time.sleep(cycle_seconds)
 
 

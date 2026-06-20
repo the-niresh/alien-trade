@@ -15,11 +15,10 @@ import { NotificationsView } from "./views/NotificationsView";
 import { PortfolioView } from "./views/PortfolioView";
 import { PipelineView } from "./views/PipelineView";
 import { DocsView } from "./views/DocsView";
-import { ChartView } from "./views/ChartView";
+import { MarketsView } from "./views/MarketsView";
 import { TrackersView } from "./views/TrackersView";
 import { IntelligenceView } from "./views/IntelligenceView";
-import { DepositView } from "./views/DepositView";
-import { WithdrawView } from "./views/WithdrawView";
+import { FundingDialog } from "./components/FundingDialog";
 import { LandingView } from "./views/LandingView";
 import { ViewError } from "./components/ViewError";
 import { ErrorBoundary } from "react-error-boundary";
@@ -183,7 +182,7 @@ function PairingScreen({ onPaired }: { onPaired: (t: string) => void }) {
 }
 
 // ── History API routing helpers ────────────────────────────────────────────────
-const VALID_VIEWS = new Set(["overview","trackers","intelligence","deposit","withdraw","chart","positions","agents","controls","pipeline","portfolio","logs","notifications","docs"]);
+const VALID_VIEWS = new Set(["overview","trackers","intelligence","chart","positions","agents","controls","pipeline","portfolio","logs","notifications","docs"]);
 function pathToView(): View {
   const seg = window.location.pathname.slice(1); // strip leading /
   return (VALID_VIEWS.has(seg) ? seg : "overview") as View;
@@ -206,6 +205,7 @@ export default function App() {
   const [view, setViewState]                = useState<View>(pathToView);
   const setView = (v: View) => { history.pushState(null, "", "/" + v); setViewState(v); };
   const [copilotOpen, setCopilotOpen]       = useState(false);
+  const [fundingOpen, setFundingOpen]       = useState(false);
   const [copilotPrefill, setCopilotPrefill] = useState("");
   const [copilotThreadId, setCopilotThreadId] = useState<string | undefined>(undefined);
   const [selectedSymbol, setSelectedSymbol] = useState("ETH");
@@ -304,9 +304,7 @@ export default function App() {
       case "overview":      return <OverviewView  onAgentClick={onAgentClick} onCopilot={() => setCopilotOpen(true)} />;
       case "trackers":      return <TrackersView />;
       case "intelligence":  return <IntelligenceView />;
-      case "deposit":       return <DepositView />;
-      case "withdraw":      return <WithdrawView />;
-      case "chart":         return <ChartView symbol={selectedSymbol} onSymbolChange={setSelectedSymbol} />;
+      case "chart":         return <MarketsView symbol={selectedSymbol} onSymbolChange={setSelectedSymbol} />;
       case "portfolio":     return <PortfolioView />;
       case "pipeline":      return <PipelineView />;
       case "positions":     return <PositionsView />;
@@ -338,7 +336,7 @@ export default function App() {
         onKillToggle={onKillToggle}
         selectedSymbol={selectedSymbol}
         onSymbolChange={setSelectedSymbol}
-        onDeposit={() => setView("deposit")}
+        onDeposit={() => setFundingOpen(true)}
         onAgentOpen={(threadId) => {
           setCopilotThreadId(threadId);
           setCopilotOpen(true);
@@ -362,6 +360,8 @@ export default function App() {
           </motion.div>
         </AnimatePresence>
       </AppShell>
+
+      <FundingDialog open={fundingOpen} onClose={() => setFundingOpen(false)} />
 
       <CoPilotDrawer
         isOpen={copilotOpen}

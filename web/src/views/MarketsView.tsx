@@ -41,7 +41,7 @@ type Props = {
   onSymbolChange?: (s: string) => void;
 };
 
-export function ChartView({ symbol: propSymbol, onSymbolChange }: Props = {}) {
+export function MarketsView({ symbol: propSymbol, onSymbolChange }: Props = {}) {
   const [symbol, setSymbol] = useState<Sym>((propSymbol as Sym) ?? "ETH");
 
   useEffect(() => {
@@ -90,9 +90,9 @@ export function ChartView({ symbol: propSymbol, onSymbolChange }: Props = {}) {
         <div>
           <div className="font-mono text-[10px] text-muted-fg tracking-[0.22em] uppercase mb-1.5 flex items-center gap-2">
             <span className="h-[2px] w-4 bg-cyan rounded-full inline-block" style={{ boxShadow: "0 0 6px var(--cyan)" }} />
-            Price Chart
+            Markets
           </div>
-          <h1 className="font-display text-[22px] font-bold tracking-wide text-text">Chart</h1>
+          <h1 className="font-display text-[22px] font-bold tracking-wide text-text">Markets</h1>
         </div>
 
         {/* Current price + change — prominent display */}

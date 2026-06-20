@@ -6,12 +6,22 @@ import {
 } from "recharts";
 import { ts } from "../lib/formatters";
 
-export function RealizedPnlChart() {
-  const raw = useQuery(api.ledger.history, { limit: 100 }) ?? [];
-  const data = [...raw].reverse().map((r) => ({
-    t:   r.timestamp_ms,
-    pnl: Number(r.realized_pnl_usd.toFixed(4)),
-  }));
+type Period = "1d" | "7d" | "30d" | "max";
+
+const PERIOD_MS: Record<Period, number> = {
+  "1d":  24 * 60 * 60 * 1000,
+  "7d":  7 * 24 * 60 * 60 * 1000,
+  "30d": 30 * 24 * 60 * 60 * 1000,
+  "max": Infinity,
+};
+
+export function RealizedPnlChart({ period = "max" }: { period?: Period }) {
+  const raw  = useQuery(api.ledger.history, { limit: 200 }) ?? [];
+  const cutoff = period === "max" ? 0 : Date.now() - PERIOD_MS[period];
+  const data = [...raw]
+    .reverse()
+    .map(r => ({ t: r.timestamp_ms, pnl: Number(r.realized_pnl_usd.toFixed(4)) }))
+    .filter(r => r.t >= cutoff);
 
   if (data.length === 0) {
     return (
@@ -19,14 +29,16 @@ export function RealizedPnlChart() {
         <span className="font-mono text-[11px] tracking-[0.16em] text-green/70 uppercase">
           <span className="animate-pulse">▮</span> awaiting telemetry
         </span>
-        <p className="text-[13px] text-muted-fg">Per-trade PnL plots after the first trade cycle.</p>
+        <p className="text-[13px] text-muted-fg">
+          {raw.length > 0 ? `No trades in the selected period.` : "Per-trade PnL plots after the first trade cycle."}
+        </p>
       </div>
     );
   }
 
-  const lastPnl = data[data.length - 1]?.pnl ?? 0;
-  const positive = lastPnl >= 0;
-  const color = positive ? "var(--green)" : "var(--red)";
+  const lastPnl    = data[data.length - 1]?.pnl ?? 0;
+  const positive   = lastPnl >= 0;
+  const color      = positive ? "var(--green)" : "var(--red)";
   const gradientId = positive ? "rpnl-green" : "rpnl-red";
 
   return (
@@ -34,25 +46,25 @@ export function RealizedPnlChart() {
       <AreaChart data={data} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
         <defs>
           <linearGradient id="rpnl-green" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%"  stopColor="var(--green)" stopOpacity={0.22} />
+            <stop offset="0%"   stopColor="var(--green)" stopOpacity={0.22} />
             <stop offset="100%" stopColor="var(--green)" stopOpacity={0} />
           </linearGradient>
           <linearGradient id="rpnl-red" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%"  stopColor="var(--red)" stopOpacity={0.22} />
+            <stop offset="0%"   stopColor="var(--red)" stopOpacity={0.22} />
             <stop offset="100%" stopColor="var(--red)" stopOpacity={0} />
           </linearGradient>
         </defs>
         <CartesianGrid strokeDasharray="2 4" stroke="var(--border)" vertical={false} />
         <XAxis
           dataKey="t"
-          tickFormatter={(v) => ts(Number(v))}
+          tickFormatter={v => ts(Number(v))}
           tick={{ fontSize: 10, fill: "var(--muted)" }}
           tickLine={false}
           axisLine={false}
         />
         <YAxis
           tick={{ fontSize: 10, fill: "var(--muted)" }}
-          tickFormatter={(v) => `$${v}`}
+          tickFormatter={v => `$${v}`}
           tickLine={false}
           axisLine={false}
           width={52}
@@ -65,8 +77,8 @@ export function RealizedPnlChart() {
             fontSize: 12,
             fontFamily: "var(--font-mono)",
           }}
-          labelFormatter={(l) => ts(Number(l))}
-          formatter={(val) => {
+          labelFormatter={l => ts(Number(l))}
+          formatter={val => {
             const n = Number(val);
             return [`$${n.toFixed(4)}`, "Realized PnL"];
           }}

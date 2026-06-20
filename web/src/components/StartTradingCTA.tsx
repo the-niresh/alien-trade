@@ -7,32 +7,31 @@ type Props = { onStart: () => void };
 export function StartTradingCTA({ onStart }: Props) {
   return (
     <motion.div
-      initial={{ opacity: 0, y: 12 }}
+      initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3 }}
-      className="panel rounded-2xl border border-border p-6 flex flex-col items-center gap-4 text-center"
-      style={{ background: "radial-gradient(ellipse at 50% 0%, rgba(52,255,174,0.06) 0%, transparent 70%)" }}
+      transition={{ duration: 0.25 }}
+      className="panel rounded-xl border border-border px-4 py-3 flex items-center justify-between gap-4"
+      style={{ background: "linear-gradient(90deg, rgba(52,255,174,0.05) 0%, transparent 55%)" }}
     >
-      <div
-        className="w-12 h-12 rounded-2xl bg-green/10 border border-green/20 flex items-center justify-center"
-        style={{ boxShadow: "0 0 24px rgba(52,255,174,0.15)" }}
-      >
-        <Bot className="w-6 h-6 text-green" />
-      </div>
-      <div>
-        <h2 className="font-display text-[18px] font-bold text-text mb-1">
-          Autonomous AI Trading Agent
-        </h2>
-        <p className="font-mono text-[12px] text-muted-fg max-w-xs leading-relaxed">
-          Your agent is live and watching the market. Configure strategy, set risk limits, and track trades — all through the Co-Pilot.
-        </p>
+      <div className="flex items-center gap-3 min-w-0">
+        <div className="w-9 h-9 rounded-xl bg-green/10 border border-green/20 flex items-center justify-center flex-shrink-0">
+          <Bot className="w-[18px] h-[18px] text-green" />
+        </div>
+        <div className="min-w-0">
+          <div className="font-mono text-[10px] text-green tracking-[0.18em] uppercase flex items-center gap-1.5">
+            <span className="h-1.5 w-1.5 rounded-full bg-green animate-pulse" /> Agent live
+          </div>
+          <p className="font-mono text-[12px] text-muted-fg truncate">
+            Tune strategy, risk limits and trades through the Co-Pilot.
+          </p>
+        </div>
       </div>
       <Button
         onClick={onStart}
-        className="bg-green text-[#04140c] font-bold px-6 py-2.5 h-auto hover:bg-green/80 cursor-pointer flex items-center gap-2"
+        className="bg-green text-[#04140c] font-bold px-4 py-2 h-auto hover:bg-green/80 cursor-pointer flex items-center gap-2 flex-shrink-0"
       >
         <Bot className="w-4 h-4" />
-        Start Trading with AI
+        Open Co-Pilot
       </Button>
     </motion.div>
   );

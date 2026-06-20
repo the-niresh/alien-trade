@@ -479,3 +479,43 @@ class ConvexBridge:
             "id": cmd_id, "status": status,
             "result": result, "error": error,
         })
+
+    def ensure_spawned_agent(
+        self,
+        *,
+        name: str,
+        goal: str,
+        allowed_tools: Optional[list] = None,
+        trigger_spec: str = "4h",
+    ) -> Optional[str]:
+        """Upsert a spawned_agent by name. Returns its Convex ID or None (offline)."""
+        return self._call("mutation", "spawnedAgents:ensure", {
+            "name": name,
+            "goal": goal,
+            "allowed_tools": allowed_tools or [],
+            "trigger": {"kind": "schedule", "spec": trigger_spec},
+            "mode": "paper",
+        })
+
+    def record_agent_run(
+        self,
+        *,
+        agent_id: str,
+        started_ms: int,
+        ended_ms: int,
+        ok: bool,
+        summary: str,
+        tool_calls: list,
+    ) -> Optional[str]:
+        """Write one agent_runs row. tool_calls: [{tool, args}]."""
+        return self._call("mutation", "agentRuns:record", {
+            "agent_id": agent_id,
+            "started_ms": started_ms,
+            "ended_ms": ended_ms,
+            "ok": ok,
+            "summary": summary,
+            "tool_calls": [
+                {"tool": tc.get("tool", "?"), "args": tc.get("args", tc.get("summary", ""))}
+                for tc in tool_calls
+            ],
+        })

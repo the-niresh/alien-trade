@@ -61,3 +61,31 @@ export const updateActivity = mutation({
     await ctx.db.patch(args.id, { last_activity_ms: Date.now() });
   },
 });
+
+export const ensure = mutation({
+  args: {
+    name:          v.string(),
+    goal:          v.string(),
+    allowed_tools: v.optional(v.array(v.string())),
+    trigger:       v.optional(v.object({ kind: v.string(), spec: v.string() })),
+    mode:          v.optional(v.union(v.literal("paper"), v.literal("live"))),
+  },
+  handler: async (ctx, args) => {
+    const existing = await ctx.db.query("spawned_agents")
+      .filter((q) => q.eq(q.field("name"), args.name))
+      .first();
+    if (existing) return existing._id;
+    return await ctx.db.insert("spawned_agents", {
+      name:             args.name,
+      task_summary:     args.goal,
+      goal:             args.goal,
+      allowed_tools:    args.allowed_tools ?? [],
+      trigger:          args.trigger,
+      notify_policy:    { webpush: true, severity_min: "info" },
+      mode:             args.mode ?? "paper",
+      status:           "active",
+      created_at:       Date.now(),
+      last_activity_ms: Date.now(),
+    });
+  },
+});

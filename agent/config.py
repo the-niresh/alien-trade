@@ -80,6 +80,8 @@ class AgentConfig:
     enforce_activity_floor: bool = field(
         default_factory=lambda: os.environ.get("ACTIVITY_FLOOR", "").lower()
         in ("1", "true", "yes"))
+    activity_trade_usd: float = field(
+        default_factory=lambda: float(os.environ.get("ACTIVITY_TRADE_USD", "15.0")))
 
     # Convex bus
     convex_url: str = field(default_factory=lambda: os.environ.get("CONVEX_URL", ""))

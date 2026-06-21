@@ -58,3 +58,6 @@ index.ts
 .env.local.bak*
 *.bak
 core/test_supervisor.py.skip
+
+# local brainstorm/tooling state
+.superpowers/

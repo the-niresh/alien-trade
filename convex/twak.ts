@@ -30,19 +30,17 @@ export const convertQuote = action({
     const agentUrl = process.env.AGENT_URL ?? "http://localhost:8000";
 
     const priceOf = async (token: string): Promise<number> => {
-      // Stablecoins peg to $1 — avoids a needless round-trip and a 0 if the feed lags.
-      if (token.toUpperCase() === "USDT" || token.toUpperCase() === "USDC") return 1;
+      const t = token.toUpperCase();
+      if (t === "USDT" || t === "USDC") return 1;
       const res = await fetch(
-        `${agentUrl}/twak/price?token=${encodeURIComponent(token)}&chain=bsc`,
-        { signal: AbortSignal.timeout(12_000) },
+        `${agentUrl}/twak/price?token=${encodeURIComponent(t)}`,
+        { signal: AbortSignal.timeout(10_000) },
       );
-      const json = (await res.json()) as { ok: boolean; data: Record<string, unknown>; error?: string };
-      if (!json.ok) throw new Error(json.error ?? `price failed for ${token}`);
-      const d = json.data ?? {};
-      // The twak CLI's JSON shape varies by version — pull the USD price defensively.
-      const raw = d.price ?? d.priceUsd ?? d.priceUSD ?? d.usd ?? d.value ?? 0;
-      const p = Number(raw);
-      return Number.isFinite(p) && p > 0 ? p : 0;
+      const json = (await res.json()) as { ok: boolean; data?: { priceUsd: number }; error?: string };
+      if (!json.ok || !json.data) throw new Error(json.error ?? `No price for ${t}`);
+      const p = json.data.priceUsd;
+      if (!Number.isFinite(p) || p <= 0) throw new Error(`Bad price for ${t}`);
+      return p;
     };
 
     try {

@@ -12,7 +12,7 @@ def _deps():
 
 def test_tools_have_unique_names_and_schemas():
     names = [t["name"] for t in TOOLS]
-    assert names == sorted(set(names))  # unique
+    assert len(names) == len(set(names)), f"duplicate tool names: {names}"  # unique (order-agnostic)
     for t in TOOLS:
         assert t["name"] and t["description"]
         assert t["input_schema"]["type"] == "object"

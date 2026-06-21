@@ -452,6 +452,15 @@ export function CoPilotDrawer({
     if (threads.length > 0) setDefaultTabHidden(true);
   }, [threads.length]);
 
+  // Reset spawn wizard when switching threads (state must not leak across threads)
+  useEffect(() => {
+    setSpawnStep("idle");
+    setSpawnStyle("");
+    setSpawnStyleId("");
+    setSpawnGoal("");
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeThreadId]);
+
   // Reset spawn state on close; focus input + re-pin to bottom on open
   useEffect(() => {
     if (!isOpen) {

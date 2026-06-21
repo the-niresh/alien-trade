@@ -1,6 +1,6 @@
 import { query } from "./_generated/server";
 
-const ELIGIBLE = ["ETH", "CAKE", "UNI", "LINK", "AAVE"] as const;
+const ELIGIBLE = ["ETH", "CAKE", "UNI", "LINK", "AAVE", "FLOKI", "SHIB", "AVAX", "FET"] as const;
 
 export const eligible = query({
   args: {},

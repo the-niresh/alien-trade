@@ -1,4 +1,4 @@
-import { api } from "../../convex/_generated/api";
+import { api } from "../../../convex/_generated/api";
 import type { ConvexReactClient } from "convex/react";
 
 const VAPID_PUBLIC = import.meta.env.VITE_VAPID_PUBLIC_KEY as string;
@@ -15,7 +15,9 @@ export async function enableAlerts(convex: ConvexReactClient): Promise<boolean> 
   const reg = await navigator.serviceWorker.ready;
   const sub = await reg.pushManager.subscribe({
     userVisibleOnly: true,
-    applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC),
+    // cast: lib.dom types Uint8Array as generic over ArrayBufferLike (TS 5.7+);
+    // PushManager wants a concrete BufferSource. The buffer is ArrayBuffer-backed.
+    applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC) as BufferSource,
   });
   const j = sub.toJSON();
   await convex.mutation(api.push.subscribe, {

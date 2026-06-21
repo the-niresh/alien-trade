@@ -35,7 +35,7 @@ export function KillSwitch({ halted, onToggle, hero = false, size = "sm" }: Prop
   const deg     = progress * 360;
   const color   = halted ? "var(--green)" : "var(--red)";
   const sizeCls = hero ? "w-[124px] h-[124px]" : size === "md" ? "w-[72px] h-[72px]" : "w-11 h-11";
-  const inner   = halted ? "bg-[#02140c] text-green" : "bg-[#160510] text-red";
+  const inner   = halted ? "bg-green/10 text-green" : "bg-red/10 text-red";
   const textSz  = hero ? "text-base font-black tracking-[0.12em]"
                 : size === "md" ? "text-[11px] font-black tracking-[0.1em]"
                 : "text-[8px] font-black tracking-wide";

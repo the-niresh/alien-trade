@@ -577,7 +577,7 @@ export function TrackersView() {
             ))}
             <div className="ml-auto flex items-center gap-1.5">
               <LiveDot color="green" />
-              <span className="font-mono text-[10px] text-green">S3 signal active</span>
+              <span className="font-mono text-[10px] text-green">Sentiment signal active</span>
             </div>
           </div>
 
@@ -588,7 +588,7 @@ export function TrackersView() {
               <header className="flex items-center justify-between gap-3 px-3.5 pt-3 pb-2">
                 <span className="panel-label" style={{ "--tick": "var(--cyan)" } as React.CSSProperties}>
                   {kolSub === "mylist"
-                  ? <span>My Tracked Handles <span className="font-mono text-[9px] text-yellow ml-1">← S3 signal source</span></span>
+                  ? <span>My Tracked Handles <span className="font-mono text-[9px] text-yellow ml-1">← sentiment source</span></span>
                   : "Top KOL Subscriptions"
                 }
                 </span>
@@ -709,13 +709,13 @@ export function TrackersView() {
                   <div className="px-3 pb-3 space-y-2">
                     <div className="font-mono text-[10px] text-muted-fg leading-relaxed">
                       Only handles in <span className="text-cyan font-bold">My List</span> drive the{" "}
-                      <span className="text-yellow font-bold">S3 signal</span>. Add or remove handles to control what the agent reads.
+                      <span className="text-yellow font-bold">sentiment signal</span>. Add or remove handles to control what the agent reads.
                     </div>
                     <div className="flex items-center gap-2 py-1.5 px-2 rounded-lg bg-green/6 border border-green/15">
                       <Radio className="w-3 h-3 text-green flex-shrink-0 animate-pulse" />
                       <div>
                         <div className="font-mono text-[10px] font-bold text-green">{myListHandles.length} signal source{myListHandles.length !== 1 ? "s" : ""}</div>
-                        <div className="font-mono text-[9px] text-muted-fg">feeding S3 via CMC</div>
+                        <div className="font-mono text-[9px] text-muted-fg">feeds sentiment via CMC</div>
                       </div>
                     </div>
                   </div>
@@ -804,32 +804,9 @@ export function TrackersView() {
                 <Skeleton className="h-10 w-full rounded-lg" />
               </div>
             ) : typedPositions.length === 0 ? (
-              <div className="flex flex-col items-center gap-3 py-5">
-                <div style={{
-                  position: "relative", width: 64, height: 64, borderRadius: "9999px",
-                  border: "1px solid var(--border-hi)",
-                  background: "radial-gradient(circle, transparent 35%, color-mix(in oklab, var(--green) 6%, transparent) 36%, transparent 37%), radial-gradient(circle at center, color-mix(in oklab, var(--green) 6%, transparent), transparent 70%)",
-                }}>
-                  <div style={{
-                    position: "absolute", inset: 0, borderRadius: "9999px",
-                    background: "conic-gradient(from 0deg, transparent 0deg, color-mix(in oklab, var(--green) 35%, transparent) 50deg, transparent 70deg)",
-                    animation: "radar-sweep 3.2s linear infinite",
-                  }} />
-                  <div style={{
-                    position: "absolute", inset: 0, margin: "auto", width: 5, height: 5,
-                    borderRadius: "9999px", background: "var(--green)",
-                    boxShadow: "0 0 10px var(--green)",
-                    animation: "radar-blip 1.6s ease-in-out infinite",
-                  }} />
-                </div>
-                <div className="flex flex-col items-center gap-0.5">
-                  <p className="font-mono text-[11px] tracking-[0.18em] uppercase text-green glow-green">
-                    Agent Scanning
-                  </p>
-                  <p className="font-mono text-[10px] text-muted-fg">
-                    0 active positions — monitoring for entries
-                  </p>
-                </div>
+              <div className="flex items-center gap-2 py-3 font-mono text-[11px] text-muted-fg">
+                <span className="animate-pulse text-green">▮</span>
+                0 active positions — monitoring for entries
               </div>
             ) : (
               <div className="space-y-2">

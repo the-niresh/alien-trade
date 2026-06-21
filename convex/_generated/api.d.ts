@@ -34,6 +34,7 @@ import type * as scorecard from "../scorecard.js";
 import type * as signals from "../signals.js";
 import type * as social from "../social.js";
 import type * as spawnedAgents from "../spawnedAgents.js";
+import type * as sponsorCalls from "../sponsorCalls.js";
 import type * as symbolList from "../symbolList.js";
 import type * as thesisLedger from "../thesisLedger.js";
 import type * as trades from "../trades.js";
@@ -73,6 +74,7 @@ declare const fullApi: ApiFromModules<{
   signals: typeof signals;
   social: typeof social;
   spawnedAgents: typeof spawnedAgents;
+  sponsorCalls: typeof sponsorCalls;
   symbolList: typeof symbolList;
   thesisLedger: typeof thesisLedger;
   trades: typeof trades;

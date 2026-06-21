@@ -74,3 +74,15 @@ def test_x402_quote_returns_dict(cli):
     with _mock_run({"routes": [{"chain": "bsc", "amount": "10000"}]}):
         result = cli.x402_quote("https://example.com/api")
     assert "routes" in result
+
+
+def test_bsc_token_registry_addresses_are_valid():
+    """Every registry address must be a 40-hex-char checksummed BSC address.
+    Guards against truncation typos that would silently break swaps on a token
+    and (via the sustained-failure watchdog) auto-halt the live agent."""
+    import re
+    from agent.twak_cli import _BSC_TOKEN_REGISTRY
+
+    addr_re = re.compile(r"^0x[0-9a-fA-F]{40}$")
+    bad = {sym: a for sym, a in _BSC_TOKEN_REGISTRY.items() if not addr_re.match(a)}
+    assert not bad, f"invalid BSC token addresses: {bad}"

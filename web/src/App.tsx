@@ -99,8 +99,7 @@ function PairingScreen({ onPaired }: { onPaired: (t: string) => void }) {
                   <img
                     src="/logo.png"
                     alt="Alien-Trade"
-                    className="w-20 h-20 rounded-full object-contain"
-                    style={{ mixBlendMode: "screen" }}
+                    className="w-20 h-20 logo-blend"
                   />
                   <div className="font-display text-[28px] font-bold text-green glow-green tracking-[0.16em]">
                     ALIEN<span className="text-text/40">·</span>TRADE
@@ -278,11 +277,6 @@ export default function App() {
     }
   };
 
-  const onAgentClick = (name: string) => {
-    setCopilotPrefill(`What is ${name} currently doing?`);
-    setCopilotOpen(true);
-  };
-
   if (!token) {
     const hasDeepLink = location.hash.startsWith("#t=");
     if (hasDeepLink || showPairing) {
@@ -304,7 +298,7 @@ export default function App() {
 
   const renderView = () => {
     switch (view) {
-      case "overview":      return <OverviewView  onAgentClick={onAgentClick} onCopilot={() => setCopilotOpen(true)} />;
+      case "overview":      return <OverviewView  onCopilot={() => setCopilotOpen(true)} />;
       case "trackers":      return <TrackersView />;
       case "intelligence":  return <IntelligenceView />;
       case "chart":         return <MarketsView symbol={selectedSymbol} onSymbolChange={setSelectedSymbol} />;
@@ -312,11 +306,7 @@ export default function App() {
       case "pipeline":      return <PipelineView />;
       case "positions":     return <PositionsView />;
       case "history":       return <HistoryView />;
-      case "tools":         return (
-        <ToolsView
-          onAgentClick={onAgentClick}
-        />
-      );
+      case "tools":         return <ToolsView />;
       case "agents":        return (
         <AgentsView
           onAgentOpen={(threadId) => {

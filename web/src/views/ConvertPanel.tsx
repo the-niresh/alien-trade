@@ -10,46 +10,82 @@ import {
 import { withToken } from "@/lib/control";
 import { ArrowDownUp, Check, AlertTriangle } from "lucide-react";
 
-type Token = "BNB" | "USDT" | "ETH";
 type Step = "form" | "confirm" | "done";
 
-const TOKENS: Token[] = ["BNB", "USDT", "ETH"];
 const GAS_BUFFER_BNB = 0.005;
 const USDT_BUFFER = 0.5;
-const TOKEN_DOT: Record<Token, string> = {
-  BNB: "var(--yellow)", USDT: "var(--green)", ETH: "var(--cyan)",
+
+const KNOWN_COLORS: Record<string, string> = {
+  BNB: "var(--yellow)",
+  USDT: "var(--green)",
+  ETH: "var(--cyan)",
+  CAKE: "var(--purple, #a78bfa)",
+  LINK: "var(--blue, #60a5fa)",
+  AAVE: "var(--pink, #f472b6)",
+  UNI: "var(--pink, #f472b6)",
 };
+const FALLBACK_COLORS = [
+  "#a78bfa", "#60a5fa", "#34d399", "#f59e0b", "#f472b6", "#e879f9",
+];
 
-type WalletFields = { usdt: number; eth: number; bnb: number };
-
-function balanceOf(t: Token, w: WalletFields | null): number {
-  if (!w) return 0;
-  return t === "USDT" ? w.usdt : t === "ETH" ? w.eth : w.bnb;
+function tokenColor(symbol: string, idx: number): string {
+  return KNOWN_COLORS[symbol] ?? FALLBACK_COLORS[idx % FALLBACK_COLORS.length];
 }
 
-// Max spendable in token units, leaving the required buffer.
-function maxOf(t: Token, w: WalletFields | null): number {
-  const bal = balanceOf(t, w);
-  if (t === "BNB") return Math.max(0, bal - GAS_BUFFER_BNB);
-  if (t === "USDT") return Math.max(0, bal - USDT_BUFFER);
-  return bal; // ETH: no gas reservation
+type WalletToken = { symbol: string; balance: number };
+type WalletFields = { usdt: number; eth: number; bnb: number; tokens?: WalletToken[] };
+
+const STATIC_FALLBACK: WalletToken[] = [
+  { symbol: "BNB", balance: 0 },
+  { symbol: "USDT", balance: 0 },
+  { symbol: "ETH", balance: 0 },
+];
+
+function resolveTokens(w: WalletFields | null): WalletToken[] {
+  if (!w) return STATIC_FALLBACK;
+  if (w.tokens && w.tokens.length > 0) return w.tokens;
+  // fall back to individual fields
+  const list: WalletToken[] = [
+    { symbol: "BNB", balance: w.bnb },
+    { symbol: "USDT", balance: w.usdt },
+    { symbol: "ETH", balance: w.eth },
+  ];
+  return list.filter(t => t.balance > 0).length > 0 ? list : STATIC_FALLBACK;
 }
 
-function TokenPill({ value, onChange }: { value: Token; onChange: (t: Token) => void }) {
+function balanceOf(symbol: string, tokens: WalletToken[]): number {
+  return tokens.find(t => t.symbol === symbol)?.balance ?? 0;
+}
+
+function maxOf(symbol: string, tokens: WalletToken[]): number {
+  const bal = balanceOf(symbol, tokens);
+  if (symbol === "BNB") return Math.max(0, bal - GAS_BUFFER_BNB);
+  if (symbol === "USDT") return Math.max(0, bal - USDT_BUFFER);
+  return bal;
+}
+
+function TokenPill({
+  value, onChange, tokens,
+}: {
+  value: string;
+  onChange: (t: string) => void;
+  tokens: WalletToken[];
+}) {
+  const idx = tokens.findIndex(t => t.symbol === value);
   return (
-    <Select value={value} onValueChange={(v) => onChange(v as Token)}>
+    <Select value={value} onValueChange={onChange}>
       <SelectTrigger className="w-auto gap-2 bg-elevated border-border rounded-full px-3 py-1.5 font-mono text-[13px] font-bold text-text focus:ring-cyan">
         <span className="inline-flex items-center gap-2">
-          <span className="h-2.5 w-2.5 rounded-full" style={{ background: TOKEN_DOT[value] }} />
+          <span className="h-2.5 w-2.5 rounded-full" style={{ background: tokenColor(value, idx) }} />
           <SelectValue />
         </span>
       </SelectTrigger>
       <SelectContent className="bg-elevated border-border">
-        {TOKENS.map((t) => (
-          <SelectItem key={t} value={t} className="font-mono text-[13px]">
+        {tokens.map((t, i) => (
+          <SelectItem key={t.symbol} value={t.symbol} className="font-mono text-[13px]">
             <span className="inline-flex items-center gap-2">
-              <span className="h-2.5 w-2.5 rounded-full" style={{ background: TOKEN_DOT[t] }} />
-              {t}
+              <span className="h-2.5 w-2.5 rounded-full" style={{ background: tokenColor(t.symbol, i) }} />
+              {t.symbol}
             </span>
           </SelectItem>
         ))}
@@ -63,16 +99,27 @@ export function ConvertPanel() {
   const enqueue = useMutation(api.agentCommands.enqueue);
   const quote   = useAction(api.twak.convertQuote);
 
-  const [from, setFrom]               = useState<Token>("BNB");
-  const [to, setTo]                   = useState<Token>("USDT");
+  const tokens = resolveTokens(wallet);
+  const defaultFrom = tokens[0]?.symbol ?? "BNB";
+  const defaultTo   = tokens.find(t => t.symbol !== defaultFrom)?.symbol ?? "USDT";
+
+  const [from, setFrom]               = useState(defaultFrom);
+  const [to, setTo]                   = useState(defaultTo);
   const [amount, setAmount]           = useState("");
   const [fromPrice, setFromPrice]     = useState(0);
   const [toPrice, setToPrice]         = useState(0);
   const [rateLoading, setRateLoading] = useState(false);
-  const [rateAge, setRateAge] = useState(0); // seconds since last rate fetch
+  const [rateAge, setRateAge]         = useState(0);
   const [step, setStep]               = useState<Step>("form");
   const [loading, setLoading]         = useState(false);
   const [error, setError]             = useState("");
+
+  // Re-anchor from/to when the token list changes (new asset appears)
+  useEffect(() => {
+    const symbols = tokens.map(t => t.symbol);
+    if (!symbols.includes(from)) setFrom(symbols[0] ?? "BNB");
+    if (!symbols.includes(to))   setTo(symbols.find(s => s !== from) ?? "USDT");
+  }, [tokens.map(t => t.symbol).join(",")]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Fetch spot prices whenever the pair changes (depends on tokens, not amount).
   useEffect(() => {
@@ -88,7 +135,7 @@ export function ConvertPanel() {
       .finally(() => {
         if (!cancelled) {
           setRateLoading(false);
-          setRateAge(0); // reset age when fetch completes
+          setRateAge(0);
         }
       });
     return () => { cancelled = true; };
@@ -101,15 +148,15 @@ export function ConvertPanel() {
   }, [rateLoading]);
 
   const amtNum   = parseFloat(amount) || 0;
-  const maxFrom  = maxOf(from, wallet);
+  const maxFrom  = maxOf(from, tokens);
   const usdValue = amtNum * fromPrice;
   const gaining  = toPrice > 0 ? usdValue / toPrice : 0;
   const rate     = toPrice > 0 ? fromPrice / toPrice : 0;
   const amtValid = amtNum > 0 && amtNum <= maxFrom && fromPrice > 0;
 
   const flip = () => { setFrom(to); setTo(from); setAmount(""); };
-  const pickFrom = (t: Token) => { setAmount(""); if (t === to) setTo(from); setFrom(t); };
-  const pickTo   = (t: Token) => { if (t === from) setFrom(to); setTo(t); };
+  const pickFrom = (t: string) => { setAmount(""); if (t === to) setTo(from); setFrom(t); };
+  const pickTo   = (t: string) => { if (t === from) setFrom(to); setTo(t); };
 
   const submit = () => {
     if (!amtValid || from === to) return;
@@ -214,7 +261,7 @@ export function ConvertPanel() {
               onClick={() => setAmount(maxFrom > 0 ? String(maxFrom) : "")}
               className="font-mono text-[11px] text-muted-fg hover:text-cyan cursor-pointer"
             >
-              Balance: {balanceOf(from, wallet).toFixed(4)} {from}
+              Balance: {balanceOf(from, tokens).toFixed(4)} {from}
             </button>
           </div>
           <div className="flex items-center gap-3">
@@ -223,7 +270,7 @@ export function ConvertPanel() {
               placeholder="0.0" min="0" step="any"
               className="border-0 bg-transparent px-0 h-auto text-[28px] font-bold font-display text-text shadow-none focus-visible:ring-0"
             />
-            <TokenPill value={from} onChange={pickFrom} />
+            <TokenPill value={from} onChange={pickFrom} tokens={tokens} />
           </div>
           <p className="font-mono text-[11px] text-muted-fg">
             {fromPrice > 0 ? `($${usdValue.toFixed(2)})` : "(—)"}
@@ -246,14 +293,14 @@ export function ConvertPanel() {
           <div className="flex items-center justify-between">
             <span className="font-mono text-[11px] text-muted-fg">Gaining</span>
             <span className="font-mono text-[11px] text-muted-fg">
-              Balance: {balanceOf(to, wallet).toFixed(4)} {to}
+              Balance: {balanceOf(to, tokens).toFixed(4)} {to}
             </span>
           </div>
           <div className="flex items-center gap-3">
             <span className="flex-1 text-[28px] font-bold font-display text-text truncate">
               {gaining > 0 ? gaining.toFixed(6) : "0.0"}
             </span>
-            <TokenPill value={to} onChange={pickTo} />
+            <TokenPill value={to} onChange={pickTo} tokens={tokens} />
           </div>
         </div>
 

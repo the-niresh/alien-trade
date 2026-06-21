@@ -20,9 +20,9 @@ import { StartTradingCTA } from "../components/StartTradingCTA";
 import { cn } from "@/lib/utils";
 import { usd, pct, ts } from "../lib/formatters";
 
-type Props = { onAgentClick: (name: string) => void; onCopilot: () => void };
+type Props = { onCopilot: () => void };
 
-export function OverviewView({ onAgentClick, onCopilot }: Props) {
+export function OverviewView({ onCopilot }: Props) {
   const ledger    = useQuery(api.ledger.latest);
   const risk      = useQuery(api.riskState.get);
   const scorecard = useQuery(api.scorecard.get);
@@ -172,8 +172,7 @@ export function OverviewView({ onAgentClick, onCopilot }: Props) {
             ? AGENT_DEFS.map((d) => <AgentCardSkeleton key={d.name} />)
             : AGENT_DEFS.map((def) => (
                 <AgentCard key={def.name} def={def}
-                  lastEvent={rosterMap.get(def.name)}
-                  onClick={() => onAgentClick(def.name)} />
+                  lastEvent={rosterMap.get(def.name)} />
               ))
           }
         </div>

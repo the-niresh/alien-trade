@@ -10,9 +10,18 @@ from typing import NamedTuple
 # ── Token allowlist ───────────────────────────────────────────────────────────
 # Our risk ceiling: the only tokens the agent will trade. A curated SUBSET of the
 # competition's 149 eligible BEP-20s (see reference-hackathon-rules / docs/docs.md)
-# — liquid majors with full CMC data for S1/S2. NOTE: BNB / BTC / BTCB are NOT in
-# the competition's eligible list, so trading them would not count toward PnL.
-TOKEN_ALLOWLIST: frozenset[str] = frozenset({"ETH", "CAKE", "UNI", "LINK", "AAVE"})
+# — liquid majors with full CMC data for S1/S2 and a proven walk-forward OOS edge.
+# NOTE: BNB / BTC / BTCB are NOT in the competition's eligible list, so trading
+# them would not count toward PnL.
+#
+# Curated to the proven 5: the anti-overfitting rule (2-3 signals, minimal knobs,
+# OOS-validated) outweighs adding high-beta names on narrative alone right before
+# freeze. FLOKI/SHIB/AVAX/FET are eligible-list tokens (docs/docs.md) and can be
+# re-added IF each clears a clean walk-forward OOS Sortino check.
+TRADING_UNIVERSE: tuple[str, ...] = (
+    "ETH", "CAKE", "UNI", "LINK", "AAVE",
+)
+TOKEN_ALLOWLIST: frozenset[str] = frozenset(TRADING_UNIVERSE)
 
 
 # ── Config ────────────────────────────────────────────────────────────────────

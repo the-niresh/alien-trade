@@ -6,9 +6,9 @@ import { toggleTheme, getTheme } from "../lib/theme";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { eventSeverity } from "../lib/eventSeverity";
-import { LayoutDashboard, List, Users, Settings, FileText, Bot, Sun, Moon, Bell, Activity, BookOpen, LineChart, GraduationCap, PieChart, Brain } from "lucide-react";
+import { LayoutDashboard, List, Users, Settings, FileText, Bot, Sun, Moon, Bell, Activity, BookOpen, LineChart, GraduationCap, PieChart, Brain, History, Wrench } from "lucide-react";
 
-export type View = "overview" | "trackers" | "intelligence" | "chart" | "positions" | "agents" | "controls" | "pipeline" | "portfolio" | "logs" | "notifications" | "docs";
+export type View = "overview" | "trackers" | "intelligence" | "chart" | "positions" | "agents" | "tools" | "controls" | "pipeline" | "portfolio" | "logs" | "notifications" | "docs" | "history";
 
 const NAV_ITEMS: { view: View; icon: React.ComponentType<{ className?: string }>; label: string }[] = [
   { view: "overview",      icon: LayoutDashboard, label: "Overview" },
@@ -18,7 +18,9 @@ const NAV_ITEMS: { view: View; icon: React.ComponentType<{ className?: string }>
   { view: "portfolio",     icon: PieChart,        label: "Portfolio" },
   { view: "pipeline",      icon: Activity,        label: "Pipeline" },
   { view: "positions",     icon: List,            label: "Positions" },
-  { view: "agents",        icon: Users,           label: "Agents" },
+  { view: "history",       icon: History,         label: "History" },
+  { view: "tools",         icon: Wrench,          label: "Tools" },
+  { view: "agents",        icon: Users,           label: "Your Agents" },
   { view: "controls",      icon: Settings,        label: "Controls" },
   { view: "logs",          icon: FileText,        label: "Logs" },
   { view: "notifications", icon: Bell,            label: "Alerts" },
@@ -37,8 +39,6 @@ type Props = {
 export function SideNav({ active, onSelect, onCopilot, onTour, onAgentOpen, onSpawnAgent }: Props) {
   const [theme, setTheme] = useState(getTheme);
   const events = useQuery(api.agentEvents.recent, { limit: 20 }) ?? [];
-  const spawnedAgents = useQuery(api.spawnedAgents.list) ?? [];
-
   // Count events in the last 30 minutes that are non-info
   const BADGE_WINDOW_MS = 30 * 60 * 1000;
   const now = Date.now();
@@ -50,7 +50,7 @@ export function SideNav({ active, onSelect, onCopilot, onTour, onAgentOpen, onSp
 
   return (
     <TooltipProvider delayDuration={300}>
-      <nav aria-label="Main navigation" className="chrome w-[58px] border-r border-border flex flex-col items-center py-3 gap-1.5 flex-shrink-0 z-10">
+      <nav aria-label="Main navigation" className="chrome w-[62px] border-r border-border flex flex-col items-center py-3 gap-2 flex-shrink-0 z-10">
         {NAV_ITEMS.map((item) => {
           const Icon = item.icon;
           const isActive = active === item.view;
@@ -61,7 +61,7 @@ export function SideNav({ active, onSelect, onCopilot, onTour, onAgentOpen, onSp
                 <button
                   onClick={() => onSelect(item.view)}
                   className={cn(
-                    "relative w-10 h-10 rounded-[11px] flex items-center justify-center transition-colors cursor-pointer",
+                    "relative w-11 h-11 rounded-[11px] flex items-center justify-center transition-colors cursor-pointer",
                     isActive
                       ? "text-green"
                       : "text-muted-fg hover:bg-elevated hover:text-text"
@@ -100,62 +100,6 @@ export function SideNav({ active, onSelect, onCopilot, onTour, onAgentOpen, onSp
           );
         })}
 
-        {/* My Agents section */}
-        {spawnedAgents.length > 0 && (
-          <>
-            <div className="w-full px-2 py-1">
-              <div className="h-px bg-border/50 w-full" />
-            </div>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <div className="w-full px-1">
-                  <span className="block font-mono text-[8px] tracking-[0.18em] uppercase text-muted-fg/50 text-center px-1 pb-0.5">
-                    agents
-                  </span>
-                </div>
-              </TooltipTrigger>
-              <TooltipContent side="right">Your spawned agents</TooltipContent>
-            </Tooltip>
-            {spawnedAgents.slice(0, 5).map((agent) => (
-              <Tooltip key={agent._id}>
-                <TooltipTrigger asChild>
-                  <button
-                    onClick={() => onAgentOpen?.(agent.thread_id ?? "")}
-                    className="relative w-10 h-8 rounded-[8px] flex items-center justify-center transition-colors cursor-pointer text-muted-fg hover:bg-elevated hover:text-text group"
-                    aria-label={agent.name}
-                  >
-                    <span
-                      className={cn(
-                        "w-2 h-2 rounded-full flex-shrink-0",
-                        agent.status === "active" ? "bg-green" : "bg-muted-fg/30"
-                      )}
-                      style={agent.status === "active" ? { boxShadow: "0 0 6px var(--green)" } : {}}
-                    />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent side="right">
-                  <span className="font-mono text-[11px]">{agent.name}</span>
-                  <span className="block font-mono text-[10px] text-muted-fg truncate max-w-[160px]">
-                    {agent.task_summary}
-                  </span>
-                </TooltipContent>
-              </Tooltip>
-            ))}
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  onClick={() => onSpawnAgent?.()}
-                  className="w-10 h-7 rounded-[8px] flex items-center justify-center text-muted-fg/40 hover:text-muted-fg hover:bg-elevated transition-colors cursor-pointer text-[16px]"
-                  aria-label="Spawn agent"
-                >
-                  +
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="right">Spawn a new agent</TooltipContent>
-            </Tooltip>
-          </>
-        )}
-
         <div className="flex-1" />
 
         <Tooltip>
@@ -163,7 +107,7 @@ export function SideNav({ active, onSelect, onCopilot, onTour, onAgentOpen, onSp
             <button
               onClick={onTour}
               data-tour="nav-tour"
-              className="w-10 h-10 rounded-[11px] flex items-center justify-center text-muted-fg hover:bg-elevated hover:text-text transition-colors cursor-pointer"
+              className="w-11 h-11 rounded-[11px] flex items-center justify-center text-muted-fg hover:bg-elevated hover:text-text transition-colors cursor-pointer"
               aria-label="Start tour"
             >
               <GraduationCap className="w-[18px] h-[18px]" />
@@ -177,7 +121,7 @@ export function SideNav({ active, onSelect, onCopilot, onTour, onAgentOpen, onSp
             <button
               onClick={onCopilot}
               data-tour="nav-copilot"
-              className="w-10 h-10 rounded-[11px] flex items-center justify-center text-purple hover:bg-purple/10 transition-colors cursor-pointer"
+              className="w-11 h-11 rounded-[11px] flex items-center justify-center text-purple hover:bg-purple/10 transition-colors cursor-pointer"
               aria-label="Co-Pilot"
             >
               <Bot className="w-[18px] h-[18px]" />
@@ -195,7 +139,7 @@ export function SideNav({ active, onSelect, onCopilot, onTour, onAgentOpen, onSp
           <TooltipTrigger asChild>
             <button
               onClick={handleThemeToggle}
-              className="w-10 h-10 rounded-[11px] flex items-center justify-center text-muted-fg hover:bg-elevated hover:text-text transition-colors cursor-pointer"
+              className="w-11 h-11 rounded-[11px] flex items-center justify-center text-muted-fg hover:bg-elevated hover:text-text transition-colors cursor-pointer"
               aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
             >
               {theme === "dark" ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}

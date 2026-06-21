@@ -8,29 +8,52 @@ import { withToken } from "@/lib/control";
 import { cn } from "@/lib/utils";
 import { AlertTriangle, ArrowUpFromLine, Check } from "lucide-react";
 
-type Token = "USDT" | "ETH" | "BNB";
 type Step = "form" | "confirm" | "done";
 
-type WalletFields = { usdt: number; eth: number; bnb: number };
+const GAS_BUFFER_BNB = 0.005;
+const USDT_BUFFER    = 0.5;
 
-const TOKEN_MAX: Record<Token, (w: WalletFields) => number> = {
-  USDT: (w) => Math.max(0, w.usdt - 0.5),   // keep $0.50 buffer
-  ETH:  (w) => w.eth,
-  BNB:  (w) => Math.max(0, w.bnb - 0.005),  // keep gas buffer
-};
+type WalletToken = { symbol: string; balance: number };
+type WalletFields = { usdt: number; eth: number; bnb: number; tokens?: WalletToken[] };
+
+const STATIC_FALLBACK: WalletToken[] = [
+  { symbol: "BNB",  balance: 0 },
+  { symbol: "USDT", balance: 0 },
+  { symbol: "ETH",  balance: 0 },
+];
+
+function resolveTokens(w: WalletFields | null | undefined): WalletToken[] {
+  if (!w) return STATIC_FALLBACK;
+  if (w.tokens && w.tokens.length > 0) return w.tokens;
+  const list: WalletToken[] = [
+    { symbol: "BNB",  balance: w.bnb },
+    { symbol: "USDT", balance: w.usdt },
+    { symbol: "ETH",  balance: w.eth },
+  ];
+  return list.some(t => t.balance > 0) ? list : STATIC_FALLBACK;
+}
+
+function maxOf(symbol: string, tokens: WalletToken[]): number {
+  const bal = tokens.find(t => t.symbol === symbol)?.balance ?? 0;
+  if (symbol === "BNB")  return Math.max(0, bal - GAS_BUFFER_BNB);
+  if (symbol === "USDT") return Math.max(0, bal - USDT_BUFFER);
+  return bal;
+}
 
 export function WithdrawView() {
   const wallet  = useQuery(api.walletState.get);
   const enqueue = useMutation(api.agentCommands.enqueue);
 
-  const [token, setToken]       = useState<Token>("USDT");
-  const [amount, setAmount]     = useState("");
-  const [toAddr, setToAddr]     = useState("");
-  const [step, setStep]         = useState<Step>("form");
-  const [loading, setLoading]   = useState(false);
-  const [error, setError]       = useState("");
+  const tokens = resolveTokens(wallet as WalletFields | null | undefined);
 
-  const maxAmount = wallet ? TOKEN_MAX[token](wallet as WalletFields) : 0;
+  const [token, setToken]     = useState(tokens[0]?.symbol ?? "USDT");
+  const [amount, setAmount]   = useState("");
+  const [toAddr, setToAddr]   = useState("");
+  const [step, setStep]       = useState<Step>("form");
+  const [loading, setLoading] = useState(false);
+  const [error, setError]     = useState("");
+
+  const maxAmount = maxOf(token, tokens);
   const addrValid = /^0x[0-9a-fA-F]{40}$/.test(toAddr.trim());
   const amtNum    = parseFloat(amount) || 0;
   const amtValid  = amtNum > 0 && amtNum <= maxAmount;
@@ -133,19 +156,19 @@ export function WithdrawView() {
               <label className="font-mono text-[10px] text-muted-fg uppercase tracking-widest block mb-1.5">
                 Token
               </label>
-              <div className="flex gap-2">
-                {(["USDT", "ETH", "BNB"] as Token[]).map((t) => (
+              <div className="flex flex-wrap gap-2">
+                {tokens.map((t) => (
                   <button
-                    key={t}
-                    onClick={() => { setToken(t); setAmount(""); }}
+                    key={t.symbol}
+                    onClick={() => { setToken(t.symbol); setAmount(""); }}
                     className={cn(
-                      "flex-1 font-mono text-[12px] font-bold py-1.5 rounded-lg border transition-colors cursor-pointer",
-                      token === t
+                      "px-3 font-mono text-[12px] font-bold py-1.5 rounded-lg border transition-colors cursor-pointer",
+                      token === t.symbol
                         ? "bg-purple/15 border-purple/40 text-purple"
                         : "border-border text-muted-fg hover:text-text",
                     )}
                   >
-                    {t}
+                    {t.symbol}
                   </button>
                 ))}
               </div>

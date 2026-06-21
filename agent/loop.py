@@ -166,6 +166,7 @@ class DecisionLoop:
         self._consecutive_exec_failures: int = 0
         self._EXEC_FAIL_ALERT_THRESHOLD: int = 3   # alert after 3 straight FAILED cycles
         self._wallet_mismatch_alerted: bool = False  # fire once per session, not every cycle
+        self._position_reconciled: bool = False      # fire once per session after forced close
         # Time-based sustained-failure watchdog.
         # Tracks when the first FAILED execution started in the current streak.
         # Warn at 2h, auto-halt at 4h. Cleared on any confirmed fill.
@@ -1171,6 +1172,85 @@ class DecisionLoop:
                 )
                 self._wallet_mismatch_alerted = True
 
+            # Position reconciliation: ledger says long, wallet says flat.
+            # Triggered when the operator manually converts/sells outside the agent.
+            # Cascade-closes the position: zeroes the ledger, writes a trade row +
+            # ledger row, pushes quantity=0 to Convex so the portfolio clears.
+            _sym_token = self.symbol.split("/")[0]   # "ETH" from "ETH" or "ETH/USDT"
+            _on_chain_held = _tokens.get(_sym_token, 0.0)
+            _position_gone = (
+                _ledger_units > 1e-6
+                and _on_chain_held < _ledger_units * 0.05   # <5% of expected → gone
+            )
+            if _position_gone and not self._position_reconciled:
+                _exit_price = _eth_price if _sym_token == "ETH" else bar.close
+                _exit_size_usd = _ledger_units * _exit_price
+                _realized = (_exit_price - self.ledger.avg_entry) * _ledger_units
+
+                # Force-close the in-memory ledger (mirrors what apply() does on sell)
+                self.ledger.cash += _exit_size_usd
+                self.ledger.realized_pnl_total += _realized
+                if _realized < 0:
+                    self.ledger.consecutive_losses += 1
+                else:
+                    self.ledger.consecutive_losses = 0
+                self.ledger.units = 0.0
+                self.ledger.avg_entry = 0.0
+                self._entry_fill = None   # drop the unpaired entry fill
+
+                # Write a reconciliation trade row so Recent Trades shows the close
+                _trade_id = self.bridge.record_trade(
+                    symbol=self.symbol,
+                    side="sell",
+                    size_usd=round(_exit_size_usd, 4),
+                    fill_price=round(_exit_price, 4),
+                    fee_usd=0.0,
+                    gas_usd=0.0,
+                    slippage_usd=0.0,
+                    mode=self.mode,
+                    tx_hash=None,
+                    timestamp_ms=bar.timestamp,
+                )
+                # Write ledger row so the PnL chart reflects the close
+                if _trade_id:
+                    self.bridge.append_ledger(
+                        trade_id=_trade_id,
+                        realized_pnl_usd=round(_realized, 4),
+                        cumulative_pnl_usd=round(self.ledger.cumulative_pnl(bar.close), 4),
+                        cumulative_fees_usd=round(self.ledger.cumulative_fees, 4),
+                        cumulative_gas_usd=round(self.ledger.cumulative_gas, 4),
+                        peak_equity_usd=round(self.ledger.peak_equity, 4),
+                        current_drawdown_pct=round(self.ledger.drawdown_pct(bar.close), 6),
+                        timestamp_ms=bar.timestamp,
+                    )
+                # Zero the Convex position row → portfolio `open` query filters it out
+                self.bridge.update_positions(
+                    symbol=self.symbol,
+                    quantity=0.0,
+                    avg_entry_price=0.0,
+                    current_price=_exit_price,
+                    mode=self.mode,
+                    updated_ms=bar.timestamp,
+                )
+                self._position_reconciled = True
+                self._notify(
+                    f"⚡ POSITION RECONCILED — external close detected\n"
+                    f"  Ledger held {_ledger_units:.6f} {_sym_token} "
+                    f"(on-chain: {_on_chain_held:.6f})\n"
+                    f"  Est. exit @ ${_exit_price:,.2f}  |  PnL: ${_realized:+.2f}\n"
+                    f"  Portfolio position cleared automatically."
+                )
+
+            # All non-zero token balances (including BNB) for dynamic Convert UI
+            _all_tokens = [
+                {"symbol": t["symbol"], "balance": float(t["balance"])}
+                for t in _bal.get("tokens", [])
+                if float(t.get("balance", 0)) > 0
+            ]
+            if _bnb > 0:
+                _all_tokens = [t for t in _all_tokens if t["symbol"] != "BNB"]
+                _all_tokens.append({"symbol": "BNB", "balance": _bnb})
+
             self.bridge.update_wallet_state(
                 address=_bal.get("address", ""),
                 usdt=_usdt,
@@ -1179,6 +1259,7 @@ class DecisionLoop:
                 bnb_usd=round(_bnb * _bnb_price, 4),
                 total_usd=round(_usdt + _eth * _eth_price + _bnb * _bnb_price, 2),
                 updated_ms=bar.timestamp,
+                tokens=_all_tokens if _all_tokens else None,
             )
         except Exception as exc:  # wallet balance is display-only; never block the trade cycle
             logging.getLogger(__name__).warning("wallet_state snapshot failed: %r", exc)
@@ -1353,6 +1434,15 @@ class DecisionLoop:
                         detail="{}", refs=[],
                     ))
             except Exception:  # noqa: BLE001 — never break the loop
+                pass
+            # Drain operator commands (convert, withdraw, etc) — off scored path.
+            # Drain up to 5 per cycle so a burst doesn't block the next cycle.
+            try:
+                from agent.command_worker import run_one_command
+                for _ in range(5):
+                    if not run_one_command(self.bridge):
+                        break
+            except Exception:  # noqa: BLE001 — command drain must never crash the loop
                 pass
             time.sleep(cycle_seconds)
 

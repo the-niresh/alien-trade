@@ -35,9 +35,9 @@ def _bars(n: int, start: float = 300.0, trend: float = 1.004, vol: float = 0.012
 
 
 def _run_loop():
-    bars = _bars(150)
+    bars = _bars(300)
     params = StrategyParams(ema_fast=5, ema_slow=21, entry_threshold=0.10,
-                            position_size_usd=1_000.0)
+                            position_size_usd=1_000.0, trend_filter_period=30)
     risk = RiskConfig()
     strat = make_risk_strategy(make_strategy(params), risk, initial_capital=10_000.0)
     bridge = ConvexBridge(url="")   # offline → writes captured in _offline_log

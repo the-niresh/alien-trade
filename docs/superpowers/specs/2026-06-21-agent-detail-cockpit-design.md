@@ -87,7 +87,7 @@ correct source. Reuse existing components rather than re-implement:
 | **Trades** | `trades.recent` table | `approvals.listPending` filtered to this agent + note: "assistant agents propose, don't execute" |
 | **Scanning** | `decisions.recent` + `SignalScores` (what it evaluates each cycle) | `agent_runs` tool-call traces (expanded chain view) |
 | **Live Positions** | `positions.open` via `PositionCard` | empty state: "Assistant agents hold no positions." |
-| **Configure** | live risk knobs (§6) | goal / allowed_tools / trigger / mode / notify editor (`spawnedAgents.*`) |
+| **Configure** | live risk knobs (§6) | goal / allowed_tools / trigger / mode / notify editor (needs new `spawnedAgents.update` mutation — see §6.1) |
 
 ## 6. Configure — winning knobs (primary), wired live
 
@@ -107,6 +107,13 @@ All through **existing** token-gated mutations (`withToken`):
 UX: an **"Unsaved"** indicator + Save button (like `configure.md`). Save is
 token-gated; a missing/invalid token shows a toast (reuse existing pattern).
 Disable Save while in flight.
+
+### 6.1 Spawned-agent Configure (new Convex mutation)
+
+Editing a spawned agent's goal / allowed_tools / trigger / mode / notify_policy
+needs a single new mutation `spawnedAgents.update` (patches the row by id).
+This is a **Convex function only** — not `core/`, not the trading hot path — so it
+stays within the freeze boundary. Reuse `rename` / `setStatus` for those fields.
 
 **Omitted (win-gate "no" / freeze-safe):**
 - Every SOL-specific gate: bonding-curve %, dev holding, dev-dump tripwire, Jito

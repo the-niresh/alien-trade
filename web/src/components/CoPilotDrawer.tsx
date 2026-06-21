@@ -20,29 +20,33 @@ const SPAWN_STYLES_CONFIG = [
     id: "conservative",
     emoji: "🛡️",
     label: "Conservative",
-    desc: "Capital-first, tight stops",
-    goal: "Protect capital and grow steadily with tight risk controls and small position sizes",
+    desc: "Careful and selective",
+    detail: "1.5×ATR stops · max 3% per position · 5% daily loss limit",
+    goal: "Protect capital and grow steadily — tight stops, small positions, no chasing",
   },
   {
     id: "balanced",
     emoji: "⚖️",
     label: "Balanced",
-    desc: "Momentum-driven, moderate risk",
-    goal: "Capture momentum moves with moderate position sizing and balanced risk-reward",
+    desc: "Patient and stable",
+    detail: "2×ATR stops · max 5% per position · momentum-filtered entries",
+    goal: "Capture momentum moves with moderate sizing and balanced risk-reward",
   },
   {
     id: "aggressive",
     emoji: "🚀",
     label: "Aggressive",
-    desc: "Trend-following, bigger swings",
-    goal: "Maximize trend capture with wider stops, larger positions, and higher upside targets",
+    desc: "Active and fast",
+    detail: "3×ATR stops · max 10% per position · trend-following with full targets",
+    goal: "Maximize trend capture — wider stops, larger positions, hold for full moves",
   },
   {
     id: "moonshot",
     emoji: "🌙",
     label: "Moonshot",
-    desc: "High conviction, hold for target",
-    goal: "Find high-conviction setups and hold for full price targets with minimal interference",
+    desc: "One big bet, ride to the top",
+    detail: "High conviction only · max 15% per position · minimal exits until target",
+    goal: "Find the highest-conviction setup and ride it to full target with minimal interference",
   },
 ] as const;
 
@@ -523,7 +527,7 @@ export function CoPilotDrawer({
       setActiveThreadId(id);
       await addMessage(withToken({
         role: "assistant",
-        content: "Let's set up your new agent! What style of trader should it be?",
+        content: "Let's spin up a new agent. It'll trade on your behalf — starting in **paper mode** until you take it live.\n\nWhat style of trader should it be?",
         sources_json: "[]",
         thread_id: id,
       }));
@@ -593,7 +597,7 @@ export function CoPilotDrawer({
       void addMessage(
         withToken({
           role: "assistant",
-          content: "Let's set up your new agent! What style of trader should it be?",
+          content: "Let's spin up a new agent. It'll trade on your behalf — starting in **paper mode** until you take it live.\n\nWhat style of trader should it be?",
           sources_json: "[]",
           thread_id: displayThreadId ?? undefined,
         }),
@@ -616,10 +620,12 @@ export function CoPilotDrawer({
     setSpawnStyle(label);
     setSpawnStyleId(styleId);
     setSpawnGoal(goal);
+    const config = SPAWN_STYLES_CONFIG.find((s) => s.id === styleId);
+    const detail = config ? `\n*${config.detail}*` : "";
     await addMessage(withToken({ role: "user", content: label, sources_json: "[]", thread_id: displayThreadId ?? undefined }));
     await addMessage(withToken({
       role: "assistant",
-      content: `**${label}** — got it. ${goal}.\n\nWhat should we name this agent?`,
+      content: `**${label}** — ${goal}.${detail}\n\nWhat should we call it?`,
       sources_json: "[]",
       thread_id: displayThreadId ?? undefined,
     }));
@@ -640,10 +646,11 @@ export function CoPilotDrawer({
     if (spawnStep === "awaiting_name") {
       const name = text;
       await addMessage(withToken({ role: "user", content: name, sources_json: "[]", thread_id: displayThreadId ?? undefined }));
+      const config = SPAWN_STYLES_CONFIG.find((s) => s.id === spawnStyleId);
       await createAgent({ name, goal: spawnGoal || spawnStyle || "General trading agent" });
       await addMessage(withToken({
         role: "assistant",
-        content: `✅ **${name}** is live${spawnStyle ? ` in **${spawnStyle}** mode` : ""}. Find it in the Agents tab — I'll get to work.`,
+        content: `✅ **${name}** is spinning up in **paper mode**${config ? ` — ${config.desc.toLowerCase()}` : ""}.\n\n${config ? `*${config.detail}*\n\n` : ""}Find it in the Agents tab. I'll start scanning and report back.`,
         sources_json: "[]",
         thread_id: displayThreadId ?? undefined,
       }));
@@ -905,11 +912,14 @@ export function CoPilotDrawer({
                       onClick={() => void pickStyle(`${s.emoji} ${s.label}`, s.goal, s.id)}
                       className="w-full text-left border border-border/60 rounded-xl px-3 py-2.5 hover:bg-elevated/70 hover:border-purple/40 transition-colors cursor-pointer"
                     >
-                      <div className="flex items-center gap-2.5">
-                        <span className="text-[16px]">{s.emoji}</span>
-                        <div>
-                          <p className="font-mono text-[12px] text-text font-bold">{s.label}</p>
-                          <p className="font-mono text-[10px] text-muted-fg mt-0.5">{s.desc}</p>
+                      <div className="flex items-start gap-2.5">
+                        <span className="text-[16px] mt-0.5">{s.emoji}</span>
+                        <div className="min-w-0">
+                          <div className="flex items-baseline gap-2">
+                            <p className="font-mono text-[12px] text-text font-bold">{s.label}</p>
+                            <p className="font-mono text-[10px] text-muted-fg">{s.desc}</p>
+                          </div>
+                          <p className="font-mono text-[9px] text-muted-fg/70 mt-0.5 truncate">{s.detail}</p>
                         </div>
                       </div>
                     </button>

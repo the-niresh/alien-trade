@@ -77,6 +77,12 @@ def atr_pct_current(history: list[Bar], lookback: int = 14) -> float:
     return _atr_pct(window)
 
 
+def ema_value(history: list[Bar], period: int) -> float:
+    """EMA of close over `period` bars. NaN if fewer than `period` bars.
+    Public helper for the strategy's long-term trend filter."""
+    return _ema_last([b.close for b in history], period)
+
+
 # ── Private helpers ───────────────────────────────────────────────────────────
 
 def _ema_last(values: list[float], period: int) -> float:

@@ -16,16 +16,41 @@ but audited).
 from __future__ import annotations
 
 import json
+import os
 from dataclasses import dataclass, field
 from typing import Any, Optional
 
 import httpx
+
+# State-changing mutations gated by the shared CONTROL_TOKEN (convex/control.ts).
+# Only these get the token injected — unguarded mutations (e.g. config:ensure)
+# would have Convex reject an unexpected `control_token` arg.
+_GUARDED_MUTATIONS = frozenset({
+    "config:setHalted",
+    "config:setTradingMode",
+    "config:updateLimits",
+    "config:setStrategy",
+    "config:setAutopilot",
+    "config:setAutopilotState",
+    "agentControl:set",
+    "thesisLedger:record",
+    "agentCommands:updateStatus",
+    # Agent-written integrity state — gated so an anonymous caller with the Convex
+    # URL can't forge trades, mask the risk-state, or inject fake cockpit events.
+    "trades:record",
+    "riskState:update",
+    "walletState:upsert",
+    "agentEvents:append",
+    "signals:record",
+    "sponsorCalls:append",
+})
 
 
 @dataclass
 class ConvexBridge:
     url: str = ""
     timeout: float = 15.0
+    control_token: str = field(default_factory=lambda: os.environ.get("CONTROL_TOKEN", ""))
     _http: Optional[httpx.Client] = field(default=None, init=False, repr=False)
     _offline_log: list[dict] = field(default_factory=list, init=False, repr=False)
 
@@ -45,6 +70,10 @@ class ConvexBridge:
 
     def _call(self, kind: str, path: str, args: dict) -> Any:
         """kind = 'query' | 'mutation'. Returns the function's value or None."""
+        # Attach the shared control token to guarded state-changing mutations.
+        if kind == "mutation" and path in _GUARDED_MUTATIONS and self.control_token \
+                and "control_token" not in args:
+            args = {**args, "control_token": self.control_token}
         if not self.enabled:
             self._offline_log.append({"kind": kind, "path": path, "args": args})
             return None
@@ -145,6 +174,41 @@ class ConvexBridge:
     def set_halted(self, halted: bool) -> None:
         """Flip the kill switch (used by the API /halt and /resume routes)."""
         self._call("mutation", "config:setHalted", {"halted": halted})
+
+    # ── thesis ledger (AWAKE_SPRINT §4.6) ───────────────────────────────────────
+
+    def record_thesis(
+        self,
+        *,
+        thesis_id: str,
+        claim: str,
+        source: str,
+        regime: str = "",
+        status: str = "untested",
+        oos_objective: Optional[float] = None,
+        deflated_sharpe: Optional[float] = None,
+        asset_results: str = "{}",
+        trial_n: int = 0,
+        ts_ms: Optional[int] = None,
+    ) -> None:
+        """Log/update a thesis card (trial registry + cockpit feed)."""
+        import time
+
+        self._call("mutation", "thesisLedger:record", {
+            "thesis_id": thesis_id,
+            "claim": claim,
+            "source": source,
+            "regime": regime,
+            "status": status,
+            "oos_objective": oos_objective,
+            "deflated_sharpe": deflated_sharpe,
+            "asset_results": asset_results,
+            "trial_n": trial_n,
+            "ts_ms": ts_ms if ts_ms is not None else int(time.time() * 1000),
+        })
+
+    def recent_theses(self, limit: int = 20) -> list:
+        return self._call("query", "thesisLedger:recent", {"limit": limit}) or []
 
     # ── writes ─────────────────────────────────────────────────────────────────
 
@@ -271,6 +335,20 @@ class ConvexBridge:
     def update_risk_state(self, **kw) -> None:
         self._call("mutation", "riskState:update", kw)
 
+    def update_wallet_state(self, *, usdt: float, eth: float, bnb: float,
+                             bnb_usd: float, total_usd: float, updated_ms: int,
+                             address: str = "",
+                             tokens: list | None = None) -> None:
+        addr = address or os.environ.get("WALLET_ADDRESS", "")
+        payload: dict = {
+            "address": addr,
+            "usdt": usdt, "eth": eth, "bnb": bnb,
+            "bnb_usd": bnb_usd, "total_usd": total_usd, "updated_ms": updated_ms,
+        }
+        if tokens is not None:
+            payload["tokens"] = tokens
+        self._call("mutation", "walletState:upsert", payload)
+
     def update_scorecard(self, **kw) -> None:
         """Upsert the live scorecard singleton (core/scorecard.py as_convex_row)."""
         self._call("mutation", "scorecard:update", kw)
@@ -281,6 +359,10 @@ class ConvexBridge:
         """Append one AgentEvent to the Activity Channel (glass cockpit). Takes a
         contracts.AgentEvent; offline → logged like any other write."""
         return self._call("mutation", "agentEvents:append", event.as_row())
+
+    def emit_sponsor_call(self, call) -> Optional[str]:
+        """Forward a SponsorCall to Convex (fire-and-forget from the daemon thread)."""
+        return self._call("mutation", "sponsorCalls:append", call.as_row())
 
     def recent_events(self, limit: int = 50) -> list[dict]:
         return self._call("query", "agentEvents:recent", {"limit": limit}) or []
@@ -303,6 +385,12 @@ class ConvexBridge:
         if not self.enabled:
             return
         self._call("mutation", "agentControl:set", {"agents_paused": paused})
+
+    def get_social_sources(self) -> list[dict]:
+        """Return all rows from social_sources. Offline / empty → []."""
+        if not self.enabled:
+            return []
+        return self._call("query", "social:getSources", {}) or []
 
     def get_sentiment_state(self, symbol: str) -> Optional[dict]:
         """Read the latest SentimentReading for a symbol. Offline / missing → None."""
@@ -331,10 +419,121 @@ class ConvexBridge:
         """Write a ForecastState row (upsert by symbol). Takes a contracts.ForecastState."""
         self._call("mutation", "forecastState:set", forecast.as_row())
 
+    def update_positions(
+        self,
+        symbol: str,
+        quantity: float,
+        avg_entry_price: float,
+        current_price: float,
+        mode: str,
+        updated_ms: Optional[int] = None,
+    ) -> None:
+        """Upsert the live position for a symbol. Called each cycle."""
+        current_value_usd = quantity * current_price
+        unrealized_pnl_usd = (current_price - avg_entry_price) * quantity if quantity > 0 else 0.0
+        self._call("mutation", "positions:upsert", {
+            "symbol": symbol,
+            "quantity": quantity,
+            "avg_entry_price": avg_entry_price,
+            "current_price": current_price,
+            "current_value_usd": current_value_usd,
+            "unrealized_pnl_usd": unrealized_pnl_usd,
+            "mode": mode,
+            "updated_ms": updated_ms,
+        })
+
+    def append_price_tick(self, symbol: str, price: float, timestamp_ms: Optional[int] = None) -> None:
+        """Log one price tick per cycle for sparkline display in the cockpit."""
+        self._call("mutation", "priceTicks:append", {
+            "symbol": symbol,
+            "price": price,
+            "timestamp_ms": timestamp_ms,
+        })
+
     def audit(self, event_type: str, cycle_id: Optional[str], payload: dict, severity: str = "info") -> None:
-        self._call("mutation", "audit:log", {
+        args: dict = {
             "event_type": event_type,
-            "cycle_id": cycle_id,
             "payload": json.dumps(payload, default=str),
             "severity": severity,
+        }
+        if cycle_id is not None:
+            args["cycle_id"] = cycle_id
+        self._call("mutation", "audit:log", args)
+
+    def append_audit(self, *, event_type: str, payload: str, severity: str = "info") -> None:
+        """Keyword-arg variant used by the command worker (payload already JSON-encoded)."""
+        self._call("mutation", "audit:log", {
+            "event_type": event_type,
+            "payload": payload,
+            "severity": severity,
+        })
+
+    def pop_queued_command(self) -> Optional[dict]:
+        """Fetch the oldest queued agent_command. Returns None if queue is empty.
+
+        list returns newest-first (desc). We scan up to 20 rows and return the
+        oldest "queued" one so the queue is FIFO and a stuck/failed row never
+        permanently blocks later commands.
+        """
+        rows = self._call("query", "agentCommands:list", {"limit": 20})
+        if not rows:
+            return None
+        # rows is newest-first; filter to queued, then take the oldest (last)
+        queued = [r for r in rows if r.get("status") == "queued"]
+        if not queued:
+            return None
+        return queued[-1]
+
+    def update_command_status(
+        self,
+        cmd_id: str,
+        status: str,
+        result: Optional[str] = None,
+        error: Optional[str] = None,
+    ) -> None:
+        payload: dict = {"id": cmd_id, "status": status}
+        if result is not None:
+            payload["result"] = result
+        if error is not None:
+            payload["error"] = error
+        self._call("mutation", "agentCommands:updateStatus", payload)
+
+    def ensure_spawned_agent(
+        self,
+        *,
+        name: str,
+        goal: str,
+        allowed_tools: Optional[list] = None,
+        trigger_spec: str = "4h",
+    ) -> Optional[str]:
+        """Upsert a spawned_agent by name. Returns its Convex ID or None (offline)."""
+        return self._call("mutation", "spawnedAgents:ensure", {
+            "name": name,
+            "goal": goal,
+            "allowed_tools": allowed_tools or [],
+            "trigger": {"kind": "schedule", "spec": trigger_spec},
+            "mode": "paper",
+        })
+
+    def record_agent_run(
+        self,
+        *,
+        agent_id: str,
+        started_ms: int,
+        ended_ms: int,
+        ok: bool,
+        summary: str,
+        tool_calls: list,
+    ) -> Optional[str]:
+        """Write one agent_runs row. tool_calls: [{tool, args}]."""
+        return self._call("mutation", "agentRuns:record", {
+            "agent_id": agent_id,
+            "started_ms": started_ms,
+            "ended_ms": ended_ms,
+            "ok": ok,
+            "summary": summary,
+            "tool_calls": [
+                {"tool": tc.get("tool", "?"), "args": tc.get("args", tc.get("summary", ""))}
+                for tc in tool_calls
+            ],
         })

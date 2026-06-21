@@ -38,10 +38,15 @@ def _momentum(symbol: str) -> StrategyParams:
 def _contrarian(symbol: str) -> StrategyParams:
     # Fear & Greed is the backbone; momentum only confirms. A lower entry threshold
     # lets the agent act on capitulation, where the long-only edge actually lives.
+    # chop_gate=0.8: contrarian is DESIGNED for sideways/choppy markets — the
+    # generic 0.5 CHOP gate halves scores and prevents entries in the exact regime
+    # where this strategy has its edge.
     return StrategyParams(
         symbol=symbol, ema_fast=13, ema_slow=34,
         w_momentum=0.20, w_derivatives=0.20, w_sentiment=0.60,
         entry_threshold=0.20, exit_threshold=-0.05,
+        chop_gate=0.8,
+        bypass_trend_filter=True,
     )
 
 

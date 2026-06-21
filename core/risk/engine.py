@@ -20,6 +20,7 @@ import numpy as np
 from backtest.engine import Bar, Order, StrategyFn
 from risk.guardrails import RiskConfig, GuardrailResult, check_guardrails, check_max_exposure
 from risk.sizing import compute_position_size
+from risk.stops import compute_atr, hard_stop_level, trailing_stop_level, stop_triggered
 
 
 # ── Internal position tracker ─────────────────────────────────────────────────
@@ -34,6 +35,7 @@ class _PosTracker:
     cash: float
     units: float = 0.0
     avg_entry: float = 0.0
+    high_water: float = 0.0   # peak price seen since the position opened (trailing stop)
     consecutive_losses: int = 0
     current_day: int = -1
     day_start_equity: float = 0.0
@@ -60,12 +62,15 @@ class _PosTracker:
             self.avg_entry = (self.avg_entry * self.units + price * units) / total
         self.units += units
         self.cash -= size_usd
+        self.high_water = max(self.high_water, price) if self.units > units else price
 
     def apply_sell(self, size_usd: float, price: float) -> None:
         units = min(size_usd / price if price > 0 else 0.0, self.units)
         pnl = (price - self.avg_entry) * units
         self.cash += size_usd
         self.units = max(self.units - units, 0.0)
+        if self.units <= 0.0:
+            self.high_water = 0.0
         self.recent_pnls.append(pnl)
         if len(self.recent_pnls) > 20:
             self.recent_pnls.pop(0)
@@ -95,11 +100,34 @@ class RiskEngine:
         self._strategy = inner_strategy
         self._config = config
         self._pos = _PosTracker(cash=initial_capital, day_start_equity=initial_capital)
+        self.last_stop_exit: Optional[dict] = None
+        self._held_symbol: str = "BNB"  # updated at buy; used by stop-exit order
 
     # StrategyFn interface
     def __call__(self, history: list[Bar]) -> Optional[Order]:
         bar = history[-1]
         price = bar.close
+
+        self.last_stop_exit = None
+
+        # ── Hard + trailing ATR stop (forced exit BEFORE the inner strategy) ──
+        if self._pos.units > 0.0:
+            self._pos.high_water = max(self._pos.high_water, bar.high)
+            # Use prior bars for ATR — the current bar is mid-formation; prior bars give
+            # a stable, confirmed volatility estimate (sim/live parity preserved).
+            atr = compute_atr(history[:-1] if len(history) > 1 else history, self._config.atr_period)
+            hard = hard_stop_level(self._pos.avg_entry, atr, self._config.atr_stop_mult)
+            trail = trailing_stop_level(self._pos.high_water, atr, self._config.atr_trail_mult)
+            stop = max(hard, trail)   # whichever is higher (tighter) governs
+            if stop_triggered(bar.low, stop):
+                exit_usd = self._pos.units * price
+                self._pos.apply_sell(exit_usd, price)
+                self.last_stop_exit = {
+                    "kind": "trail" if trail >= hard and trail > 0 else "hard",
+                    "stop": round(stop, 6), "price": round(price, 6),
+                }
+                return Order(side="sell", size_usd=exit_usd,
+                             symbol=self._held_symbol, timestamp=bar.timestamp)
 
         # ── Daily bookkeeping ─────────────────────────────────────────────────
         day = bar.timestamp // 86_400_000
@@ -175,6 +203,7 @@ class RiskEngine:
         # ── Update internal tracker + emit order ──────────────────────────────
         if order.side == "buy":
             self._pos.apply_buy(sized_usd, price)
+            self._held_symbol = order.symbol
         else:
             self._pos.apply_sell(sized_usd, price)
 

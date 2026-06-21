@@ -1,5 +1,6 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import { assertControlToken } from "./control";
 
 // Singleton key for the global live-agent config row.
 const KEY = "global";
@@ -115,9 +116,10 @@ export const ensure = mutation({
 
 /** Kill switch. UI (or co-pilot) flips this; the agent halts within one cycle. */
 export const setHalted = mutation({
-  args: { halted: v.boolean() },
+  args: { halted: v.boolean(), control_token: v.optional(v.string()) },
   returns: v.null(),
   handler: async (ctx, args) => {
+    assertControlToken(args.control_token);
     const row = await ctx.db
       .query("config")
       .withIndex("by_key", (q) => q.eq("key", KEY))
@@ -147,9 +149,10 @@ export const setHalted = mutation({
  * routes execution accordingly (testnet vs paper vs self-custody mainnet).
  */
 export const setTradingMode = mutation({
-  args: { trading_mode: tradingMode },
+  args: { trading_mode: tradingMode, control_token: v.optional(v.string()) },
   returns: v.null(),
   handler: async (ctx, args) => {
+    assertControlToken(args.control_token);
     const row = await ctx.db
       .query("config")
       .withIndex("by_key", (q) => q.eq("key", KEY))
@@ -184,9 +187,11 @@ export const updateLimits = mutation({
     max_drawdown_pct: v.optional(v.number()),
     token_allowlist: v.optional(v.array(v.string())),
     equity_floor: v.optional(v.number()),
+    control_token: v.optional(v.string()),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
+    assertControlToken(args.control_token);
     const row = await ctx.db
       .query("config")
       .withIndex("by_key", (q) => q.eq("key", KEY))
@@ -211,9 +216,10 @@ export const updateLimits = mutation({
 /** Cockpit: pick the active strategy (momentum|contrarian|balanced|defensive).
  * The agent reads `config.strategy_name` and rebuilds its strategy while flat. */
 export const setStrategy = mutation({
-  args: { strategy_name: v.string() },
+  args: { strategy_name: v.string(), control_token: v.optional(v.string()) },
   returns: v.null(),
   handler: async (ctx, args) => {
+    assertControlToken(args.control_token);
     const row = await ctx.db
       .query("config")
       .withIndex("by_key", (q) => q.eq("key", KEY))
@@ -230,9 +236,10 @@ export const setStrategy = mutation({
 /** Cockpit: set the Autopilot capital-manager targets (profit-lock, ratchet,
  * trailing, daily target, recycle gate). The agent reads these live. */
 export const setAutopilot = mutation({
-  args: { autopilot: autopilotConfig },
+  args: { autopilot: autopilotConfig, control_token: v.optional(v.string()) },
   returns: v.null(),
   handler: async (ctx, args) => {
+    assertControlToken(args.control_token);
     const row = await ctx.db
       .query("config")
       .withIndex("by_key", (q) => q.eq("key", KEY))
@@ -249,9 +256,10 @@ export const setAutopilot = mutation({
 /** Agent: persist the autopilot ratchet (protected floor etc.) each cycle so a
  * restart keeps the banked floor. Off the cockpit; written by the loop. */
 export const setAutopilotState = mutation({
-  args: { state: autopilotState },
+  args: { state: autopilotState, control_token: v.optional(v.string()) },
   returns: v.null(),
   handler: async (ctx, args) => {
+    assertControlToken(args.control_token);
     const row = await ctx.db
       .query("config")
       .withIndex("by_key", (q) => q.eq("key", KEY))

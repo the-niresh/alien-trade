@@ -25,7 +25,7 @@ from agent.loop import DecisionLoop, CycleResult
 from agent.runtime import build_loop
 
 try:
-    from fastapi import FastAPI
+    from fastapi import FastAPI, HTTPException, Request
 except ImportError as e:  # pragma: no cover
     raise RuntimeError(
         "FastAPI not installed. Install the agent extras: "
@@ -33,8 +33,35 @@ except ImportError as e:  # pragma: no cover
     ) from e
 
 
+def _require_api_token(request: Request) -> None:
+    """Reject requests to sensitive endpoints unless AGENT_API_TOKEN matches.
+    No-op when AGENT_API_TOKEN is unset (dev/paper convenience)."""
+    token = os.environ.get("AGENT_API_TOKEN", "")
+    if not token:
+        return
+    header = request.headers.get("X-API-Token", "")
+    if header != token:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+
 _loop: DecisionLoop | None = None
 _supervisor = None   # agent.graph.supervisor.Supervisor — built lazily after loop warms
+
+
+_ACTION_VERBS = {
+    "halt": {"type": "halt", "params": {}, "summary": "Halt all trading."},
+    "resume": {"type": "resume", "params": {}, "summary": "Resume trading."},
+    "stop trading": {"type": "halt", "params": {}, "summary": "Halt all trading."},
+}
+
+
+def _extract_action(question: str, answer: str) -> dict | None:
+    """Lightweight server-side action extraction. Client grammar is the primary path."""
+    q = question.lower()
+    for trigger, action in _ACTION_VERBS.items():
+        if trigger in q:
+            return action
+    return None
 
 
 def get_loop() -> DecisionLoop:
@@ -72,6 +99,25 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="Alien-Trade Agent", version="0.1.0", lifespan=lifespan)
+
+# Routes reachable without the API token. Everything else (copilot/LLM-cost,
+# twak wallet reads, supervisor/dreamer, telemetry, skill compute) is gated by
+# the middleware below when AGENT_API_TOKEN is set. The primary protection is
+# binding uvicorn to 127.0.0.1 (see alien-api.service); this is defense in depth.
+_PUBLIC_PATHS = frozenset({"/health", "/skill/manifest", "/skill/manifests", "/docs", "/openapi.json"})
+
+
+@app.middleware("http")
+async def _api_token_guard(request: Request, call_next):
+    """Enforce AGENT_API_TOKEN on every non-public route when a token is configured.
+    No-op when the token is unset (local/paper dev) — in that mode the localhost
+    bind is what keeps these endpoints off the public internet."""
+    token = os.environ.get("AGENT_API_TOKEN", "")
+    if token and request.url.path not in _PUBLIC_PATHS:
+        if request.headers.get("X-API-Token", "") != token:
+            from fastapi.responses import JSONResponse
+            return JSONResponse(status_code=401, content={"detail": "Unauthorized"})
+    return await call_next(request)
 
 # TWAK native x402 provider: meters POST /skill/signal_score at $0.01/call.
 # No-op when X402_WALLET_ADDRESS is absent — endpoint stays free.
@@ -132,7 +178,8 @@ def social_ingest() -> dict:
 
 
 @app.post("/cycle")
-def run_cycle() -> dict:
+def run_cycle(request: Request) -> dict:
+    _require_api_token(request)
     loop = get_loop()
     history = loop.feed.next()
     if history is None:
@@ -159,13 +206,15 @@ def status() -> dict:
 
 
 @app.post("/halt")
-def halt() -> dict:
+def halt(request: Request) -> dict:
+    _require_api_token(request)
     get_loop().bridge.set_halted(True)
     return {"halted": True}
 
 
 @app.post("/resume")
-def resume() -> dict:
+def resume(request: Request) -> dict:
+    _require_api_token(request)
     get_loop().bridge.set_halted(False)
     return {"halted": False}
 
@@ -176,13 +225,81 @@ def _second_brain():
     return getattr(get_loop(), "second_brain", None)
 
 
+def _copilot_fallback(question: str) -> str:
+    """Call Claude directly with live trading context when Second Brain is offline."""
+    import os, anthropic as _anthropic
+    loop = get_loop()
+    led = loop.ledger
+    halted = loop.bridge.is_halted()
+    position_str = (
+        f"{led.units:.6f} units @ ${led.avg_entry:.2f} avg entry"
+        if led.units > 0 else "flat (no open position)"
+    )
+    system = (
+        "You are the Co-Pilot for an autonomous BSC trading agent called Alien-Trade. "
+        "You have access to the agent's live state. Answer the operator's question "
+        "concisely and helpfully. Use markdown. Do not make up data not provided below.\n\n"
+        f"## Live Agent State\n"
+        f"- Mode: {loop.mode} | Symbol: {loop.symbol}\n"
+        f"- Cash: ${led.cash:,.2f} | Position: {position_str}\n"
+        f"- Realized PnL: ${led.realized_pnl_total:+,.2f} | Peak equity: ${led.peak_equity:,.2f}\n"
+        f"- Current drawdown: {led.current_drawdown_pct * 100:.2f}%\n"
+        f"- Status: {'HALTED' if halted else 'running'} | Consecutive losses: {led.consecutive_losses}\n"
+    )
+    api_key = os.environ.get("ANTHROPIC_API_KEY", "")
+    if not api_key:
+        return "_Co-Pilot unavailable: ANTHROPIC_API_KEY not set._"
+    client = _anthropic.Anthropic(api_key=api_key)
+    msg = client.messages.create(
+        model="claude-haiku-4-5-20251001",
+        max_tokens=512,
+        system=system,
+        messages=[{"role": "user", "content": question}],
+    )
+    return msg.content[0].text
+
+
+def _copilot_read_loop(question: str) -> dict | None:
+    """Live-read tool-loop brain for the co-pilot. Returns the loop result, or
+    None when no ANTHROPIC_API_KEY (caller falls back to the narrator)."""
+    import os
+    api_key = os.environ.get("ANTHROPIC_API_KEY", "")
+    if not api_key:
+        return None
+    import anthropic
+    from agent.copilot_agent import run_read_loop
+    from agent.skills import SkillHub
+    from agent.twak_cli import TwakCli
+
+    client = anthropic.Anthropic(api_key=api_key)
+    return run_read_loop(
+        question,
+        twak=TwakCli(),
+        skills=SkillHub(),
+        bridge=get_loop().bridge,
+        client=client,
+    )
+
+
 @app.post("/copilot")
 def copilot(body: dict) -> dict:
-    """Grounded Q&A over the Second Brain. POST {"question": "..."}."""
+    """Grounded Q&A over the Second Brain. POST {"question": "..."}.
+    Falls back to live-read tool-loop when SECOND_BRAIN=0 and API key present,
+    then to the narrator."""
+    question = str(body.get("question", ""))
     sb = _second_brain()
     if sb is None:
-        return {"answer": "Second Brain disabled or offline.", "grounded": False}
-    return sb.copilot().ask(str(body.get("question", "")))
+        loop_res = _copilot_read_loop(question)
+        if loop_res is not None:
+            loop_res["action"] = _extract_action(question, loop_res["answer"])
+            return loop_res
+        answer = _copilot_fallback(question)
+        action = _extract_action(question, answer)
+        return {"answer": answer, "grounded": False, "sources": [], "action": action}
+    res = sb.copilot().ask(question)
+    action = _extract_action(question, res.get("answer", ""))
+    res["action"] = action
+    return res
 
 
 @app.post("/research")
@@ -292,6 +409,22 @@ def skill_signal_score(body: dict) -> dict:
                 "signal_strength": "weak", "bars_used": 0}
 
 
+@app.post("/skill/thesis_check")
+def skill_thesis_check(body: dict) -> dict:
+    """CMC Skill — falsification-as-a-service over the thesis ledger.
+
+    POST {"idea_text": "momentum works in uptrends"}
+    Returns {status, verdict, oos_objective, deflated_sharpe, source, matched_claim}.
+    Described in agent/skills/thesis_check_manifest.json.
+    """
+    idea_text = str(body.get("idea_text", ""))
+    try:
+        from agent.skills.thesis_check import ThesisCheckSkill
+        return ThesisCheckSkill().compute(idea_text)
+    except Exception as exc:  # noqa: BLE001
+        return {"status": "untested", "verdict": "unknown", "error": str(exc)}
+
+
 @app.get("/skill/manifest")
 def skill_manifest() -> dict:
     """Return the CMC Skills Marketplace manifest for the Track-2 strategy skill."""
@@ -302,3 +435,73 @@ def skill_manifest() -> dict:
         return json.loads(manifest_path.read_text(encoding="utf-8"))
     except Exception as exc:  # noqa: BLE001
         return {"error": str(exc)}
+
+
+# ── TWAK read endpoints (no signing) ─────────────────────────────────────────
+
+def _get_twak() -> "TwakCli":
+    from agent.twak_cli import TwakCli
+    return TwakCli()
+
+
+@app.get("/twak/portfolio")
+def twak_portfolio() -> dict:
+    """Full multi-chain portfolio from TWAK wallet portfolio command."""
+    try:
+        return {"ok": True, "data": _get_twak().portfolio()}
+    except Exception as e:  # noqa: BLE001
+        return {"ok": False, "error": str(e), "data": {}}
+
+
+@app.get("/twak/risk")
+def twak_risk(asset_id: str) -> dict:
+    """Token rug-risk check. GET /twak/risk?asset_id=c60"""
+    try:
+        return {"ok": True, "data": _get_twak().risk(asset_id)}
+    except Exception as e:  # noqa: BLE001
+        return {"ok": False, "error": str(e), "data": {}}
+
+
+@app.get("/twak/price")
+def twak_price(token: str, chain: str = "bsc") -> dict:
+    """Spot price for a token. GET /twak/price?token=ETH"""
+    try:
+        return {"ok": True, "data": _get_twak().price(token, chain)}
+    except Exception as e:  # noqa: BLE001
+        return {"ok": False, "error": str(e), "data": {}}
+
+
+@app.get("/twak/trending")
+def twak_trending(category: str = "bnb", limit: int = 10) -> dict:
+    """Trending tokens on BNB. GET /twak/trending?category=bnb"""
+    try:
+        return {"ok": True, "data": _get_twak().trending(category=category, limit=limit)}
+    except Exception as e:  # noqa: BLE001
+        return {"ok": False, "error": str(e), "data": []}
+
+
+@app.post("/twak/drain")
+def twak_drain(request: Request) -> dict:
+    """Pull next queued agent_command and execute it. Called by the command worker."""
+    _require_api_token(request)
+    from agent.command_worker import run_one_command
+    try:
+        result = run_one_command(get_loop().bridge)
+        return {"ok": True, "ran": result}
+    except Exception as e:  # noqa: BLE001
+        return {"ok": False, "error": str(e), "ran": False}
+
+
+@app.get("/skill/manifests")
+def skill_manifests() -> list:
+    """Return all published CMC Skills Marketplace manifests (Track-2 score + thesis-check)."""
+    import json
+    from pathlib import Path
+    out = []
+    skills_dir = Path(__file__).parent / "skills"
+    for name in ("skill_manifest.json", "thesis_check_manifest.json"):
+        try:
+            out.append(json.loads((skills_dir / name).read_text(encoding="utf-8")))
+        except Exception:  # noqa: BLE001
+            pass
+    return out

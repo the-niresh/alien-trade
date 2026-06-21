@@ -5,22 +5,52 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
-    "preview": "vite preview"
+    "build": "vite build",
+    "typecheck": "tsc -b",
+    "preview": "vite preview",
+    "test": "vitest run"
   },
   "dependencies": {
+    "@fontsource/chakra-petch": "^5.2.7",
+    "@fontsource/ibm-plex-mono": "^5.2.7",
+    "@fontsource/ibm-plex-sans": "^5.2.8",
+    "@fontsource/inter": "^5.2.8",
+    "@fontsource/space-grotesk": "^5.2.10",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
     "convex": "^1.40.0",
+    "driver.js": "^1.4.0",
     "framer-motion": "^12.40.0",
+    "lightweight-charts": "^5.2.0",
+    "lucide-react": "^1.18.0",
+    "next-themes": "^0.4.6",
+    "qrcode": "^1.5.4",
+    "radix-ui": "^1.6.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "recharts": "^3.8.1"
+    "react-error-boundary": "^6.1.2",
+    "react-markdown": "^10.1.0",
+    "recharts": "^3.8.1",
+    "sonner": "^2.0.7",
+    "tailwind-merge": "^3.6.0"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@tailwindcss/vite": "^4.3.1",
+    "@types/node": "^25.9.3",
+    "@types/qrcode": "^1.5.6",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "^4.3.4",
+    "eslint": "^10.5.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "globals": "^17.6.0",
+    "jsdom": "^29.1.1",
+    "tailwindcss": "^4.3.1",
     "typescript": "^5.6.3",
+    "typescript-eslint": "^8.61.1",
     "vite": "^5.4.11",
-    "vite-plugin-pwa": "^0.21.1"
+    "vite-plugin-pwa": "^0.21.1",
+    "vitest": "^4.1.8"
   }
 }

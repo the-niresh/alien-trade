@@ -90,10 +90,14 @@ CMC_SYMBOL_IDS: dict[str, int] = {
     "ETH":  1027,
     "USDT": 825,
     # Competition-eligible allowlist (see reference-hackathon-rules)
-    "CAKE": 7186,
-    "UNI":  7083,
-    "LINK": 1975,
-    "AAVE": 7278,
+    "CAKE":  7186,
+    "UNI":   7083,
+    "LINK":  1975,
+    "AAVE":  7278,
+    "FLOKI": 10804,   # BSC-native high-beta meme; strong F&G contrarian signal
+    "SHIB":  5994,
+    "AVAX":  5805,
+    "FET":   3773,
 }
 
 # ── Binance ───────────────────────────────────────────────────────────────────
@@ -107,10 +111,14 @@ BINANCE_SYMBOL_PAIRS: dict[str, str] = {
     "BTCB": "BTCUSDT",
     "ETH":  "ETHUSDT",
     # Competition-eligible allowlist (see reference-hackathon-rules)
-    "CAKE": "CAKEUSDT",
-    "UNI":  "UNIUSDT",
-    "LINK": "LINKUSDT",
-    "AAVE": "AAVEUSDT",
+    "CAKE":  "CAKEUSDT",
+    "UNI":   "UNIUSDT",
+    "LINK":  "LINKUSDT",
+    "AAVE":  "AAVEUSDT",
+    "FLOKI": "FLOKIUSDT",
+    "SHIB":  "SHIBUSDT",
+    "AVAX":  "AVAXUSDT",
+    "FET":   "FETUSDT",
 }
 
 BINANCE_INTERVAL_MAP: dict[str, str] = {
@@ -130,6 +138,10 @@ BINANCE_FUTURES_PAIRS: dict[str, str] = {
     "AAVE": "AAVEUSDT",
     "BNB":  "BNBUSDT",
     "BTC":  "BTCUSDT",
+    "FLOKI": "FLOKIUSDT",
+    "SHIB":  "1000SHIBUSDT",  # Binance futures uses 1000x multiplier for micro-price tokens
+    "AVAX":  "AVAXUSDT",
+    "FET":   "FETUSDT",
 }
 
 # Fear & Greed Index (alternative.me) — free, no key, full daily history back to

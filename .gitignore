@@ -52,3 +52,12 @@ index.ts
 
 # TS incremental build cache
 *.tsbuildinfo
+
+# gstack local artifacts (security reports, analytics)
+.gstack/
+.env.local.bak*
+*.bak
+core/test_supervisor.py.skip
+
+# local brainstorm/tooling state
+.superpowers/

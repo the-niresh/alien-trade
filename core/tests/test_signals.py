@@ -194,9 +194,11 @@ class TestS4Onchain:
 
 class TestCombinedStrategy:
     def test_strategy_returns_orders_on_uptrend(self):
-        bars = _bars(80, trend=1.004, vol=0.002)
+        # 160 bars: enough to warm up the 100-bar trend filter (cash-default gate)
+        # and still leave a long confirmed uptrend for the strategy to buy into.
+        bars = _bars(160, trend=1.004, vol=0.002)
         strategy = make_strategy(StrategyParams())
-        orders = [strategy(bars[:i]) for i in range(1, 81)]
+        orders = [strategy(bars[:i]) for i in range(1, len(bars) + 1)]
         buys = [o for o in orders if o and o.side == "buy"]
         assert len(buys) >= 1, "strategy never bought on a strong uptrend"
 

@@ -31,6 +31,10 @@ class WalkForwardConfig:
     train_bars: int = 365    # ~1 year of daily bars per train window
     test_bars: int = 90      # ~3 months per OOS window
     min_train_bars: int = 60 # skip window if train set too short
+    # OOS fills at the NEXT bar's open (realistic 1-bar execution latency) rather than
+    # at the signal bar's close. Defaults True so out-of-sample numbers are honest —
+    # filling at the same close that triggered the signal overstates performance.
+    realistic_fill: bool = True
 
 
 # ── Result ─────────────────────────────────────────────────────────────────────
@@ -82,7 +86,10 @@ def run_walk_forward(
 
         strategy = strategy_factory(best_params)
 
-        kwargs: dict = {"initial_capital": initial_capital}
+        kwargs: dict = {
+            "initial_capital": initial_capital,
+            "next_bar_open_fill": config.realistic_fill,
+        }
         if cost_model is not None:
             kwargs["cost_model"] = cost_model
 
@@ -107,7 +114,8 @@ def _aggregate_oos_metrics(windows: list[BacktestResult], initial_capital: float
     """
     all_returns: list[float] = []
     total_fills = 0
-    winning_fills = 0
+    winning_trades = 0
+    total_trades = 0
     total_volume = 0.0
 
     for w in windows:
@@ -118,6 +126,10 @@ def _aggregate_oos_metrics(windows: list[BacktestResult], initial_capital: float
         total_fills += len(w.fills)
         for f in w.fills:
             total_volume += f.order.size_usd
+        # Win rate is over completed round-trip TRADES, not fills. (Previously
+        # winning_fills was declared but never incremented → oos_win_rate always 0.)
+        total_trades += len(w.trades)
+        winning_trades += sum(1 for t in w.trades if t.pnl_usd > 0)
 
     if not all_returns:
         return {"oos_n_windows": len(windows), "oos_n_fills": 0}
@@ -137,7 +149,7 @@ def _aggregate_oos_metrics(windows: list[BacktestResult], initial_capital: float
     sortino = (mean_ret / downside.std() * np.sqrt(252)) if len(downside) > 0 and downside.std() > 0 else 0.0
     max_dd = float(drawdowns.min())
     calmar = total_return / abs(max_dd) if max_dd != 0 else 0.0
-    win_rate = winning_fills / total_fills if total_fills > 0 else 0.0
+    win_rate = winning_trades / total_trades if total_trades > 0 else 0.0
     avg_equity = float(equity.mean())
     turnover = (total_volume / avg_equity) if avg_equity > 0 else 0.0
 
@@ -150,6 +162,7 @@ def _aggregate_oos_metrics(windows: list[BacktestResult], initial_capital: float
         "oos_win_rate": round(win_rate, 4),
         "oos_turnover": round(turnover, 4),
         "oos_n_fills": total_fills,
+        "oos_n_trades": total_trades,
         "oos_n_windows": len(windows),
     }
 

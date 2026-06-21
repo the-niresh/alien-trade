@@ -19,6 +19,9 @@ PRICING: dict[str, tuple[float, float]] = {   # model -> (input, output)
     "claude-opus-4-8":   (5.00, 25.00),
     "claude-sonnet-4-6": (3.00, 15.00),
     "claude-haiku-4-5":  (1.00,  5.00),
+    # OpenAI fallback models (only billed when Claude is down — see llm.py)
+    "gpt-4o-mini":       (0.15,  0.60),
+    "gpt-4o":            (2.50, 10.00),
 }
 BASELINE_MODEL = "claude-opus-4-8"   # naive = always top tier, no cache
 

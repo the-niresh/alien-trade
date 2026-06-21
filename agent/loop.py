@@ -14,6 +14,7 @@ trail is complete: "if it's not in Convex, it didn't happen."
 """
 from __future__ import annotations
 
+import logging
 import time
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Callable, Optional
@@ -71,6 +72,9 @@ class DecisionLoop:
         activity_trade_usd: float = 15.0,
         notifier: Optional["TelegramNotifier"] = None,
         autopilot_config: Optional["AutopilotConfig"] = None,
+        kol_enabled: bool = False,
+        kol_min_conf: float = 0.5,
+        symbol_scanner=None,
     ):
         self.feed = feed
         self.strategy = strategy            # the SAME risk-wrapped /core strategy
@@ -78,6 +82,7 @@ class DecisionLoop:
         self.bridge = bridge
         self.params = params
         self.symbol = symbol
+        self._scanner = symbol_scanner
         self.mode = mode
         self.notifier = notifier
         # Live mode toggle (the UI writes config.trading_mode). When a factory is
@@ -110,6 +115,7 @@ class DecisionLoop:
         # Passthrough facts the curve can't reveal (autonomy + rule adherence).
         self._cycles_total = 0
         self._blocks_fired = 0
+        self._chain_cycle_n = 0   # cycles since last setup_scorer chain fire
         self._kill_switch_activations = 0
         self._circuit_breaker_activations = 0
         self._peak_exposure_pct = 0.0
@@ -126,6 +132,8 @@ class DecisionLoop:
         self.enforce_activity_floor = enforce_activity_floor
         self.activity_deadline_hour = activity_deadline_hour
         self.activity_trade_usd = activity_trade_usd
+        self.kol_enabled = kol_enabled
+        self._kol_min_conf = kol_min_conf
         self._activity_day = -1
         self._trades_today = 0
 
@@ -150,6 +158,22 @@ class DecisionLoop:
         self._autopilot_state = AutopilotState()
         self._block_entry = False           # set by the recycle gate / cooldown
         self._current_setup_key = ""        # regime+dominant-signal, for human feedback
+        # Live USDT balance cache — updated in _finalise, used in _cap_to_deployable.
+        # Starts at inf so the first cycle isn't blocked before we've fetched the balance.
+        self._cached_usdt_balance: float = float("inf")
+        self._cached_eth_balance: float = 0.0
+        # Consecutive execution failures → escalating Telegram alert after threshold.
+        self._consecutive_exec_failures: int = 0
+        self._EXEC_FAIL_ALERT_THRESHOLD: int = 3   # alert after 3 straight FAILED cycles
+        self._wallet_mismatch_alerted: bool = False  # fire once per session, not every cycle
+        self._position_reconciled: bool = False      # fire once per session after forced close
+        # Time-based sustained-failure watchdog.
+        # Tracks when the first FAILED execution started in the current streak.
+        # Warn at 2h, auto-halt at 4h. Cleared on any confirmed fill.
+        self._first_exec_failure_ms: Optional[int] = None
+        self._sustained_warn_sent: bool = False
+        self._SUSTAINED_WARN_MS: int = 2 * 3_600_000   # 2 hours
+        self._SUSTAINED_HALT_MS: int = 4 * 3_600_000   # 4 hours
         if autopilot_config is not None and autopilot_config.enabled:
             try:
                 saved = self.bridge.get_autopilot_state()
@@ -191,6 +215,21 @@ class DecisionLoop:
         else:
             self.notifier.send(text)
 
+    # ── cross-sectional rotation ─────────────────────────────────────────────
+
+    def _switch_symbol(self, new_symbol: str) -> None:
+        """Rotate to a new symbol.  Only safe to call when FLAT (no open position)."""
+        old = self.symbol
+        self.symbol = new_symbol
+        interval = getattr(self.feed, "interval", "1h")
+        history_bars = getattr(self.feed, "history_bars", 200)
+        from agent.feed import BinanceLiveFeed
+        self.feed = BinanceLiveFeed(new_symbol, interval=interval, history_bars=history_bars)
+        from agent.observability import jlog
+        jlog("symbol_switch", old_symbol=old, new_symbol=new_symbol)
+        if self.notifier:
+            self._notify(f"Rotating {old} → {new_symbol} (scanner)")
+
     # ── one cycle ────────────────────────────────────────────────────────────
 
     def run_cycle(self, history: list[Bar]) -> CycleResult:
@@ -207,6 +246,9 @@ class DecisionLoop:
             self._trades_today = 0
             self._daily_pnl_start = self.ledger.mark(bar.open)
             self._daily_max_dd = 0.0
+
+        # ── Sustained-failure watchdog: halt after 4h of unbroken FAILED execs ─
+        self._check_sustained_failure(bar, cycle_id)
 
         # ── Live trading-mode toggle: align the executor with the UI ─────────
         self._sync_trading_mode(bar, cycle_id)
@@ -251,8 +293,27 @@ class DecisionLoop:
         if ap_intervention is not None:
             return ap_intervention
 
+        # ── KOL auto-trade overlay (live-only; flat→open / held→reduce) ──────
+        kol_intervention = self._apply_kol_signal(bar, cycle_id)
+        if kol_intervention is not None:
+            return kol_intervention
+
         # ── Decision (same code as the sim) ─────────────────────────────────
         order = self.strategy(history)
+
+        # ── Stop-loss telemetry: surface a forced ATR-stop exit on the channel ─
+        stop_exit = getattr(self.strategy, "last_stop_exit", None)
+        if stop_exit:
+            try:
+                from agent.graph.contracts import AgentEvent, KIND_CONTROL
+                self.bridge.emit_event(AgentEvent(
+                    agent="RiskGuard", kind=KIND_CONTROL,
+                    headline=(f"STOP: {stop_exit['kind']} ATR stop hit "
+                              f"@ ${stop_exit['price']:.2f} (stop ${stop_exit['stop']:.2f})"),
+                    cycle_id=cycle_id, detail=stop_exit,
+                ))
+            except Exception:  # noqa: BLE001 — channel write must never crash the loop
+                pass
 
         verdict, reason, execution, trade_id, final_size = "block", "no signal / risk veto", None, None, 0.0
 
@@ -398,6 +459,51 @@ class DecisionLoop:
         )
         return False
 
+    # ── sustained-failure watchdog ────────────────────────────────────────────
+
+    def _check_sustained_failure(self, bar: Bar, cycle_id: str) -> None:
+        """Warn at 2h and auto-halt at 4h if execution has been continuously
+        failing (FAILED status, not regime blocks). Never raises — observability
+        must not crash a cycle. No-op when no failure streak is active."""
+        if self._first_exec_failure_ms is None:
+            return
+        elapsed_ms = bar.timestamp - self._first_exec_failure_ms
+        if elapsed_ms < self._SUSTAINED_WARN_MS:
+            return
+        if not self._sustained_warn_sent:
+            elapsed_h = elapsed_ms / 3_600_000
+            self._notify(
+                f"WARNING: swap execution has been failing for {elapsed_h:.1f}h.\n"
+                f"All orders are BLOCKED until swaps succeed.\n"
+                f"Check: wallet USDT balance, TWAK status, network.\n"
+                f"Wallet manager will analyse and report shortly."
+            )
+            self._sustained_warn_sent = True
+            # Trigger the wallet manager agent in background for diagnosis
+            try:
+                from agent.wallet_manager import run_wallet_check
+                run_wallet_check(
+                    bridge=self.bridge,
+                    notifier=self.notifier,
+                    symbol=self.symbol,
+                    mode=self.mode,
+                )
+            except Exception:  # noqa: BLE001 — manager must never crash the loop
+                pass
+        if elapsed_ms >= self._SUSTAINED_HALT_MS:
+            self._notify(
+                f"AUTO-HALT: swap execution failed for "
+                f"{elapsed_ms / 3_600_000:.1f}h — halting to prevent "
+                f"further failed attempts. Resume from cockpit or Telegram."
+            )
+            self.bridge.set_halted(True)
+            self.bridge.audit("sustained_failure_halt", cycle_id, {
+                "elapsed_ms": elapsed_ms,
+                "first_failure_ms": self._first_exec_failure_ms,
+            }, "error")
+            self._first_exec_failure_ms = None   # don't re-trigger every cycle after halt
+            self._sustained_warn_sent = False
+
     # ── daily summary ─────────────────────────────────────────────────────────
 
     def _send_daily_summary(self, bar: Bar) -> None:
@@ -437,6 +543,18 @@ class DecisionLoop:
         if hour < self.activity_deadline_hour:
             return   # still early in the day — give the strategy room to trade
 
+        from risk.guardrails import check_guardrails, check_max_exposure, RiskConfig
+        cfg = RiskConfig()
+
+        # Allowlist gate FIRST — never fire a compliance swap on a non-eligible token
+        # (e.g. BNB), which would be an unscored / ineligible trade. Applies to buys
+        # AND sells: we should not be trading an off-allowlist symbol at all.
+        if self.symbol not in cfg.token_allowlist:
+            self.bridge.audit("activity_floor_blocked", cycle_id, {
+                "reason": f"symbol {self.symbol!r} not in allowlist", "hour": hour,
+            }, "warn")
+            return
+
         price = bar.close
         held_usd = self.ledger.open_exposure(price)
         if held_usd > self.activity_trade_usd:
@@ -447,6 +565,30 @@ class DecisionLoop:
             side, size = "buy", self.activity_trade_usd       # flat → open tiny
         if size <= 0.0:
             return
+
+        # For the OPENING (buy) path, run the full guardrail chain — daily-loss kill
+        # switch, circuit breaker, position/exposure caps — exactly like every other
+        # trade. Sells only trim/close, which can't breach an exposure or loss cap.
+        if side == "buy":
+            equity = self.ledger.mark(price)
+            daily_loss_usd = self.ledger.daily_loss_usd(price)
+            daily_loss_pct = daily_loss_usd / max(equity, 1.0)
+            gr = check_guardrails(symbol=self.symbol, size_usd=size,
+                                  daily_loss_pct=daily_loss_pct,
+                                  consecutive_losses=self.ledger.consecutive_losses,
+                                  capital=equity, config=cfg)
+            if not gr.allowed:
+                self.bridge.audit("activity_floor_blocked", cycle_id, {
+                    "reason": gr.reason, "hour": hour, "source": "guardrail",
+                }, "warn")
+                return
+            ex = check_max_exposure(open_exposure_usd=held_usd, new_size_usd=size,
+                                    equity=equity, config=cfg)
+            if not ex.allowed:
+                self.bridge.audit("activity_floor_blocked", cycle_id, {
+                    "reason": ex.reason, "hour": hour, "source": "exposure",
+                }, "warn")
+                return
 
         order = Order(side=side, size_usd=size, symbol=self.symbol, timestamp=bar.timestamp)
         execution = self.executor.execute(order, bar, idempotency_key=f"{cycle_id}-activity")
@@ -639,6 +781,89 @@ class DecisionLoop:
             )
         return None
 
+    # ── KOL auto-trade overlay (live-only; deterministic; risk-gated) ─────────
+
+    def _apply_kol_signal(self, bar: "Bar", cycle_id: str):
+        """When enabled, turn a high-conviction eligible KOL reading into a scored
+        order — open_long while flat, reduce while held — gated by check_guardrails.
+        Disabled/offline → None (sim parity). Never raises (Tier-1, off hot path)."""
+        if not getattr(self, "kol_enabled", False):
+            return None
+        try:
+            ss = self.bridge.get_sentiment_state(self.symbol)
+            if not ss:
+                return None
+            from agent.social.schema import SentimentReading
+            from agent.social.kol_intent import kol_intent
+            from risk.guardrails import check_guardrails, check_max_exposure, RiskConfig
+
+            reading = SentimentReading(
+                symbol=self.symbol, score=float(ss.get("score", 0.0)),
+                confidence=float(ss.get("confidence", 0.0)),
+                n_posts=int(ss.get("n_posts", 0)), ts_ms=int(ss.get("ts_ms", bar.timestamp)),
+            )
+            held = self.ledger.open_exposure(bar.close) > 1e-6
+            intent = kol_intent(reading, holds_symbol=held, min_conf=self._kol_min_conf)
+            if intent.action == "none":
+                return None
+
+            from backtest.engine import Order
+            cfg = RiskConfig()
+            equity = self.ledger.mark(bar.close)
+            if intent.action == "open_long":
+                size = min(self.base_position_usd, cfg.max_trade_usd)
+                daily_loss_usd = self.ledger.daily_loss_usd(bar.close)
+                daily_loss_pct = daily_loss_usd / max(equity, 1.0)
+                gr = check_guardrails(symbol=self.symbol, size_usd=size,
+                                      daily_loss_pct=daily_loss_pct,
+                                      consecutive_losses=self.ledger.consecutive_losses,
+                                      capital=equity, config=cfg)
+                if not gr.allowed:
+                    self.bridge.audit("risk_veto", cycle_id,
+                                      {"reason": gr.reason, "source": "kol"}, "warn")
+                    return None
+                ex = check_max_exposure(
+                    open_exposure_usd=self.ledger.open_exposure(bar.close),
+                    new_size_usd=size, equity=equity, config=cfg)
+                if not ex.allowed:
+                    self.bridge.audit("risk_veto", cycle_id,
+                                      {"reason": ex.reason, "source": "kol"}, "warn")
+                    return None
+                order = Order(side="buy", size_usd=size, symbol=self.symbol, timestamp=bar.timestamp)
+            else:  # reduce
+                held_usd = self.ledger.open_exposure(bar.close)
+                if held_usd <= 0.0:
+                    return None
+                order = Order(side="sell", size_usd=held_usd, symbol=self.symbol,
+                              timestamp=bar.timestamp)
+
+            execution = self.executor.execute(order, bar, idempotency_key=f"{cycle_id}-kol")
+            verdict, reason, trade_id = self._handle_execution(
+                execution, bar, cycle_id, "", None)
+            try:
+                from agent.graph.contracts import AgentEvent, KIND_ACTION
+                self.bridge.emit_event(AgentEvent(
+                    agent="Scout", kind=KIND_ACTION,
+                    headline=(f"KOL {intent.action.upper()} {self.symbol}: {intent.reason} "
+                              f"(conf {intent.confidence:.2f})"),
+                    cycle_id=cycle_id,
+                    detail={"action": intent.action, "symbol": self.symbol,
+                            "score": reading.score, "confidence": reading.confidence},
+                    refs=[execution.tx_hash] if execution.tx_hash else [],
+                ))
+            except Exception:  # noqa: BLE001
+                pass
+            return self._finalise(
+                cycle_id, bar, "", verdict, f"kol: {intent.reason}", order, execution,
+                0.0, order.size_usd, trade_id, {}, {}, halted=False)
+        except Exception as e:  # noqa: BLE001 — Tier-1; must never crash a cycle
+            try:
+                self.bridge.audit("error", cycle_id,
+                                  {"error": str(e), "source": "kol_overlay"}, "error")
+            except Exception:  # noqa: BLE001
+                pass
+            return None
+
     def _sync_autopilot_config(self) -> None:
         """Pick up cockpit autopilot changes live (config.autopilot). Offline /
         unseeded → bridge returns None → keep the env-built config. Fail-safe:
@@ -665,23 +890,46 @@ class DecisionLoop:
         except Exception:  # noqa: BLE001 — a bad cockpit value must not crash the loop
             pass
 
+    _MIN_TRADE_USD: float = 0.05   # below this, BSC DEX fees eat the trade
+
     def _cap_to_deployable(self, order: Order, bar: Bar, cycle_id: str) -> Optional[Order]:
-        """Shrink a buy to the capital above the protected floor (capital ratchet).
-        Banked gains are never re-risked. Sells pass through untouched. Returns None
-        if there is no deployable capital left for a buy."""
-        cfg = self._autopilot_config
-        if cfg is None or not cfg.enabled or order.side != "buy":
+        """Shrink a buy to the capital above the protected floor (capital ratchet) AND
+        the live USDT balance. Banked gains are never re-risked. Sells pass through
+        untouched. Returns None if there is no deployable capital left for a buy."""
+        if order.side != "buy":
             return order
-        from risk.autopilot import deployable_capital
-        cap = deployable_capital(self.ledger.mark(bar.close), self._autopilot_state)
-        if cap <= self._exposure_epsilon:
-            self.bridge.audit("autopilot", cycle_id, {
-                "action": "block_buy", "reason": "no capital above protected floor",
-                "protected_floor": round(self._autopilot_state.protected_floor, 2),
-            }, "info")
-            return None
-        if order.size_usd > cap:
-            return Order(side="buy", size_usd=cap, symbol=order.symbol,
+
+        size = order.size_usd
+
+        # 1. Autopilot floor cap (paper-ledger equity above the protected floor)
+        cfg = self._autopilot_config
+        if cfg is not None and cfg.enabled:
+            from risk.autopilot import deployable_capital
+            cap = deployable_capital(self.ledger.mark(bar.close), self._autopilot_state)
+            if cap <= self._exposure_epsilon:
+                self.bridge.audit("autopilot", cycle_id, {
+                    "action": "block_buy", "reason": "no capital above protected floor",
+                    "protected_floor": round(self._autopilot_state.protected_floor, 2),
+                }, "info")
+                return None
+            size = min(size, cap)
+
+        # 2. Live wallet balance cap — auto-size to what USDT is actually available.
+        #    Prevents silent TWAK failures when the static position size exceeds balance.
+        usdt_avail = self._cached_usdt_balance
+        if usdt_avail != float("inf"):          # inf = not yet fetched, skip cap
+            spendable = usdt_avail * 0.95       # leave 5% buffer for price movement
+            if spendable < self._MIN_TRADE_USD:
+                self.bridge.audit("autopilot", cycle_id, {
+                    "action": "block_buy",
+                    "reason": f"insufficient USDT: ${usdt_avail:.4f} < min ${self._MIN_TRADE_USD}",
+                    "usdt_balance": round(usdt_avail, 6),
+                }, "warn")
+                return None
+            size = min(size, spendable)
+
+        if size != order.size_usd:
+            return Order(side="buy", size_usd=size, symbol=order.symbol,
                          timestamp=order.timestamp)
         return order
 
@@ -750,6 +998,10 @@ class DecisionLoop:
                           regime: str = "", breakdown: Optional[dict] = None):
         if execution.is_fill and execution.fill is not None:
             realized = self.ledger.apply(execution.fill)
+            # Clear failure streak on any confirmed fill
+            self._consecutive_exec_failures = 0
+            self._first_exec_failure_ms = None
+            self._sustained_warn_sent = False
             self._trades_today += 1   # counts toward the >= 1 trade/day floor
             # Accumulate for the live scorecard, pairing trades like the backtest.
             self._fills.append(execution.fill)
@@ -796,6 +1048,22 @@ class DecisionLoop:
                              {"side": execution.order.side, "size_usd": execution.order.size_usd,
                               "fill_price": execution.fill.fill_price, "tx_hash": execution.tx_hash,
                               "realized_pnl": realized}, "info")
+            # ── Immediate trade alert (Telegram) ────────────────────────────
+            # Fire the moment the fill is confirmed — users must not wait for the
+            # next cycle log line to know a trade happened.
+            side_emoji = "🟢" if execution.order.side == "buy" else "🔴"
+            tx_url = (f"https://bscscan.com/tx/{execution.tx_hash}"
+                      if execution.tx_hash else "")
+            pnl_str = (f"  PnL: ${realized:+.2f}" if execution.order.side == "sell" else "")
+            alert = (
+                f"{side_emoji} TRADE FILLED — {execution.order.side.upper()} "
+                f"{execution.order.symbol}\n"
+                f"  Size: ${execution.order.size_usd:.2f}  @  ${execution.fill.fill_price:,.2f}\n"
+                f"  Mode: {self.mode}{pnl_str}\n"
+                + (f"  TX: {tx_url}" if tx_url else "")
+            )
+            self._notify(alert)
+
             # Hermes write-side: a sell closes/reduces a position → reflect on the
             # realized outcome. (Buys open positions — no outcome to learn yet.)
             if (self.reflection_writer is not None
@@ -817,6 +1085,18 @@ class DecisionLoop:
             return "block", execution.reason, None
         if execution.status == FAILED:
             self.bridge.audit("error", cycle_id, {"reason": execution.reason}, "error")
+            self._consecutive_exec_failures += 1
+            if self._first_exec_failure_ms is None:
+                self._first_exec_failure_ms = int(execution.order.timestamp)
+            if self._consecutive_exec_failures >= self._EXEC_FAIL_ALERT_THRESHOLD:
+                self._notify(
+                    f"ALERT: {self._consecutive_exec_failures} consecutive swap failures.\n"
+                    f"Last error: {execution.reason}\n"
+                    f"Order: {execution.order.side.upper()} "
+                    f"${execution.order.size_usd:.2f} {execution.order.symbol}\n"
+                    f"Mode: {self.mode} — check wallet balance and TWAK status."
+                )
+                self._consecutive_exec_failures = 0   # reset so we don't spam
             return "block", execution.reason, None
         return "reduce", execution.reason, None
 
@@ -840,6 +1120,154 @@ class DecisionLoop:
             current_drawdown_pct=drawdown,
             peak_equity_usd=self.ledger.peak_equity,
             circuit_breaker_active=circuit,
+        )
+        self.bridge.update_positions(
+            symbol=self.symbol,
+            quantity=self.ledger.units,
+            avg_entry_price=self.ledger.avg_entry,
+            current_price=bar.close,
+            mode=self.mode,
+            updated_ms=bar.timestamp,
+        )
+
+        # ── Wallet balance snapshot (best-effort, never block the cycle) ────
+        try:
+            from agent.twak_cli import TwakCli
+            _twak = TwakCli()
+            _chain = self._chain if hasattr(self, "_chain") else "bsc"
+            _bal = _twak.balance(_chain)
+            _tokens = {t["symbol"]: float(t["balance"]) for t in _bal.get("tokens", [])}
+            _bnb = float(_bal.get("available", 0))
+
+            def _live_price(sym: str, fallback: float) -> float:
+                # Live USD price via twak; fall back to `fallback` on any failure.
+                try:
+                    return float(_twak.price(sym, _chain).get("priceUsd") or 0) or fallback
+                except Exception:
+                    return fallback
+
+            _eth_price = _live_price("ETH", bar.close if self.symbol == "ETH" else 0.0)
+            _bnb_price = _live_price("BNB", bar.close if self.symbol == "BNB" else 650.0)
+            _usdt = _tokens.get("USDT", 0.0)
+            _eth = _tokens.get("ETH", 0.0)
+            self._cached_usdt_balance = _usdt   # used by _cap_to_deployable next cycle
+            self._cached_eth_balance = _eth
+
+            # Wallet mismatch watchdog: real ETH held but paper ledger thinks flat.
+            # Fires once per session so the operator knows the agent lost sync.
+            _ledger_units = self.ledger.units
+            _eth_mismatch = (
+                self.symbol == "ETH"
+                and _eth > 1e-6                         # real wallet has ETH
+                and _ledger_units < 1e-9                # but ledger says flat
+            )
+            if _eth_mismatch and not self._wallet_mismatch_alerted:
+                _eth_usd = round(_eth * _eth_price, 2)
+                self._notify(
+                    f"WALLET MISMATCH: real wallet holds {_eth:.6f} ETH (≈${_eth_usd}) "
+                    f"but paper ledger shows FLAT.\n"
+                    f"USDT remaining: ${_usdt:.4f}\n"
+                    f"This means a swap executed on-chain without a confirmed tx hash.\n"
+                    f"Action: to realign, restart the agent. The ETH is safe in your wallet."
+                )
+                self._wallet_mismatch_alerted = True
+
+            # Position reconciliation: ledger says long, wallet says flat.
+            # Triggered when the operator manually converts/sells outside the agent.
+            # Cascade-closes the position: zeroes the ledger, writes a trade row +
+            # ledger row, pushes quantity=0 to Convex so the portfolio clears.
+            _sym_token = self.symbol.split("/")[0]   # "ETH" from "ETH" or "ETH/USDT"
+            _on_chain_held = _tokens.get(_sym_token, 0.0)
+            _position_gone = (
+                _ledger_units > 1e-6
+                and _on_chain_held < _ledger_units * 0.05   # <5% of expected → gone
+            )
+            if _position_gone and not self._position_reconciled:
+                _exit_price = _eth_price if _sym_token == "ETH" else bar.close
+                _exit_size_usd = _ledger_units * _exit_price
+                _realized = (_exit_price - self.ledger.avg_entry) * _ledger_units
+
+                # Force-close the in-memory ledger (mirrors what apply() does on sell)
+                self.ledger.cash += _exit_size_usd
+                self.ledger.realized_pnl_total += _realized
+                if _realized < 0:
+                    self.ledger.consecutive_losses += 1
+                else:
+                    self.ledger.consecutive_losses = 0
+                self.ledger.units = 0.0
+                self.ledger.avg_entry = 0.0
+                self._entry_fill = None   # drop the unpaired entry fill
+
+                # Write a reconciliation trade row so Recent Trades shows the close
+                _trade_id = self.bridge.record_trade(
+                    symbol=self.symbol,
+                    side="sell",
+                    size_usd=round(_exit_size_usd, 4),
+                    fill_price=round(_exit_price, 4),
+                    fee_usd=0.0,
+                    gas_usd=0.0,
+                    slippage_usd=0.0,
+                    mode=self.mode,
+                    tx_hash=None,
+                    timestamp_ms=bar.timestamp,
+                )
+                # Write ledger row so the PnL chart reflects the close
+                if _trade_id:
+                    self.bridge.append_ledger(
+                        trade_id=_trade_id,
+                        realized_pnl_usd=round(_realized, 4),
+                        cumulative_pnl_usd=round(self.ledger.cumulative_pnl(bar.close), 4),
+                        cumulative_fees_usd=round(self.ledger.cumulative_fees, 4),
+                        cumulative_gas_usd=round(self.ledger.cumulative_gas, 4),
+                        peak_equity_usd=round(self.ledger.peak_equity, 4),
+                        current_drawdown_pct=round(self.ledger.drawdown_pct(bar.close), 6),
+                        timestamp_ms=bar.timestamp,
+                    )
+                # Zero the Convex position row → portfolio `open` query filters it out
+                self.bridge.update_positions(
+                    symbol=self.symbol,
+                    quantity=0.0,
+                    avg_entry_price=0.0,
+                    current_price=_exit_price,
+                    mode=self.mode,
+                    updated_ms=bar.timestamp,
+                )
+                self._position_reconciled = True
+                self._notify(
+                    f"⚡ POSITION RECONCILED — external close detected\n"
+                    f"  Ledger held {_ledger_units:.6f} {_sym_token} "
+                    f"(on-chain: {_on_chain_held:.6f})\n"
+                    f"  Est. exit @ ${_exit_price:,.2f}  |  PnL: ${_realized:+.2f}\n"
+                    f"  Portfolio position cleared automatically."
+                )
+
+            # All non-zero token balances (including BNB) for dynamic Convert UI
+            _all_tokens = [
+                {"symbol": t["symbol"], "balance": float(t["balance"])}
+                for t in _bal.get("tokens", [])
+                if float(t.get("balance", 0)) > 0
+            ]
+            if _bnb > 0:
+                _all_tokens = [t for t in _all_tokens if t["symbol"] != "BNB"]
+                _all_tokens.append({"symbol": "BNB", "balance": _bnb})
+
+            self.bridge.update_wallet_state(
+                address=_bal.get("address", ""),
+                usdt=_usdt,
+                eth=_eth,
+                bnb=_bnb,
+                bnb_usd=round(_bnb * _bnb_price, 4),
+                total_usd=round(_usdt + _eth * _eth_price + _bnb * _bnb_price, 2),
+                updated_ms=bar.timestamp,
+                tokens=_all_tokens if _all_tokens else None,
+            )
+        except Exception as exc:  # wallet balance is display-only; never block the trade cycle
+            logging.getLogger(__name__).warning("wallet_state snapshot failed: %r", exc)
+
+        self.bridge.append_price_tick(
+            symbol=self.symbol,
+            price=bar.close,
+            timestamp_ms=bar.timestamp,
         )
 
         # ── Accumulate the scorecard series + push the live objective ────────
@@ -929,6 +1357,25 @@ class DecisionLoop:
         from agent.observability import jlog
         while True:
             try:
+                # Refresh KOL sentiment before each cycle when enabled (off hot path,
+                # failure-isolated inside run_live_ingest).
+                if getattr(self, "kol_enabled", False):
+                    try:
+                        from agent.social.live import run_live_ingest
+                        run_live_ingest(self.bridge)
+                    except Exception:  # noqa: BLE001
+                        pass
+                # Cross-sectional rotation: when flat, pick the strongest signal
+                # across the full universe instead of being locked to one symbol.
+                if self._scanner is not None:
+                    try:
+                        flat = self.ledger.open_exposure <= self._exposure_epsilon
+                        if flat:
+                            best = self._scanner.best_symbol()
+                            if best and best != self.symbol:
+                                self._switch_symbol(best)
+                    except Exception:  # noqa: BLE001 — never block the trade cycle
+                        pass
                 history = self.feed.next()
                 if history:
                     res = self.run_cycle(history)
@@ -937,6 +1384,17 @@ class DecisionLoop:
                          drawdown=round(res.drawdown_pct, 4),
                          filled=bool(res.execution and res.execution.is_fill),
                          halted=res.halted, reason=res.reason)
+                    # Neural Mesh chain trace — fire setup_scorer every N cycles
+                    self._chain_cycle_n += 1
+                    try:
+                        from agent.agents.loop_chain import (
+                            fire_setup_scorer, CHAIN_EVERY_N_CYCLES,
+                        )
+                        if self._chain_cycle_n >= CHAIN_EVERY_N_CYCLES:
+                            self._chain_cycle_n = 0
+                            fire_setup_scorer(self.bridge, self.symbol, res.cycle_id)
+                    except Exception:  # noqa: BLE001 — chain trace is telemetry only
+                        pass
             except Exception as e:  # noqa: BLE001 — shadow-run resilience
                 jlog("cycle_error", level="error",
                      error=str(e), error_type=type(e).__name__)
@@ -945,6 +1403,47 @@ class DecisionLoop:
                                       {"error": str(e), "error_type": type(e).__name__}, "error")
                 except Exception:  # noqa: BLE001
                     pass
+            # Spawned-agent tick — run due agents + deliver push (off scored path)
+            try:
+                from agent.agents.schedule import due_agents, deliver_push
+                from agent.agents.runner import run_agent
+                from agent.push import build_push_payload
+                import os
+                _vapid = {"private_key": os.environ.get("VAPID_PRIVATE_KEY", ""),
+                          "subject": os.environ.get("VAPID_SUBJECT", "mailto:noreply@alien-trade.app")}
+                _agents = list_active(self.bridge)
+                for _a in due_agents(_agents, _now):
+                    _res = run_agent(_a, twak=self.twak, skills=getattr(self, "skills", None),
+                                     bridge=self.bridge, client=getattr(self, "anthropic_client", None))
+                    if _res["ok"] and (_a.get("notify_policy") or {}).get("webpush", True):
+                        deliver_push(self.bridge,
+                                     build_push_payload(_a["name"], _res["summary"], url="/agents"),
+                                     vapid=_vapid)
+            except Exception:  # noqa: BLE001 — never break the loop
+                pass
+            # Watchdog sweep — flag stalled spawned agents (off scored path)
+            try:
+                from agent.agents.watchdog import find_stalled
+                from agent.agents.registry import list_active
+                from agent.graph.contracts import AgentEvent, KIND_CONTROL
+                _now = int(time.time() * 1000)
+                for _a in find_stalled(list_active(self.bridge), _now):
+                    self.bridge.emit_event(AgentEvent(
+                        agent="WalletManager", kind=KIND_CONTROL,
+                        headline=f"Agent '{_a['name']}' is stalled — no activity",
+                        detail="{}", refs=[],
+                    ))
+            except Exception:  # noqa: BLE001 — never break the loop
+                pass
+            # Drain operator commands (convert, withdraw, etc) — off scored path.
+            # Drain up to 5 per cycle so a burst doesn't block the next cycle.
+            try:
+                from agent.command_worker import run_one_command
+                for _ in range(5):
+                    if not run_one_command(self.bridge):
+                        break
+            except Exception:  # noqa: BLE001 — command drain must never crash the loop
+                pass
             time.sleep(cycle_seconds)
 
 

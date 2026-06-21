@@ -1,133 +1,267 @@
 import { useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
+import { SponsorCard } from "../components/SponsorCard";
 import { cn } from "@/lib/utils";
+import { Brain, Cpu, BookOpen, FlaskConical, MessageSquare, ChevronRight } from "lucide-react";
 
-const SPONSOR_COLOR: Record<string, string> = {
-  CMC:     "text-yellow-400 border-yellow-400/25 bg-yellow-400/10",
-  TWAK:    "text-purple-400 border-purple-400/25 bg-purple-400/10",
-  BNB_SDK: "text-amber-400 border-amber-400/25 bg-amber-400/10",
-};
+// ── helpers ───────────────────────────────────────────────────────────────────
 
-const SPONSOR_DESC: Record<string, string> = {
-  CMC:     "CoinMarketCap — market data + x402 micropayments",
-  TWAK:    "Trust Wallet Agent Kit — self-custody signing",
-  BNB_SDK: "BNB AI Agent SDK — on-chain execution",
-};
-
-function SponsorBadge({ sponsor }: { sponsor: string }) {
+function StatusPill({ status }: { status: "ON" | "OFF" | "ARMED" }) {
+  const styles: Record<typeof status, string> = {
+    ON:    "bg-green/10 text-green border-green/25",
+    OFF:   "bg-muted-fg/10 text-muted-fg border-muted-fg/20",
+    ARMED: "bg-yellow/10 text-yellow border-yellow/25",
+  };
   return (
-    <span className={cn(
-      "font-mono text-[9px] border rounded px-1.5 py-0.5 uppercase tracking-widest flex-shrink-0",
-      SPONSOR_COLOR[sponsor] ?? "text-muted-foreground border-muted-foreground/20 bg-muted-foreground/10",
-    )}>{sponsor}</span>
+    <span
+      className={cn(
+        "font-mono text-[9px] font-bold tracking-[0.18em] uppercase px-1.5 py-0.5 rounded border",
+        styles[status],
+      )}
+    >
+      {status}
+    </span>
   );
 }
 
-type SummaryRow = {
-  sponsor: string;
-  calls: number;
-  errors: number;
-  cost_usd_total: number;
-  last_ts: number | null;
-};
+function FlowArrow() {
+  return (
+    <ChevronRight className="w-4 h-4 text-muted-fg/50 flex-shrink-0 max-sm:hidden" />
+  );
+}
 
-type FeedRow = {
-  _id: string;
-  sponsor: string;
-  kind: string;
-  endpoint: string;
-  status: string;
-  latency_ms: number;
-  cost_usd?: number;
-  tx_hash?: string;
-  ts_ms: number;
-};
+// ── intelligence flow node ─────────────────────────────────────────────────────
+
+interface FlowNodeProps {
+  icon: React.ComponentType<{ className?: string }>;
+  title: string;
+  sub: string;
+  status: "ON" | "OFF" | "ARMED";
+  detail?: string;
+  iconColor?: string;
+}
+
+function FlowNode({ icon: Icon, title, sub, status, detail, iconColor = "text-green" }: FlowNodeProps) {
+  return (
+    <div className="panel flex-1 min-w-0 px-3 py-2.5 flex flex-col gap-1.5">
+      <div className="flex items-center justify-between gap-2">
+        <Icon className={cn("w-4 h-4 flex-shrink-0", iconColor)} />
+        <StatusPill status={status} />
+      </div>
+      <div>
+        <p className="font-display font-bold text-[13px] text-text leading-tight">{title}</p>
+        <p className="font-mono text-[10px] text-muted-fg mt-0.5">{sub}</p>
+      </div>
+      {detail && (
+        <p className="font-mono text-[10px] text-muted-fg/70 truncate">{detail}</p>
+      )}
+    </div>
+  );
+}
+
+// ── main view ─────────────────────────────────────────────────────────────────
 
 export function IntelligenceView() {
-  const rows    = (useQuery(api.sponsorCalls.recent, { limit: 50 }) ?? []) as FeedRow[];
-  const summary = (useQuery(api.sponsorCalls.summary) ?? []) as SummaryRow[];
+  const agentEvents  = useQuery(api.agentEvents.recent, { limit: 100 }) ?? [];
+  const auditRows    = useQuery(api.audit.recent,        { limit: 200 }) ?? [];
+  const tradeRows    = useQuery(api.trades.recent,       { limit: 200 }) ?? [];
+  const reflections  = useQuery(api.reflections.recent,  { limit: 1  }) ?? [];
+
+  // CMC call count — filter by agent/headline containing CMC or price signal
+  const cmcCallCount = agentEvents.filter(
+    (e) =>
+      e.agent?.toLowerCase().includes("cmc") ||
+      e.agent?.toLowerCase().includes("price") ||
+      (typeof e.headline === "string" && e.headline.toLowerCase().includes("cmc")) ||
+      (typeof e.headline === "string" && e.headline.toLowerCase().includes("price feed")),
+  ).length;
+
+  // TWAK swap count — audit rows with event_type containing "swap"
+  const swapCount = auditRows.filter((r) =>
+    r.event_type?.toLowerCase().includes("swap"),
+  ).length;
+
+  // Trades on-chain count
+  const tradesCount = tradeRows.length;
+
+  // Reflection / Hermes
+  const lastReflection = reflections[0];
+  const hermesOn = reflections.length > 0;
+
+  // AutoResearch — agentEvents from a research agent
+  const researchEvents = agentEvents.filter(
+    (e) =>
+      e.agent?.toLowerCase().includes("research") ||
+      (typeof e.headline === "string" && e.headline.toLowerCase().includes("research digest")),
+  );
+  const autoResearchOn = researchEvents.length > 0;
+  const lastResearch   = researchEvents[0];
 
   return (
     <div className="max-w-[960px] mx-auto space-y-5">
-      {/* Header */}
+      {/* ── Page header ───────────────────────────────────────────────────── */}
       <div className="mb-1">
-        <div className="font-mono text-[10px] text-muted-foreground tracking-[0.22em] uppercase mb-1.5 flex items-center gap-2">
-          <span className="h-[2px] w-4 bg-green-400 rounded-full inline-block" />
+        <div className="font-mono text-[10px] text-muted-fg tracking-[0.22em] uppercase mb-1.5 flex items-center gap-2">
+          <span
+            className="h-[2px] w-4 bg-green rounded-full inline-block"
+            style={{ boxShadow: "0 0 6px var(--green)" }}
+          />
           Sponsor Stack &amp; Intelligence
         </div>
-        <h1 className="text-[22px] font-bold tracking-wide">Intelligence</h1>
+        <h1 className="font-display text-[22px] font-bold tracking-wide text-text">
+          Intelligence
+        </h1>
       </div>
 
-      {/* Summary cards */}
-      <div className="grid grid-cols-3 gap-3 max-sm:grid-cols-1">
-        {summary.map((s) => (
-          <div key={s.sponsor} className="rounded-lg border border-border/40 bg-card/60 p-4 flex flex-col gap-2">
-            <div className="flex items-center justify-between gap-2">
-              <SponsorBadge sponsor={s.sponsor} />
-              {s.errors > 0 && (
-                <span className="font-mono text-[9px] text-red-400 border border-red-400/25 bg-red-400/10 rounded px-1.5 py-0.5">{s.errors} err</span>
-              )}
-            </div>
-            <p className="font-mono text-[10px] text-muted-foreground/70 leading-snug">{SPONSOR_DESC[s.sponsor]}</p>
-            <div className="flex items-center justify-between border-t border-border/30 pt-2">
-              <span className="font-mono text-[10px] text-muted-foreground/50 uppercase tracking-widest">Calls</span>
-              <span className="font-mono text-[13px] font-bold">{s.calls}</span>
-            </div>
-            {s.cost_usd_total > 0 && (
-              <div className="flex items-center justify-between">
-                <span className="font-mono text-[10px] text-muted-foreground/50 uppercase tracking-widest">x402 spent</span>
-                <span className="font-mono text-[13px] font-bold text-yellow-400">${s.cost_usd_total.toFixed(4)}</span>
-              </div>
-            )}
-            {s.last_ts != null && (
-              <p className="font-mono text-[10px] text-muted-foreground/40">
-                Last: {new Date(s.last_ts).toLocaleTimeString()}
-              </p>
-            )}
-          </div>
-        ))}
+      {/* ── Architecture banner ───────────────────────────────────────────── */}
+      <div
+        className="panel rounded-xl px-4 py-3.5 flex items-start gap-3 !border-green/25 !bg-green/5"
+        style={{ boxShadow: "0 0 32px color-mix(in oklab, var(--green) 8%, transparent)" }}
+      >
+        <div
+          className="mt-0.5 p-2 rounded-lg bg-green/10 border border-green/20 flex-shrink-0"
+          style={{ boxShadow: "0 0 12px color-mix(in oklab, var(--green) 22%, transparent)" }}
+        >
+          <Cpu className="w-4 h-4 text-green" />
+        </div>
+        <div>
+          <p className="font-display font-bold text-[14px] text-green tracking-wide">
+            LLM is OFF the trade hot path
+          </p>
+          <p className="font-mono text-[12px] text-muted-fg mt-0.5 leading-relaxed">
+            Decisions are deterministic Python in{" "}
+            <span className="text-text font-bold">/core</span>. The LLM learns{" "}
+            <em>around</em> the trade — regime narrative, post-trade reflection, market
+            research — all async, zero latency impact.
+          </p>
+        </div>
       </div>
 
-      {/* Live feed */}
+      {/* ── Sponsor stack ────────────────────────────────────────────────── */}
       <div>
-        <div className="font-mono text-[10px] text-muted-foreground uppercase tracking-widest mb-3">Live Sponsor Feed</div>
-        {rows.length === 0 ? (
-          <div className="rounded-lg border border-border/40 bg-card/60 p-8 text-center font-mono text-[12px] text-muted-foreground/60">
-            No sponsor calls yet — agent idle.
-          </div>
-        ) : (
-          <div className="flex flex-col gap-1.5">
-            {rows.map((r) => (
-              <div key={r._id} className="rounded-lg border border-border/40 bg-card/60 px-3 py-2.5 flex items-center justify-between gap-3">
-                <div className="flex items-center gap-2 min-w-0">
-                  <SponsorBadge sponsor={r.sponsor} />
-                  <span className="font-mono text-[11px] truncate">{r.endpoint}</span>
-                  <span className="font-mono text-[9px] text-muted-foreground/60 border border-border/30 rounded px-1.5 py-0.5">{r.kind}</span>
-                </div>
-                <div className="flex items-center gap-3 flex-shrink-0">
-                  {r.cost_usd != null && r.cost_usd > 0 && (
-                    <span className="font-mono text-[10px] text-yellow-400">${r.cost_usd.toFixed(4)}</span>
-                  )}
-                  <span className="font-mono text-[10px] text-muted-foreground/50">{r.latency_ms.toFixed(0)}ms</span>
-                  {r.tx_hash && (
-                    <a
-                      href={`https://bscscan.com/tx/${r.tx_hash}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="font-mono text-[9px] text-purple-400 border border-purple-400/25 rounded px-1.5 py-0.5 hover:bg-purple-400/10 transition-colors"
-                    >bscscan ↗</a>
-                  )}
-                  <span className={cn(
-                    "font-mono text-[9px] border rounded px-1.5 py-0.5 uppercase tracking-widest",
-                    r.status === "ok"
-                      ? "text-green-400 border-green-400/25 bg-green-400/10"
-                      : "text-red-400 border-red-400/25 bg-red-400/10",
-                  )}>{r.status}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
+        <div className="panel-label mb-3" style={{ "--tick": "var(--green)" } as React.CSSProperties}>
+          Sponsor Stack
+        </div>
+        <div className="grid grid-cols-3 gap-3 max-[780px]:grid-cols-1 max-[1100px]:grid-cols-2">
+          {/* CMC */}
+          <SponsorCard
+            sponsor="CMC"
+            name="CoinMarketCap Agent Hub"
+            tagline="Live market data for every decision"
+            integrations={[
+              "OHLCV price feed → momentum + trend signals",
+              "Funding rate + Open Interest → contrarian entries",
+              "Social sentiment → rate-of-change attention signal",
+              "On-chain exchange flow → accumulation detection",
+              "x402 micropayments on every data call (EIP-3009)",
+            ]}
+            stat={{ label: "CMC calls (recent)", value: cmcCallCount }}
+          />
+
+          {/* TWAK */}
+          <SponsorCard
+            sponsor="TWAK"
+            name="Trust Wallet Agent Kit"
+            tagline="Self-custody signing — keys never in code"
+            integrations={[
+              "ALL swap signing via `twak swap` (zero raw keys)",
+              "Rug-check gate before every swap",
+              "Portfolio refresh from on-chain wallet",
+              "Real-time price feed for mark-to-market",
+              "ERC-20 approve/revoke for safe DeFi interactions",
+              "x402 EIP-3009 gasless payment signing",
+            ]}
+            stat={{ label: "Swaps executed", value: swapCount }}
+          />
+
+          {/* BNB SDK */}
+          <SponsorCard
+            sponsor="BNB_SDK"
+            name="BNB AI Agent SDK"
+            tagline="On-chain execution on BNB Smart Chain"
+            integrations={[
+              "PancakeSwap spot swaps via `twak swap`",
+              "Slippage simulation before every send",
+              "Gas estimation → real cost model in backtest",
+              "On-chain receipt as ledger source of truth",
+              "BSC token registry: ETH/CAKE/UNI/LINK/AAVE",
+            ]}
+            stat={{ label: "Trades on-chain", value: tradesCount }}
+          />
+        </div>
+      </div>
+
+      {/* ── Intelligence layer flow ───────────────────────────────────────── */}
+      <div>
+        <div className="panel-label mb-3" style={{ "--tick": "var(--purple)" } as React.CSSProperties}>
+          Intelligence Layer
+        </div>
+
+        <div className="flex items-stretch gap-2 max-sm:flex-col">
+          <FlowNode
+            icon={Cpu}
+            title="Deterministic Core"
+            sub="Signal engine (Python/core)"
+            status="ON"
+            iconColor="text-green"
+            detail="Always on — every buy/sell decision"
+          />
+          <FlowArrow />
+
+          <FlowNode
+            icon={Brain}
+            title="Hermes Reflection"
+            sub="Post-trade self-learning"
+            status={hermesOn ? "ON" : "OFF"}
+            iconColor={hermesOn ? "text-cyan" : "text-muted-fg"}
+            detail={
+              lastReflection
+                ? `Last: ${lastReflection.lesson?.slice(0, 48) ?? "—"}…`
+                : "No reflections yet"
+            }
+          />
+          <FlowArrow />
+
+          <FlowNode
+            icon={FlaskConical}
+            title="AutoResearch"
+            sub="Karpathy-style market digest"
+            status={autoResearchOn ? "ON" : "OFF"}
+            iconColor={autoResearchOn ? "text-cyan" : "text-muted-fg"}
+            detail={
+              lastResearch
+                ? (typeof lastResearch.headline === "string"
+                    ? lastResearch.headline.slice(0, 48)
+                    : "Research event logged")
+                : "No research events yet"
+            }
+          />
+          <FlowArrow />
+
+          <FlowNode
+            icon={BookOpen}
+            title="Second Brain"
+            sub="Upstash Vector memory"
+            status="ARMED"
+            iconColor="text-yellow"
+            detail="Armed — activates post-trade"
+          />
+          <FlowArrow />
+
+          <FlowNode
+            icon={MessageSquare}
+            title="Co-Pilot"
+            sub="LLM narrative layer"
+            status="ON"
+            iconColor="text-green"
+            detail="Regime reports + user chat"
+          />
+        </div>
+
+        <p className="font-mono text-[10px] text-muted-fg/60 mt-3 text-center leading-relaxed">
+          Intelligence layer runs async, off the trade hot path.
+          The deterministic core makes every buy/sell decision.
+        </p>
       </div>
     </div>
   );

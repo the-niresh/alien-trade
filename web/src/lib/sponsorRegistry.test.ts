@@ -1,4 +1,4 @@
-import { test, expect } from "vitest";
+import { describe, test, expect } from "vitest";
 import {
   SPONSOR_CONTROLS,
   getControlsByTransport,

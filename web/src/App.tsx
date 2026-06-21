@@ -37,12 +37,18 @@ import type { Id } from "../../convex/_generated/dataModel";
 
 // ── Pairing wizard ────────────────────────────────────────────────────────────
 
+// Demo control token surfaced on the pair card so judges can operate the live
+// agent in one tap. Public by design (the BUIDL is public) — rotate CONTROL_TOKEN
+// after the Jun 28 judging window to retire it.
+const JUDGE_TOKEN = "e9a31a371233f14be95a35801fd98e6661c8a3e872c05675";
+
 type PairingStep = "welcome" | "pair" | "done";
 
-function PairingScreen({ onPaired }: { onPaired: (t: string) => void }) {
-  const [step, setStep]     = useState<PairingStep>("welcome");
-  const [val, setVal]       = useState("");
-  const [error, setError]   = useState("");
+function PairingScreen({ onPaired, onClose }: { onPaired: (t: string) => void; onClose: () => void }) {
+  const [step, setStep]       = useState<PairingStep>("welcome");
+  const [val, setVal]         = useState("");
+  const [error, setError]     = useState("");
+  const [judgePrefill, setJudgePrefill] = useState(false);
   const [checking, setChecking] = useState(false);
   const canvasRef           = useRef<HTMLCanvasElement>(null);
   const pingMutation        = useMutation(api.ping.ping);
@@ -57,8 +63,8 @@ function PairingScreen({ onPaired }: { onPaired: (t: string) => void }) {
     }
   }, [step]);
 
-  const submit = async () => {
-    const t = val.trim();
+  const submit = async (override?: string) => {
+    const t = (override ?? val).trim();
     if (!t) return;
     setError("");
     setChecking(true);
@@ -77,7 +83,7 @@ function PairingScreen({ onPaired }: { onPaired: (t: string) => void }) {
 
   return (
     <div className="grid place-items-center h-screen overflow-auto">
-      <Dialog open modal>
+      <Dialog open modal onOpenChange={(o) => { if (!o) onClose(); }}>
         <DialogContent
           className="panel border-border max-w-sm w-[90%] rounded-2xl p-0 overflow-hidden"
           onInteractOutside={(e) => e.preventDefault()}
@@ -138,10 +144,10 @@ function PairingScreen({ onPaired }: { onPaired: (t: string) => void }) {
                 <div className="flex-1 h-px bg-border" />
               </div>
               <Input
-                type="password"
+                type={judgePrefill ? "text" : "password"}
                 value={val}
                 placeholder="control token"
-                onChange={(e) => { setVal(e.target.value); setError(""); }}
+                onChange={(e) => { setVal(e.target.value); setJudgePrefill(false); setError(""); }}
                 onKeyDown={(e) => e.key === "Enter" && submit()}
                 className="w-full bg-bg border-border text-text font-mono text-[13px] focus-visible:ring-green mb-2"
               />
@@ -150,10 +156,23 @@ function PairingScreen({ onPaired }: { onPaired: (t: string) => void }) {
               )}
               <Button
                 className="w-full bg-green text-[#04140c] font-bold hover:bg-green/80 cursor-pointer disabled:opacity-50"
-                onClick={submit}
+                onClick={() => submit()}
                 disabled={!val.trim() || checking}
               >
-                {checking ? "Verifying…" : "Pair cockpit →"}
+                {checking ? "Verifying…" : judgePrefill ? "Connect →" : "Pair cockpit →"}
+              </Button>
+
+              <div className="flex items-center gap-2 my-3">
+                <div className="flex-1 h-px bg-border" />
+                <span className="text-[11px] text-muted-fg">judges</span>
+                <div className="flex-1 h-px bg-border" />
+              </div>
+              <Button
+                className="w-full bg-yellow/10 border border-yellow/30 text-yellow font-bold hover:bg-yellow/20 cursor-pointer disabled:opacity-50"
+                onClick={() => { setVal(JUDGE_TOKEN); setJudgePrefill(true); setError(""); }}
+                disabled={checking}
+              >
+                Pair as Judge (demo) →
               </Button>
             </div>
           )}
@@ -189,6 +208,25 @@ function pathToView(): View {
   return (VALID_VIEWS.has(seg) ? seg : "overview") as View;
 }
 
+// ── Read-only observer banner ───────────────────────────────────────────────────
+// Shown when the cockpit is open without a control token (judges / public demo).
+// Live data is fully visible; every state-changing action is server-rejected.
+function ReadOnlyBanner({ onPair }: { onPair: () => void }) {
+  return (
+    <div className="flex items-center justify-center gap-3 bg-yellow/10 border-b border-yellow/25 px-4 py-1.5 text-center">
+      <span className="font-mono text-[11px] text-yellow tracking-[0.04em]">
+        👁 READ-ONLY · observing the live autonomous agent — controls are disabled
+      </span>
+      <button
+        onClick={onPair}
+        className="font-mono text-[11px] text-yellow/80 hover:text-yellow underline underline-offset-2 cursor-pointer"
+      >
+        pair to operate
+      </button>
+    </div>
+  );
+}
+
 // ── Main app ──────────────────────────────────────────────────────────────────
 
 export default function App() {
@@ -202,7 +240,13 @@ export default function App() {
   const setControl  = (a: Parameters<typeof _setControl>[0]) => _setControl(withToken(a));
 
   const [token, setTokenState]              = useState<string | null>(loadToken());
+  // Read-only observer mode: no control token, controls disabled. Enter via the
+  // landing-page link or a shareable `?readonly` URL (handy for judges/demos).
+  const [readOnly, setReadOnly]             = useState<boolean>(
+    () => new URLSearchParams(location.search).get("readonly") !== null,
+  );
   const [showPairing, setShowPairing]       = useState(false);
+  const [pairFrom, setPairFrom]             = useState<"landing" | "readonly">("landing");
   const [view, setViewState]                = useState<View>(pathToView);
   const setView = (v: View) => { history.pushState(null, "", "/" + v); setViewState(v); };
   const [copilotOpen, setCopilotOpen]       = useState(false);
@@ -267,6 +311,10 @@ export default function App() {
   }, []);
 
   const onKillToggle = () => {
+    if (!token) {
+      toast.message("Read-only mode", { description: "Controls are disabled for observers. Pair the cockpit to operate." });
+      return;
+    }
     const willHalt = !halted;
     setHalted({ halted: willHalt });
     setControl({ trading_halted: willHalt, updated_by: "user" });
@@ -277,7 +325,7 @@ export default function App() {
     }
   };
 
-  if (!token) {
+  if (!token && !readOnly) {
     const hasDeepLink = location.hash.startsWith("#t=");
     if (hasDeepLink || showPairing) {
       return (
@@ -290,10 +338,24 @@ export default function App() {
               setTimeout(startTour, 600);
             }
           }}
+          onClose={() => {
+            setShowPairing(false);
+            // Strip any leftover #t= deep-link so the gate doesn't re-open pairing.
+            if (location.hash.startsWith("#t=")) {
+              history.replaceState(null, "", location.pathname + location.search);
+            }
+            // Return to wherever pairing was launched from.
+            if (pairFrom === "readonly") setReadOnly(true);
+          }}
         />
       );
     }
-    return <LandingView onConnect={() => setShowPairing(true)} />;
+    return (
+      <LandingView
+        onConnect={() => { setPairFrom("landing"); setShowPairing(true); }}
+        onObserve={() => setReadOnly(true)}
+      />
+    );
   }
 
   const renderView = () => {
@@ -337,6 +399,7 @@ export default function App() {
         halted={halted}
         mode={mode}
         onKillToggle={onKillToggle}
+        banner={!token ? <ReadOnlyBanner onPair={() => { setPairFrom("readonly"); setReadOnly(false); setShowPairing(true); }} /> : undefined}
         selectedSymbol={selectedSymbol}
         onSymbolChange={setSelectedSymbol}
         onDeposit={() => setFundingOpen(true)}

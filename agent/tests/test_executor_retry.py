@@ -25,6 +25,12 @@ def _quote(impact=0.001):
 
 
 def _make_executor(twak, dry_run=False):
+    # The buy pre-flight reads the wallet balance and USDT allowance before the
+    # swap; give the mock sane defaults so these tests exercise the retry ladder
+    # rather than tripping the balance/approval guards.
+    twak.balance.return_value = {"tokens": [{"symbol": "USDT", "balance": "1000"}]}
+    twak.wallet_address.return_value = "0xWa11et00000000000000000000000000000000"
+    twak.erc20_allowance.return_value = {"allowance": str(10**30)}
     return TwakSwapExecutor(
         twak,
         RiskConfig(max_slippage_pct=0.02),

@@ -9,7 +9,7 @@ const SPONSOR_COLOR: Record<string, string> = {
   agent: "text-muted-fg border-border bg-elevated",
 };
 
-export function LandingView({ onConnect }: { onConnect: () => void }) {
+export function LandingView({ onConnect, onObserve }: { onConnect: () => void; onObserve?: () => void }) {
   const operatorControls = SPONSOR_CONTROLS.filter((c) => c.transport !== "policy");
   return (
     <div className="min-h-screen bg-[#000000] flex flex-col">
@@ -37,6 +37,14 @@ export function LandingView({ onConnect }: { onConnect: () => void }) {
         >
           Connect Agent →
         </Button>
+        {onObserve && (
+          <button
+            onClick={onObserve}
+            className="mt-4 font-mono text-[12px] text-muted-fg hover:text-text underline underline-offset-4 cursor-pointer transition-colors"
+          >
+            or observe live (read-only) →
+          </button>
+        )}
       </div>
 
       {/* Capabilities */}

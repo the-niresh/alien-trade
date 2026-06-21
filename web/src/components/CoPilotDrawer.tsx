@@ -57,6 +57,11 @@ const SPAWN_NAME_SUGGESTIONS: Record<string, string[]> = {
   moonshot: ["Moon Hunter", "Alpha Seeker", "Gem Finder", "Diamond Hands"],
 };
 
+// Opening line of the guided spawn wizard. Single source of truth — referenced
+// by every entry point that starts a spawn (quick-action card, "+ New", picker).
+const SPAWN_INTRO =
+  "Let's spin up a new agent. It'll trade on your behalf — starting in **paper mode** until you take it live.\n\nWhat style of trader should it be?";
+
 const QUICK_ACTIONS = [
   {
     id: "spawn",
@@ -534,23 +539,28 @@ export function CoPilotDrawer({
     if (!isOpen) { setSpawnKicked(false); return; }
     if (!startSpawn || spawnKicked) return;
     setSpawnKicked(true);
-    void (async () => {
-      const id = await createThread(withToken({ title: "New agent" }));
-      setActiveThreadId(id);
-      await addMessage(withToken({
-        role: "assistant",
-        content: "Let's spin up a new agent. It'll trade on your behalf — starting in **paper mode** until you take it live.\n\nWhat style of trader should it be?",
-        sources_json: "[]",
-        thread_id: id,
-      }));
-      setSpawnStep("awaiting_style");
-    })();
+    void beginSpawn();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, startSpawn, spawnKicked]);
 
   const openAgentPicker = () => {
     setActiveThreadId(null);
     setShowAgentPicker(true);
+  };
+
+  // Start the guided spawn wizard in a fresh thread. Used by the "+ New" entry
+  // point and the agent picker's "Spawn a new agent" option.
+  const beginSpawn = async () => {
+    setShowAgentPicker(false);
+    const id = await createThread(withToken({ title: "New agent" }));
+    setActiveThreadId(id);
+    await addMessage(withToken({
+      role: "assistant",
+      content: SPAWN_INTRO,
+      sources_json: "[]",
+      thread_id: id,
+    }));
+    setSpawnStep("awaiting_style");
   };
 
   const handleDeleteThread = async (id: Id<"copilot_threads">) => {
@@ -609,7 +619,7 @@ export function CoPilotDrawer({
       void addMessage(
         withToken({
           role: "assistant",
-          content: "Let's spin up a new agent. It'll trade on your behalf — starting in **paper mode** until you take it live.\n\nWhat style of trader should it be?",
+          content: SPAWN_INTRO,
           sources_json: "[]",
           thread_id: displayThreadId ?? undefined,
         }),
@@ -842,9 +852,23 @@ export function CoPilotDrawer({
             {/* Agent picker — shown when + is clicked */}
             {showAgentPicker && (
               <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2">
-                <p className="font-mono text-[11px] text-muted-fg pb-1">Which agent do you want to chat with?</p>
-                {spawnedAgents.length === 0 && (
-                  <p className="font-mono text-[11px] text-muted-fg/60">No agents yet — spawn one first.</p>
+                <p className="font-mono text-[11px] text-muted-fg pb-1">Chat with an agent — or spawn a new one.</p>
+                <button
+                  onClick={() => void beginSpawn()}
+                  className="w-full text-left border border-purple/40 bg-purple/5 rounded-xl px-3 py-2.5 hover:bg-purple/10 hover:border-purple/60 transition-colors cursor-pointer"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <span className="w-[26px] h-[26px] rounded-lg bg-purple/15 border border-purple/30 flex items-center justify-center flex-shrink-0">
+                      <Plus className="w-3.5 h-3.5 text-purple" />
+                    </span>
+                    <div className="min-w-0">
+                      <p className="font-mono text-[12px] text-text font-bold">Spawn a new agent</p>
+                      <p className="font-mono text-[10px] text-muted-fg mt-0.5">Guided setup — starts in paper mode</p>
+                    </div>
+                  </div>
+                </button>
+                {spawnedAgents.length > 0 && (
+                  <p className="font-mono text-[10px] text-muted-fg/50 uppercase tracking-widest pt-1.5">Existing agents</p>
                 )}
                 {spawnedAgents.map((agent) => (
                   <button

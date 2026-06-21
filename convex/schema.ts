@@ -405,6 +405,23 @@ export default defineSchema({
   })
     .index("by_endpoint", ["endpoint"]),
 
+  // Sponsor telemetry — every CMC/TWAK/BNB_SDK call the agent makes.
+  // Fire-and-forget appends from agent/sponsor_telemetry.py; UI reads for Intelligence tab.
+  sponsor_calls: defineTable({
+    sponsor:    v.union(v.literal("CMC"), v.literal("TWAK"), v.literal("BNB_SDK")),
+    kind:       v.string(),
+    endpoint:   v.string(),
+    status:     v.union(v.literal("ok"), v.literal("error")),
+    latency_ms: v.number(),
+    cost_usd:   v.optional(v.number()),
+    tx_hash:    v.optional(v.string()),
+    cycle_id:   v.optional(v.string()),
+    detail:     v.string(),
+    ts_ms:      v.number(),
+  })
+    .index("by_ts",      ["ts_ms"])
+    .index("by_sponsor", ["sponsor"]),
+
   // Live positions singleton — agent writes each cycle; cockpit reads for the
   // holdings panel. One row per symbol, keyed by symbol string. Flat = quantity 0.
   positions: defineTable({
@@ -454,5 +471,6 @@ export default defineSchema({
     bnb_usd: v.number(),
     total_usd: v.number(),
     updated_ms: v.number(),
+    tokens: v.optional(v.array(v.object({ symbol: v.string(), balance: v.number() }))),
   }),
 });

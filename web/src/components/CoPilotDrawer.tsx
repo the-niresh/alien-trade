@@ -479,7 +479,13 @@ export function CoPilotDrawer({
     void (async () => {
       const id = await createThread(withToken({ title: "New agent" }));
       setActiveThreadId(id);
-      handleQuickAction("spawn");
+      await addMessage(withToken({
+        role: "assistant",
+        content: "Sure! What should this agent focus on? Describe its job in one or two sentences.",
+        sources_json: "[]",
+        thread_id: id,
+      }));
+      setSpawnStep("awaiting_task");
     })();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, startSpawn, spawnKicked]);

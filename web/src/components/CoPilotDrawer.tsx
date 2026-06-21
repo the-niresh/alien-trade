@@ -648,6 +648,7 @@ export function CoPilotDrawer({
       await addMessage(withToken({ role: "user", content: name, sources_json: "[]", thread_id: displayThreadId ?? undefined }));
       const config = SPAWN_STYLES_CONFIG.find((s) => s.id === spawnStyleId);
       await createAgent({ name, goal: spawnGoal || spawnStyle || "General trading agent" });
+      if (displayThreadId) void renameThread(withToken({ id: displayThreadId, title: name }));
       await addMessage(withToken({
         role: "assistant",
         content: `✅ **${name}** is spinning up in **paper mode**${config ? ` — ${config.desc.toLowerCase()}` : ""}.\n\n${config ? `*${config.detail}*\n\n` : ""}Find it in the Agents tab. I'll start scanning and report back.`,

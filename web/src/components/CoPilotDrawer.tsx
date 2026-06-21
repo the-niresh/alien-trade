@@ -15,6 +15,44 @@ import {
   type ProposedAction,
 } from "@/lib/concierge";
 
+const SPAWN_STYLES_CONFIG = [
+  {
+    id: "conservative",
+    emoji: "🛡️",
+    label: "Conservative",
+    desc: "Capital-first, tight stops",
+    goal: "Protect capital and grow steadily with tight risk controls and small position sizes",
+  },
+  {
+    id: "balanced",
+    emoji: "⚖️",
+    label: "Balanced",
+    desc: "Momentum-driven, moderate risk",
+    goal: "Capture momentum moves with moderate position sizing and balanced risk-reward",
+  },
+  {
+    id: "aggressive",
+    emoji: "🚀",
+    label: "Aggressive",
+    desc: "Trend-following, bigger swings",
+    goal: "Maximize trend capture with wider stops, larger positions, and higher upside targets",
+  },
+  {
+    id: "moonshot",
+    emoji: "🌙",
+    label: "Moonshot",
+    desc: "High conviction, hold for target",
+    goal: "Find high-conviction setups and hold for full price targets with minimal interference",
+  },
+] as const;
+
+const SPAWN_NAME_SUGGESTIONS: Record<string, string[]> = {
+  conservative: ["Capital Guard", "Safe Start", "Cautious Sniper", "Steady Eddie"],
+  balanced: ["Steady Momentum", "Balance Bot", "Mid-Range", "Equilibrium"],
+  aggressive: ["Volume Chaser", "Trend Runner", "Momentum Max", "Alpha Hunter"],
+  moonshot: ["Moon Hunter", "Alpha Seeker", "Gem Finder", "Diamond Hands"],
+};
+
 const QUICK_ACTIONS = [
   {
     id: "spawn",
@@ -391,9 +429,11 @@ export function CoPilotDrawer({
   const enqueueCommand = useMutation(api.agentCommands.enqueue);
 
   // Spawn state machine
-  type SpawnStep = "idle" | "awaiting_task" | "awaiting_name";
+  type SpawnStep = "idle" | "awaiting_style" | "awaiting_name";
   const [spawnStep, setSpawnStep] = useState<SpawnStep>("idle");
-  const [spawnTaskSummary, setSpawnTask] = useState("");
+  const [spawnStyle, setSpawnStyle] = useState("");
+  const [spawnStyleId, setSpawnStyleId] = useState("");
+  const [spawnGoal, setSpawnGoal] = useState("");
   const createAgent = useMutation(api.spawnedAgents.create);
 
   // Sync initialThreadId prop changes
@@ -410,7 +450,9 @@ export function CoPilotDrawer({
   useEffect(() => {
     if (!isOpen) {
       setSpawnStep("idle");
-      setSpawnTask("");
+      setSpawnStyle("");
+      setSpawnStyleId("");
+      setSpawnGoal("");
     } else {
       setTimeout(() => inputRef.current?.focus(), 80);
       stickRef.current = true;
@@ -481,11 +523,11 @@ export function CoPilotDrawer({
       setActiveThreadId(id);
       await addMessage(withToken({
         role: "assistant",
-        content: "Sure! What should this agent focus on? Describe its job in one or two sentences.",
+        content: "Let's set up your new agent! What style of trader should it be?",
         sources_json: "[]",
         thread_id: id,
       }));
-      setSpawnStep("awaiting_task");
+      setSpawnStep("awaiting_style");
     })();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, startSpawn, spawnKicked]);
@@ -547,17 +589,16 @@ export function CoPilotDrawer({
 
   const handleQuickAction = (id: QuickActionId) => {
     if (id === "spawn") {
-      // Start spawn flow — inject a Co-Pilot message asking for the task
+      // Start spawn flow — guided wizard
       void addMessage(
         withToken({
           role: "assistant",
-          content:
-            "Sure! What should this agent focus on? Describe its job in one or two sentences.",
+          content: "Let's set up your new agent! What style of trader should it be?",
           sources_json: "[]",
           thread_id: displayThreadId ?? undefined,
         }),
       );
-      setSpawnStep("awaiting_task");
+      setSpawnStep("awaiting_style");
     } else if (id === "custom") {
       inputRef.current?.focus();
     } else {
@@ -570,60 +611,46 @@ export function CoPilotDrawer({
     }
   };
 
+  // Called when the user picks a style chip (or types a style freeform).
+  const pickStyle = async (label: string, goal: string, styleId = "") => {
+    setSpawnStyle(label);
+    setSpawnStyleId(styleId);
+    setSpawnGoal(goal);
+    await addMessage(withToken({ role: "user", content: label, sources_json: "[]", thread_id: displayThreadId ?? undefined }));
+    await addMessage(withToken({
+      role: "assistant",
+      content: `**${label}** — got it. ${goal}.\n\nWhat should we name this agent?`,
+      sources_json: "[]",
+      thread_id: displayThreadId ?? undefined,
+    }));
+    setSpawnStep("awaiting_name");
+  };
+
   const send = async (q = question) => {
     const text = q.trim();
     if (!text || loading || isStreaming) return;
     setQuestion("");
 
     // ── Spawn state machine ────────────────────────────────────
-    if (spawnStep === "awaiting_task") {
-      setSpawnTask(text);
-      await addMessage(
-        withToken({
-          role: "user",
-          content: text,
-          sources_json: "[]",
-          thread_id: displayThreadId ?? undefined,
-        }),
-      );
-      await addMessage(
-        withToken({
-          role: "assistant",
-          content: "Got it. What should I call this agent?",
-          sources_json: "[]",
-          thread_id: displayThreadId ?? undefined,
-        }),
-      );
-      setSpawnStep("awaiting_name");
+    if (spawnStep === "awaiting_style") {
+      await pickStyle(text, text);
       return;
     }
 
     if (spawnStep === "awaiting_name") {
       const name = text;
-      await addMessage(
-        withToken({
-          role: "user",
-          content: name,
-          sources_json: "[]",
-          thread_id: displayThreadId ?? undefined,
-        }),
-      );
-      // Create the agent record
-      await createAgent({
-        name,
-        task_summary: spawnTaskSummary,
+      await addMessage(withToken({ role: "user", content: name, sources_json: "[]", thread_id: displayThreadId ?? undefined }));
+      await createAgent({ name, goal: spawnGoal || spawnStyle || "General trading agent" });
+      await addMessage(withToken({
+        role: "assistant",
+        content: `✅ **${name}** is live${spawnStyle ? ` in **${spawnStyle}** mode` : ""}. Find it in the Agents tab — I'll get to work.`,
+        sources_json: "[]",
         thread_id: displayThreadId ?? undefined,
-      });
-      await addMessage(
-        withToken({
-          role: "assistant",
-          content: `✅ **${name}** is live. I'll work on: "${spawnTaskSummary}". You can find this agent in the Agents tab and your sidebar.`,
-          sources_json: "[]",
-          thread_id: displayThreadId ?? undefined,
-        }),
-      );
+      }));
       setSpawnStep("idle");
-      setSpawnTask("");
+      setSpawnStyle("");
+      setSpawnStyleId("");
+      setSpawnGoal("");
       return;
     }
     // ── End spawn state machine ────────────────────────────────
@@ -869,6 +896,40 @@ export function CoPilotDrawer({
 
             {/* Chips + Input */}
             <div className="px-4 py-3 border-t border-border/40 space-y-2">
+              {/* Style picker chips */}
+              {spawnStep === "awaiting_style" && (
+                <div className="space-y-1.5 mb-1">
+                  {SPAWN_STYLES_CONFIG.map((s) => (
+                    <button
+                      key={s.id}
+                      onClick={() => void pickStyle(`${s.emoji} ${s.label}`, s.goal, s.id)}
+                      className="w-full text-left border border-border/60 rounded-xl px-3 py-2.5 hover:bg-elevated/70 hover:border-purple/40 transition-colors cursor-pointer"
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <span className="text-[16px]">{s.emoji}</span>
+                        <div>
+                          <p className="font-mono text-[12px] text-text font-bold">{s.label}</p>
+                          <p className="font-mono text-[10px] text-muted-fg mt-0.5">{s.desc}</p>
+                        </div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+              {/* Name suggestion chips */}
+              {spawnStep === "awaiting_name" && (
+                <div className="flex flex-wrap gap-1.5 mb-1">
+                  {(SPAWN_NAME_SUGGESTIONS[spawnStyleId] ?? []).map((name) => (
+                    <button
+                      key={name}
+                      onClick={() => void send(name)}
+                      className="border border-border/60 rounded-lg px-2.5 py-1.5 font-mono text-[11px] text-text hover:bg-elevated/70 hover:border-purple/40 transition-colors cursor-pointer"
+                    >
+                      {name}
+                    </button>
+                  ))}
+                </div>
+              )}
               {msgs.length === 0 && !pendingAction && spawnStep === "idle" && (
                 <div className="space-y-1.5 mb-2">
                   {QUICK_ACTIONS.map((card) => (
@@ -898,7 +959,11 @@ export function CoPilotDrawer({
                 <input
                   ref={inputRef}
                   className="flex-1 bg-bg border border-border/60 rounded-lg px-3 py-2 font-mono text-[12px] text-text placeholder:text-muted-fg focus:outline-none focus:border-purple/50"
-                  placeholder="Ask the agent… (⌃↵ to send)"
+                  placeholder={
+                    spawnStep === "awaiting_style" ? "Or describe the style in your own words…" :
+                    spawnStep === "awaiting_name" ? "Or type a custom name…" :
+                    "Ask the agent… (⌃↵ to send)"
+                  }
                   value={question}
                   onChange={(e) => setQuestion(e.target.value)}
                   onKeyDown={(e) => {

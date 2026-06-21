@@ -418,6 +418,7 @@ export function CoPilotDrawer({
     displayThreadId ? threadMsgs : defaultTabHidden ? [] : flatMsgs
   ) as MsgDoc[];
 
+  const spawnedAgents = useQuery(api.spawnedAgents.list) ?? [];
   const addMessage = useMutation(api.copilot.addMessage);
   const createThread = useMutation(api.copilot.createThread);
   const renameThread = useMutation(api.copilot.renameThread);
@@ -439,6 +440,7 @@ export function CoPilotDrawer({
   const [spawnStyleId, setSpawnStyleId] = useState("");
   const [spawnGoal, setSpawnGoal] = useState("");
   const createAgent = useMutation(api.spawnedAgents.create);
+  const [showAgentPicker, setShowAgentPicker] = useState(false);
 
   // Sync initialThreadId prop changes
   useEffect(() => {
@@ -457,6 +459,7 @@ export function CoPilotDrawer({
       setSpawnStyle("");
       setSpawnStyleId("");
       setSpawnGoal("");
+      setShowAgentPicker(false);
     } else {
       setTimeout(() => inputRef.current?.focus(), 80);
       stickRef.current = true;
@@ -536,9 +539,9 @@ export function CoPilotDrawer({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, startSpawn, spawnKicked]);
 
-  const newThread = async () => {
-    const id = await createThread(withToken({ title: "New Chat" }));
-    setActiveThreadId(id);
+  const openAgentPicker = () => {
+    setActiveThreadId(null);
+    setShowAgentPicker(true);
   };
 
   const handleDeleteThread = async (id: Id<"copilot_threads">) => {
@@ -663,8 +666,6 @@ export function CoPilotDrawer({
     }
     // ── End spawn state machine ────────────────────────────────
 
-    const isFirstInThread = displayThreadId !== null && threadMsgs.length === 0;
-
     setLoading(true);
     try {
       const intent = parseIntent(text);
@@ -677,12 +678,6 @@ export function CoPilotDrawer({
             thread_id: displayThreadId ?? undefined,
           }),
         );
-        // For intent path, fall back to truncating the user message as the name
-        if (isFirstInThread && displayThreadId) {
-          const normalized = text.replace(/\s+/g, " ").trim();
-          const title = normalized.length > 48 ? normalized.slice(0, 48) + "…" : normalized;
-          void renameThread(withToken({ id: displayThreadId, title }));
-        }
         setPendingAction(intent);
         setLoading(false);
         return;
@@ -696,7 +691,6 @@ export function CoPilotDrawer({
         }),
       );
 
-      // Start streaming — pass thread context so the action can rename via LLM
       const streamId = await startStream(
         withToken({ thread_id: displayThreadId ?? undefined }),
       );
@@ -704,7 +698,6 @@ export function CoPilotDrawer({
         question: text,
         stream_id: streamId,
         thread_id: displayThreadId ?? undefined,
-        is_first_in_thread: isFirstInThread || undefined,
       }));
     } finally {
       if (mountedRef.current) {
@@ -792,9 +785,10 @@ export function CoPilotDrawer({
                     <span className="absolute bottom-0 left-0 right-0 h-[2px] bg-purple rounded-t-full" />
                   )}
                   <button
-                    onClick={() =>
-                      setActiveThreadId(t._id as Id<"copilot_threads">)
-                    }
+                    onClick={() => {
+                      setActiveThreadId(t._id as Id<"copilot_threads">);
+                      setShowAgentPicker(false);
+                    }}
                     className="px-3 font-mono text-[11px] truncate max-w-[110px] cursor-pointer h-full flex items-center justify-center text-center"
                   >
                     {t.title}
@@ -814,9 +808,9 @@ export function CoPilotDrawer({
                 </div>
               ))}
 
-              {/* New thread */}
+              {/* New thread — opens agent picker */}
               <button
-                onClick={newThread}
+                onClick={openAgentPicker}
                 className="flex-shrink-0 w-9 h-10 flex items-center justify-center text-muted-fg hover:text-text hover:bg-elevated/50 transition-colors cursor-pointer border-r border-border/40"
                 aria-label="New thread"
               >
@@ -836,11 +830,41 @@ export function CoPilotDrawer({
 
           {/* Chat area — full width below the tab bar */}
           <div className="flex-1 flex flex-col overflow-hidden">
+            {/* Agent picker — shown when + is clicked */}
+            {showAgentPicker && (
+              <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2">
+                <p className="font-mono text-[11px] text-muted-fg pb-1">Which agent do you want to chat with?</p>
+                {spawnedAgents.length === 0 && (
+                  <p className="font-mono text-[11px] text-muted-fg/60">No agents yet — spawn one first.</p>
+                )}
+                {spawnedAgents.map((agent) => (
+                  <button
+                    key={agent._id}
+                    onClick={async () => {
+                      const id = await createThread(withToken({ title: agent.name }));
+                      setActiveThreadId(id);
+                      setShowAgentPicker(false);
+                    }}
+                    className="w-full text-left border border-border/60 rounded-xl px-3 py-2.5 hover:bg-elevated/70 hover:border-purple/40 transition-colors cursor-pointer"
+                  >
+                    <div className="flex items-start gap-2.5">
+                      <span className="text-[15px] mt-0.5">🤖</span>
+                      <div className="min-w-0">
+                        <p className="font-mono text-[12px] text-text font-bold truncate">{agent.name}</p>
+                        {agent.goal && (
+                          <p className="font-mono text-[10px] text-muted-fg mt-0.5 truncate">{agent.goal}</p>
+                        )}
+                      </div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
             {/* Messages */}
             <div
               ref={scrollRef}
               onScroll={handleScroll}
-              className="flex-1 overflow-y-auto px-4 py-3 space-y-3"
+              className={cn("flex-1 overflow-y-auto px-4 py-3 space-y-3", showAgentPicker && "hidden")}
               style={{ scrollBehavior: "auto" }}
             >
               <AnimatePresence initial={false}>
@@ -903,7 +927,7 @@ export function CoPilotDrawer({
             </div>
 
             {/* Chips + Input */}
-            <div className="px-4 py-3 border-t border-border/40 space-y-2">
+            {!showAgentPicker && <div className="px-4 py-3 border-t border-border/40 space-y-2">
               {/* Style picker chips */}
               {spawnStep === "awaiting_style" && (
                 <div className="space-y-1.5 mb-1">
@@ -997,7 +1021,7 @@ export function CoPilotDrawer({
                   →
                 </Button>
               </div>
-            </div>
+            </div>}
           </div>
         </div>
       </SheetContent>

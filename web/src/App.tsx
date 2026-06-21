@@ -210,6 +210,7 @@ export default function App() {
   const [fundingOpen, setFundingOpen]       = useState(false);
   const [copilotPrefill, setCopilotPrefill] = useState("");
   const [copilotThreadId, setCopilotThreadId] = useState<string | undefined>(undefined);
+  const [copilotStartSpawn, setCopilotStartSpawn] = useState(false);
   const [selectedSymbol, setSelectedSymbol] = useState("ETH");
 
   const halted = config?.halted ?? false;
@@ -324,6 +325,7 @@ export default function App() {
           }}
           onNewAgent={() => {
             setCopilotThreadId(undefined);
+            setCopilotStartSpawn(true);
             setCopilotOpen(true);
           }}
         />
@@ -376,9 +378,10 @@ export default function App() {
 
       <CoPilotDrawer
         isOpen={copilotOpen}
-        onClose={() => { setCopilotOpen(false); setCopilotPrefill(""); setCopilotThreadId(undefined); }}
+        onClose={() => { setCopilotOpen(false); setCopilotPrefill(""); setCopilotThreadId(undefined); setCopilotStartSpawn(false); }}
         prefill={copilotPrefill}
         initialThreadId={copilotThreadId as Id<"copilot_threads"> | undefined}
+        startSpawn={copilotStartSpawn}
       />
 
       <Toaster position="bottom-right" theme="dark" richColors />

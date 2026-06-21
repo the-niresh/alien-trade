@@ -62,6 +62,28 @@ export const updateActivity = mutation({
   },
 });
 
+export const update = mutation({
+  args: {
+    id:            v.id("spawned_agents"),
+    goal:          v.optional(v.string()),
+    allowed_tools: v.optional(v.array(v.string())),
+    trigger:       v.optional(v.object({ kind: v.string(), spec: v.string() })),
+    mode:          v.optional(v.union(v.literal("paper"), v.literal("live"))),
+    notify_policy: v.optional(v.object({ webpush: v.boolean(), severity_min: v.string() })),
+  },
+  handler: async (ctx, args) => {
+    const { id, ...rest } = args;
+    const patch: Record<string, unknown> = {};
+    for (const [k, val] of Object.entries(rest)) {
+      if (val !== undefined) patch[k] = val;
+    }
+    // keep task_summary (display field) in sync with goal
+    if (rest.goal !== undefined) patch.task_summary = rest.goal;
+    patch.last_activity_ms = Date.now();
+    await ctx.db.patch(id, patch);
+  },
+});
+
 export const ensure = mutation({
   args: {
     name:          v.string(),

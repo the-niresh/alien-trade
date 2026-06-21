@@ -86,6 +86,8 @@ def build_loop(cfg: AgentConfig, *, feed=None, dry_run: bool = False,
     if feed is None:
         feed = BinanceLiveFeed(cfg.symbol, interval=cfg.bar_interval, history_bars=cfg.history_bars)
     bridge = build_bridge(cfg)
+    from agent import sponsor_telemetry as _sponsor_telemetry
+    _sponsor_telemetry.set_sink(bridge.emit_sponsor_call)
     sb = build_second_brain(cfg, bridge)
     # Lets the loop swap executors live when the UI toggles config.trading_mode
     # (only while flat — see DecisionLoop._sync_trading_mode). Same builder used
@@ -94,6 +96,9 @@ def build_loop(cfg: AgentConfig, *, feed=None, dry_run: bool = False,
     notifier = TelegramBot(bridge=bridge)
     notifier.start()   # launches daemon polling thread; no-op when token absent
     executor_factory = lambda m: build_executor(replace(cfg, mode=m), dry_run=dry_run)  # noqa: E731
+    from agent.scanner import SymbolScanner
+    scanner = SymbolScanner(params=cfg.strategy)
+
     loop = DecisionLoop(
         feed=feed,
         strategy=build_strategy(cfg),
@@ -114,6 +119,7 @@ def build_loop(cfg: AgentConfig, *, feed=None, dry_run: bool = False,
         autopilot_config=cfg.autopilot,
         kol_enabled=os.environ.get("KOL_AUTOTRADE", "0") == "1",
         kol_min_conf=float(os.environ.get("KOL_MIN_CONF", "0.5")),
+        symbol_scanner=scanner,
     )
     loop.second_brain = sb   # co-pilot / research / telemetry access (may be None)
     if recover:

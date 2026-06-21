@@ -9,6 +9,7 @@ import { CoPilotDrawer } from "./components/CoPilotDrawer";
 import { OverviewView } from "./views/OverviewView";
 import { PositionsView } from "./views/PositionsView";
 import { AgentsView } from "./views/AgentsView";
+import { ToolsView } from "./views/ToolsView";
 import { ControlsView } from "./views/ControlsView";
 import { LogsView } from "./views/LogsView";
 import { NotificationsView } from "./views/NotificationsView";
@@ -18,6 +19,7 @@ import { DocsView } from "./views/DocsView";
 import { MarketsView } from "./views/MarketsView";
 import { TrackersView } from "./views/TrackersView";
 import { IntelligenceView } from "./views/IntelligenceView";
+import { HistoryView } from "./views/HistoryView";
 import { FundingDialog } from "./components/FundingDialog";
 import { LandingView } from "./views/LandingView";
 import { ViewError } from "./components/ViewError";
@@ -182,7 +184,7 @@ function PairingScreen({ onPaired }: { onPaired: (t: string) => void }) {
 }
 
 // ── History API routing helpers ────────────────────────────────────────────────
-const VALID_VIEWS = new Set(["overview","trackers","intelligence","chart","positions","agents","controls","pipeline","portfolio","logs","notifications","docs"]);
+const VALID_VIEWS = new Set(["overview","trackers","intelligence","chart","positions","agents","tools","controls","pipeline","portfolio","logs","notifications","docs","history"]);
 function pathToView(): View {
   const seg = window.location.pathname.slice(1); // strip leading /
   return (VALID_VIEWS.has(seg) ? seg : "overview") as View;
@@ -308,11 +310,20 @@ export default function App() {
       case "portfolio":     return <PortfolioView />;
       case "pipeline":      return <PipelineView />;
       case "positions":     return <PositionsView />;
+      case "history":       return <HistoryView />;
+      case "tools":         return (
+        <ToolsView
+          onAgentClick={onAgentClick}
+        />
+      );
       case "agents":        return (
         <AgentsView
-          onAgentClick={onAgentClick}
           onAgentOpen={(threadId) => {
-            setCopilotThreadId(threadId);
+            setCopilotThreadId(threadId as Id<"copilot_threads"> | undefined);
+            setCopilotOpen(true);
+          }}
+          onNewAgent={() => {
+            setCopilotThreadId(undefined);
             setCopilotOpen(true);
           }}
         />

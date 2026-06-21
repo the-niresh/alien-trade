@@ -1,921 +1,380 @@
-import { useRef, useState } from "react";
-import { useAction, useMutation, useQuery } from "convex/react";
+import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import {
-  Area,
-  CartesianGrid,
-  ComposedChart,
-  Line,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
+import { useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
+import { loadToken, setToken, withToken } from "./lib/control";
+import { startTour, hasTourBeenSeen, startPostTradeTour, hasPostTradeTourBeenSeen } from "./lib/tour";
+import { AppShell } from "./components/AppShell";
+import { CoPilotDrawer } from "./components/CoPilotDrawer";
+import { OverviewView } from "./views/OverviewView";
+import { PositionsView } from "./views/PositionsView";
+import { AgentsView } from "./views/AgentsView";
+import { ToolsView } from "./views/ToolsView";
+import { ControlsView } from "./views/ControlsView";
+import { LogsView } from "./views/LogsView";
+import { NotificationsView } from "./views/NotificationsView";
+import { PortfolioView } from "./views/PortfolioView";
+import { PipelineView } from "./views/PipelineView";
+import { DocsView } from "./views/DocsView";
+import { MarketsView } from "./views/MarketsView";
+import { TrackersView } from "./views/TrackersView";
+import { IntelligenceView } from "./views/IntelligenceView";
+import { HistoryView } from "./views/HistoryView";
+import { FundingDialog } from "./components/FundingDialog";
+import { LandingView } from "./views/LandingView";
+import { ViewError } from "./components/ViewError";
+import { ErrorBoundary } from "react-error-boundary";
+import { Toaster, toast } from "sonner";
+import QRCode from "qrcode";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import type { View } from "./components/SideNav";
+import { eventSeverity } from "./lib/eventSeverity";
+import type { Id } from "../../convex/_generated/dataModel";
 
-// ── Formatters ──────────────────────────────────────────────────────────────
-const usd = (n?: number) =>
-  n == null ? "—" : n.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 2 });
-const pct = (n?: number) => (n == null ? "—" : `${(n * 100).toFixed(2)}%`);
-const ts  = (ms: number)  => new Date(ms).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-const tsShort = (ms: number) => new Date(ms).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+// ── Pairing wizard ────────────────────────────────────────────────────────────
 
-// ── Agent definitions ────────────────────────────────────────────────────────
-const AGENTS = [
-  { name: "CoPilot",    label: "CP", color: "#34d399", bg: "#0a1f14" },
-  { name: "Historian",  label: "HI", color: "#fbbf24", bg: "#1a1500" },
-  { name: "Researcher", label: "RE", color: "#a78bfa", bg: "#130f1e" },
-  { name: "Reflector",  label: "RF", color: "#f87171", bg: "#1e0a0a" },
-];
-// Positions around CORE (110,110) at radius=88
-const ORBIT_R = 88;
-const agentPos = (i: number) => {
-  const a = ((i * 90) - 90) * (Math.PI / 180);
-  return { x: 110 + ORBIT_R * Math.cos(a) - 18, y: 110 + ORBIT_R * Math.sin(a) - 18 };
-};
+type PairingStep = "welcome" | "pair" | "done";
 
-const KIND_COLOR: Record<string, string> = {
-  observation: "tag-observe", analysis: "tag-analysis", verdict: "tag-verdict",
-  action: "tag-action", handoff: "tag-handoff", control: "tag-control",
-};
+function PairingScreen({ onPaired }: { onPaired: (t: string) => void }) {
+  const [step, setStep]     = useState<PairingStep>("welcome");
+  const [val, setVal]       = useState("");
+  const [error, setError]   = useState("");
+  const [checking, setChecking] = useState(false);
+  const canvasRef           = useRef<HTMLCanvasElement>(null);
+  const pingMutation        = useMutation(api.ping.ping);
 
-// ── Sub-components ───────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (step === "pair" && canvasRef.current) {
+      QRCode.toCanvas(canvasRef.current, window.location.href, {
+        width: 160,
+        color: { dark: "#000000", light: "#ffffff" },
+        errorCorrectionLevel: "M",
+      }).catch(() => {/* ignore render errors */});
+    }
+  }, [step]);
 
-function AgentRoster({
-  rosterMap,
-  onAgentClick,
-}: {
-  rosterMap: Map<string, { ts_ms: number; kind: string }>;
-  onAgentClick: (name: string) => void;
-}) {
-  const now = Date.now();
+  const submit = async () => {
+    const t = val.trim();
+    if (!t) return;
+    setError("");
+    setChecking(true);
+    try {
+      await pingMutation({ control_token: t });
+      setChecking(false);
+      setStep("done");
+      setTimeout(() => onPaired(t), 1200);
+    } catch {
+      setChecking(false);
+      setError("Wrong token — check your .env.local CONTROL_TOKEN.");
+    }
+  };
+
+  const STEPS: PairingStep[] = ["welcome", "pair", "done"];
+
   return (
-    <div style={{ position: "relative", width: 220, height: 220, margin: "0 auto" }}>
-      {/* Orbit ring */}
-      <div style={{
-        position: "absolute", inset: 0, borderRadius: "50%",
-        border: "1px solid rgba(125,211,252,0.08)",
-      }} />
-      {/* Connector lines */}
-      <svg style={{ position: "absolute", inset: 0 }} width={220} height={220}>
-        {AGENTS.map((a, i) => {
-          const { x, y } = agentPos(i);
-          return (
-            <line key={a.name}
-              x1={110} y1={110} x2={x + 18} y2={y + 18}
-              stroke={a.color} strokeOpacity={0.12} strokeWidth={1} />
-          );
-        })}
-      </svg>
-      {/* CORE */}
-      <motion.div
-        style={{
-          position: "absolute", top: "50%", left: "50%",
-          width: 52, height: 52, borderRadius: "50%",
-          background: "#131a26", border: "2px solid #7dd3fc",
-          display: "flex", alignItems: "center", justifyContent: "center",
-          fontSize: 9, fontWeight: 900, color: "#7dd3fc", letterSpacing: 1,
-          zIndex: 10, cursor: "default",
-          transform: "translate(-50%, -50%)",
-        }}
-        animate={{ boxShadow: ["0 0 6px #7dd3fc30", "0 0 18px #7dd3fc60", "0 0 6px #7dd3fc30"] }}
-        transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
-        title="CORE — the deterministic /core strategy engine"
-      >
-        CORE
-      </motion.div>
-      {/* Orbiting agents */}
-      {AGENTS.map((agent, i) => {
-        const { x, y } = agentPos(i);
-        const last = rosterMap.get(agent.name);
-        const ageSec = last ? (now - last.ts_ms) / 1000 : Infinity;
-        const isActive = ageSec < 60;
-        const isRecent = ageSec < 300;
-        return (
-          <motion.div
-            key={agent.name}
-            title={`${agent.name}${last ? ` — ${tsShort(last.ts_ms)}` : " — idle"}`}
-            style={{
-              position: "absolute", left: x, top: y,
-              width: 36, height: 36, borderRadius: "50%",
-              background: agent.bg, border: `1.5px solid ${agent.color}`,
-              display: "flex", alignItems: "center", justifyContent: "center",
-              fontSize: 10, fontWeight: 700, color: agent.color,
-              cursor: "pointer", userSelect: "none",
-            }}
-            animate={
-              isActive
-                ? { boxShadow: [`0 0 6px ${agent.color}40`, `0 0 22px ${agent.color}90`, `0 0 6px ${agent.color}40`] }
-                : isRecent
-                ? { scale: [1, 1.05, 1] }
-                : { scale: [1, 1.02, 1], opacity: [0.7, 0.9, 0.7] }
-            }
-            transition={{ duration: isActive ? 1.5 : 4, repeat: Infinity, ease: "easeInOut" }}
-            onClick={() => onAgentClick(agent.name)}
-          >
-            {agent.label}
-          </motion.div>
-        );
-      })}
+    <div className="grid place-items-center h-screen overflow-auto">
+      <Dialog open modal>
+        <DialogContent
+          className="panel border-border max-w-sm w-[90%] rounded-2xl p-0 overflow-hidden"
+          onInteractOutside={(e) => e.preventDefault()}
+        >
+          {/* Step indicators */}
+          <div className="flex gap-1.5 px-6 pt-5">
+            {STEPS.map((s, i) => (
+              <div key={s} className={`h-1 flex-1 rounded-full transition-colors ${
+                s === step ? "bg-green" :
+                STEPS.indexOf(step) > i ? "bg-green/40" : "bg-border"
+              }`} />
+            ))}
+          </div>
+
+          {step === "welcome" && (
+            <div className="px-6 py-5 text-center">
+              <DialogHeader>
+                <div className="flex flex-col items-center gap-3 mb-1">
+                  <img
+                    src="/logo.png"
+                    alt="Alien-Trade"
+                    className="w-20 h-20 logo-blend"
+                  />
+                  <div className="font-display text-[28px] font-bold text-green glow-green tracking-[0.16em]">
+                    ALIEN<span className="text-text/40">·</span>TRADE
+                  </div>
+                </div>
+                <DialogTitle className="text-[16px] font-semibold text-text">
+                  Autonomous trading cockpit
+                </DialogTitle>
+                <DialogDescription className="text-muted-fg text-[13px] mt-2 leading-relaxed">
+                  Pair this cockpit to your running agent to see live PnL, control the kill switch, and chat with the co-pilot.
+                </DialogDescription>
+              </DialogHeader>
+              <Button
+                className="mt-6 w-full bg-green text-[#04140c] font-bold hover:bg-green/80 cursor-pointer"
+                onClick={() => setStep("pair")}
+              >
+                Connect your agent →
+              </Button>
+            </div>
+          )}
+
+          {step === "pair" && (
+            <div className="px-6 py-5">
+              <DialogHeader>
+                <DialogTitle className="text-[12px] font-bold text-muted-fg uppercase tracking-widest mb-3">
+                  Step 2 of 3 — Pair device
+                </DialogTitle>
+              </DialogHeader>
+              <div className="flex flex-col items-center mb-4 gap-2">
+                <canvas ref={canvasRef} className="rounded-lg" />
+                <p className="text-[11px] text-muted-fg">Scan to open on mobile</p>
+              </div>
+              <div className="flex items-center gap-2 my-3">
+                <div className="flex-1 h-px bg-border" />
+                <span className="text-[11px] text-muted-fg">or paste token</span>
+                <div className="flex-1 h-px bg-border" />
+              </div>
+              <Input
+                type="password"
+                value={val}
+                placeholder="control token"
+                onChange={(e) => { setVal(e.target.value); setError(""); }}
+                onKeyDown={(e) => e.key === "Enter" && submit()}
+                className="w-full bg-bg border-border text-text font-mono text-[13px] focus-visible:ring-green mb-2"
+              />
+              {error && (
+                <p className="font-mono text-[11px] text-red mb-2">{error}</p>
+              )}
+              <Button
+                className="w-full bg-green text-[#04140c] font-bold hover:bg-green/80 cursor-pointer disabled:opacity-50"
+                onClick={submit}
+                disabled={!val.trim() || checking}
+              >
+                {checking ? "Verifying…" : "Pair cockpit →"}
+              </Button>
+            </div>
+          )}
+
+          {step === "done" && (
+            <div className="px-6 py-8 text-center">
+              <motion.div
+                initial={{ scale: 0.5, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ type: "spring", stiffness: 400, damping: 20 }}
+                className="text-5xl mb-4"
+              >
+                ✓
+              </motion.div>
+              <DialogTitle className="font-grotesk text-lg font-bold text-green mb-2">
+                Cockpit paired
+              </DialogTitle>
+              <DialogDescription className="text-muted-fg text-[13px]">
+                You're in. Loading your agent…
+              </DialogDescription>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
 
-function CoPilotChat({
-  prefill,
-  onPrefillUsed,
-}: {
-  prefill: string;
-  onPrefillUsed: () => void;
-}) {
-  const [question, setQuestion] = useState("");
-  const [loading, setLoading] = useState(false);
-  const msgs = useQuery(api.copilot.messages, { limit: 40 }) ?? [];
-  const addMessage = useMutation(api.copilot.addMessage);
-  const ask = useAction(api.copilot.ask);
-  const bottomRef = useRef<HTMLDivElement>(null);
+// ── History API routing helpers ────────────────────────────────────────────────
+const VALID_VIEWS = new Set(["overview","trackers","intelligence","chart","positions","agents","tools","controls","pipeline","portfolio","logs","notifications","docs","history"]);
+function pathToView(): View {
+  const seg = window.location.pathname.slice(1); // strip leading /
+  return (VALID_VIEWS.has(seg) ? seg : "overview") as View;
+}
 
-  // Accept prefill from AgentRoster click
-  if (prefill && question !== prefill) {
-    setQuestion(prefill);
-    onPrefillUsed();
+// ── Main app ──────────────────────────────────────────────────────────────────
+
+export default function App() {
+  const config = useQuery(api.config.get);
+  const events = useQuery(api.agentEvents.recent, { limit: 20 });
+  const trades = useQuery(api.trades.recent, { limit: 1 });
+
+  const _setHalted  = useMutation(api.config.setHalted);
+  const _setControl = useMutation(api.agentControl.set);
+  const setHalted   = (a: Parameters<typeof _setHalted>[0])  => _setHalted(withToken(a));
+  const setControl  = (a: Parameters<typeof _setControl>[0]) => _setControl(withToken(a));
+
+  const [token, setTokenState]              = useState<string | null>(loadToken());
+  const [showPairing, setShowPairing]       = useState(false);
+  const [view, setViewState]                = useState<View>(pathToView);
+  const setView = (v: View) => { history.pushState(null, "", "/" + v); setViewState(v); };
+  const [copilotOpen, setCopilotOpen]       = useState(false);
+  const [fundingOpen, setFundingOpen]       = useState(false);
+  const [copilotPrefill, setCopilotPrefill] = useState("");
+  const [copilotThreadId, setCopilotThreadId] = useState<string | undefined>(undefined);
+  const [copilotStartSpawn, setCopilotStartSpawn] = useState(false);
+  const [selectedSymbol, setSelectedSymbol] = useState("ETH");
+
+  const halted = config?.halted ?? false;
+  const mode   = config?.trading_mode;
+
+  // Post-trade tour — fires once when trade count transitions 0→1
+  const tradeCountRef = useRef<number | null>(null);
+  useEffect(() => {
+    if (trades === undefined) return;
+    const count = trades.length;
+    if (tradeCountRef.current === 0 && count === 1 && !hasPostTradeTourBeenSeen()) {
+      setTimeout(startPostTradeTour, 800);
+    }
+    tradeCountRef.current = count;
+  }, [trades]);
+
+  // Generalized toast router — fires once per unique event _id
+  const seenEventIds = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    if (!events) return;
+    const FRESH_MS = 5 * 60 * 1000; // events < 5 min old show toasts even on first load
+    const now = Date.now();
+    if (seenEventIds.current.size === 0) {
+      for (const e of events) {
+        // Prime stale events silently; let fresh ones fall through to toast
+        if (now - e.ts_ms > FRESH_MS) seenEventIds.current.add(e._id);
+      }
+    }
+    for (const e of [...events].reverse()) {
+      if (seenEventIds.current.has(e._id)) continue;
+      seenEventIds.current.add(e._id);
+      const sev = eventSeverity(e);
+      if (sev === "critical") toast.error(e.headline, { duration: 8000 });
+      else if (sev === "risk") toast.warning(e.headline, { duration: 5000 });
+      else if (sev === "trade") toast.success(e.headline, { duration: 3000 });
+      else toast.info(e.headline, { duration: 2500 });
+    }
+  }, [events]);
+
+  // Global keyboard shortcuts
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      const mod = e.ctrlKey || e.metaKey;
+      if (mod && e.key === "k") { e.preventDefault(); setCopilotOpen((o) => !o); }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, []);
+
+  // History routing — back/forward button support
+  useEffect(() => {
+    const handler = () => setViewState(pathToView());
+    window.addEventListener("popstate", handler);
+    return () => window.removeEventListener("popstate", handler);
+  }, []);
+
+  const onKillToggle = () => {
+    const willHalt = !halted;
+    setHalted({ halted: willHalt });
+    setControl({ trading_halted: willHalt, updated_by: "user" });
+    if (willHalt) {
+      toast.error("Trading halted", { description: "Hold the kill switch again to resume.", duration: 6000 });
+    } else {
+      toast.success("Trading resumed", { duration: 3000 });
+    }
+  };
+
+  if (!token) {
+    const hasDeepLink = location.hash.startsWith("#t=");
+    if (hasDeepLink || showPairing) {
+      return (
+        <PairingScreen
+          onPaired={(t) => {
+            setToken(t);
+            setTokenState(t);
+            if (!hasTourBeenSeen()) {
+              // Small delay to let the app shell mount before driver.js tries to find elements
+              setTimeout(startTour, 600);
+            }
+          }}
+        />
+      );
+    }
+    return <LandingView onConnect={() => setShowPairing(true)} />;
   }
 
-  const send = async () => {
-    const q = question.trim();
-    if (!q || loading) return;
-    setQuestion("");
-    setLoading(true);
-    try {
-      await addMessage({ role: "user", content: q, sources_json: "[]" });
-      const res = await ask({ question: q });
-      await addMessage({
-        role: "assistant",
-        content: res.answer,
-        sources_json: JSON.stringify(res.sources),
-      });
-    } finally {
-      setLoading(false);
-      setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
+  const renderView = () => {
+    switch (view) {
+      case "overview":      return <OverviewView  onCopilot={() => setCopilotOpen(true)} />;
+      case "trackers":      return <TrackersView />;
+      case "intelligence":  return <IntelligenceView />;
+      case "chart":         return <MarketsView symbol={selectedSymbol} onSymbolChange={setSelectedSymbol} />;
+      case "portfolio":     return <PortfolioView />;
+      case "pipeline":      return <PipelineView />;
+      case "positions":     return <PositionsView />;
+      case "history":       return <HistoryView />;
+      case "tools":         return <ToolsView />;
+      case "agents":        return (
+        <AgentsView
+          onAgentOpen={(threadId) => {
+            setCopilotThreadId(threadId as Id<"copilot_threads"> | undefined);
+            setCopilotOpen(true);
+          }}
+          onNewAgent={() => {
+            setCopilotThreadId(undefined);
+            setCopilotStartSpawn(true);
+            setCopilotOpen(true);
+          }}
+        />
+      );
+      case "controls":      return <ControlsView />;
+      case "logs":          return <LogsView />;
+      case "notifications": return <NotificationsView />;
+      case "docs":          return <DocsView />;
     }
   };
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100%", minHeight: 240 }}>
-      <div style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column",
-        gap: 8, padding: "4px 0", maxHeight: 280 }}>
-        {msgs.length === 0 && (
-          <div className="sub" style={{ fontStyle: "italic", padding: "8px 0" }}>
-            Ask the co-pilot anything — regime, last trade, risk state…
-          </div>
-        )}
-        <AnimatePresence initial={false}>
-          {msgs.map((m) => (
-            <motion.div
-              key={m._id}
-              initial={{ opacity: 0, y: 6 }}
-              animate={{ opacity: 1, y: 0 }}
-              style={{
-                padding: "8px 12px", borderRadius: 10,
-                background: m.role === "user" ? "#1a2537" : "#0e1c14",
-                border: `1px solid ${m.role === "user" ? "#2a3a54" : "#1a3020"}`,
-                fontSize: 13, lineHeight: 1.5,
-                alignSelf: m.role === "user" ? "flex-end" : "flex-start",
-                maxWidth: "90%",
-              }}
-            >
-              <div style={{ fontSize: 10, fontWeight: 700, marginBottom: 3,
-                color: m.role === "user" ? "#7dd3fc" : "#34d399" }}>
-                {m.role === "user" ? "You" : "CoPilot"}
-              </div>
-              <div style={{ color: "#c9d1d9" }}>{m.content}</div>
-            </motion.div>
-          ))}
-        </AnimatePresence>
-        {loading && (
+    <>
+      <AppShell
+        activeView={view}
+        onViewChange={setView}
+        onCopilot={() => setCopilotOpen(true)}
+        onTour={() => startTour(view)}
+        halted={halted}
+        mode={mode}
+        onKillToggle={onKillToggle}
+        selectedSymbol={selectedSymbol}
+        onSymbolChange={setSelectedSymbol}
+        onDeposit={() => setFundingOpen(true)}
+        onAgentOpen={(threadId) => {
+          setCopilotThreadId(threadId);
+          setCopilotOpen(true);
+        }}
+        onSpawnAgent={() => {
+          setCopilotThreadId(undefined);
+          setCopilotOpen(true);
+        }}
+      >
+        <AnimatePresence mode="wait">
           <motion.div
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-            style={{ padding: "8px 12px", borderRadius: 10, background: "#0e1c14",
-              border: "1px solid #1a3020", fontSize: 13, color: "#34d39980",
-              alignSelf: "flex-start" }}
+            key={view}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.15 }}
           >
-            <motion.span
-              animate={{ opacity: [0.4, 1, 0.4] }}
-              transition={{ duration: 1.2, repeat: Infinity }}
-            >
-              thinking…
-            </motion.span>
+            <ErrorBoundary FallbackComponent={ViewError} resetKeys={[view]}>
+              {renderView()}
+            </ErrorBoundary>
           </motion.div>
-        )}
-        <div ref={bottomRef} />
-      </div>
-      <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
-        <input
-          className="floor-input"
-          style={{ flex: 1, width: "auto" }}
-          placeholder="Ask the co-pilot…"
-          value={question}
-          onChange={(e) => setQuestion(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && send()}
-          disabled={loading}
-        />
-        <button className="btn btn-set" onClick={send} disabled={loading || !question.trim()}>
-          {loading ? "…" : "Ask"}
-        </button>
-      </div>
-    </div>
-  );
-}
+        </AnimatePresence>
+      </AppShell>
 
-function EquityChart() {
-  const raw = useQuery(api.ledger.history, { limit: 100 }) ?? [];
-  const data = [...raw].reverse().map((r) => ({
-    t: r.timestamp_ms,
-    pnl: Number(r.cumulative_pnl_usd.toFixed(2)),
-    dd: Number((r.current_drawdown_pct * 100).toFixed(2)),
-  }));
+      <FundingDialog open={fundingOpen} onClose={() => setFundingOpen(false)} />
 
-  if (data.length === 0) {
-    return (
-      <div className="sub" style={{ textAlign: "center", padding: "32px 0" }}>
-        No trade history yet — start the agent to see the equity curve.
-      </div>
-    );
-  }
-
-  const fmtTime = (ms: number) =>
-    new Date(ms).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-
-  return (
-    <ResponsiveContainer width="100%" height={180}>
-      <ComposedChart data={data} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
-        <CartesianGrid strokeDasharray="3 3" stroke="#1a2737" vertical={false} />
-        <XAxis dataKey="t" tickFormatter={fmtTime} tick={{ fontSize: 10, fill: "#4a5a6a" }}
-          tickLine={false} axisLine={false} />
-        <YAxis yAxisId="pnl" tick={{ fontSize: 10, fill: "#4a5a6a" }}
-          tickFormatter={(v) => `$${v}`} tickLine={false} axisLine={false} width={44} />
-        <YAxis yAxisId="dd" orientation="right" tick={{ fontSize: 10, fill: "#4a5a6a" }}
-          tickFormatter={(v) => `${v}%`} tickLine={false} axisLine={false} width={36}
-          domain={[0, "auto"]} reversed />
-        <Tooltip
-          contentStyle={{ background: "#131a26", border: "1px solid #1e2937", borderRadius: 8, fontSize: 12 }}
-          labelFormatter={(label) => fmtTime(Number(label))}
-          formatter={(val, name) => {
-            const n = Number(val);
-            return name === "Equity" ? [`$${n.toFixed(2)}`, name] : [`${n.toFixed(2)}%`, name];
-          }}
-        />
-        <Area yAxisId="dd" type="monotone" dataKey="dd" name="Drawdown"
-          stroke="#f87171" fill="#f8717118" strokeWidth={1} />
-        <Line yAxisId="pnl" type="monotone" dataKey="pnl" name="Equity"
-          stroke="#34d399" strokeWidth={2} dot={false} />
-      </ComposedChart>
-    </ResponsiveContainer>
-  );
-}
-
-// ── Main cockpit ─────────────────────────────────────────────────────────────
-
-export default function App() {
-  const ledger    = useQuery(api.ledger.latest);
-  const risk      = useQuery(api.riskState.get);
-  const config    = useQuery(api.config.get);
-  const decisions = useQuery(api.decisions.recent, { limit: 6 });
-  const auditLog  = useQuery(api.audit.recent, { limit: 40 });
-  const events    = useQuery(api.agentEvents.recent, { limit: 30 });
-  const roster    = useQuery(api.agentEvents.latestPerAgent);
-  const control   = useQuery(api.agentControl.get);
-  const wins      = useQuery(api.reflections.wins, { limit: 5 });
-
-  const setHalted      = useMutation(api.config.setHalted);
-  const setTradingMode = useMutation(api.config.setTradingMode);
-  const updateLimits   = useMutation(api.config.updateLimits);
-  const setControl     = useMutation(api.agentControl.set);
-  const setStrategy    = useMutation(api.config.setStrategy);
-  const setAutopilot   = useMutation(api.config.setAutopilot);
-  const recordFeedback = useMutation(api.feedback.record);
-
-  const [floorInput, setFloorInput]       = useState("");
-  const [copilotPrefill, setCopilotPrefill] = useState("");
-  const [showSliders, setShowSliders]     = useState(false);
-
-  const mode   = config?.trading_mode;
-  const halted = config?.halted ?? false;
-  const floor  = config?.equity_floor ?? 0;
-  const paused = control?.agents_paused ?? false;
-  const pnl    = ledger?.cumulative_pnl_usd;
-  const dd     = risk?.current_drawdown_pct;
-
-  // Roster map: agent name → latest event info
-  const rosterMap = new Map<string, { ts_ms: number; kind: string }>(
-    (roster ?? []).map((e: { agent: string; ts_ms: number; kind: string }) => [
-      e.agent, { ts_ms: e.ts_ms, kind: e.kind },
-    ]),
-  );
-
-  const floorHalt = (events ?? []).find(
-    (e) => e.agent === "RiskGuard" && e.kind === "control" &&
-      (e.headline as string).includes("floor hit"),
-  );
-  const floorWarn = !floorHalt && (events ?? []).find(
-    (e) => e.agent === "RiskGuard" && e.kind === "control" &&
-      (e.headline as string).includes("approaching floor"),
-  );
-
-  const onModeClick = (next: "testnet" | "paper" | "mainnet") => {
-    if (next === mode) return;
-    if (next === "mainnet" &&
-        !window.confirm("Switch to LIVE mainnet? This trades real funds via self-custody signing."))
-      return;
-    setTradingMode({ trading_mode: next });
-  };
-  const onKillSwitch = () => {
-    if (!halted && !window.confirm("Halt the agent? Trading stops within one cycle.")) return;
-    setHalted({ halted: !halted });
-    setControl({ trading_halted: !halted, updated_by: "user" });
-  };
-  const onPauseAgents = () => {
-    if (!paused && !window.confirm("Pause advisory agents? Trading continues unaffected.")) return;
-    setControl({ agents_paused: !paused, updated_by: "user" });
-  };
-  const onSetFloor = () => {
-    const val = parseFloat(floorInput);
-    if (isNaN(val) || val < 0) return;
-    updateLimits({ equity_floor: val });
-    setFloorInput("");
-  };
-
-  return (
-    <div className="wrap">
-      {/* ── Header ── */}
-      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
-        <div className="title">ALIEN-TRADE</div>
-        <motion.span
-          className={`badge ${halted ? "badge-on" : "badge-off"}`}
-          animate={halted
-            ? { opacity: [1, 0.5, 1] }
-            : { opacity: 1 }}
-          transition={{ duration: 1, repeat: halted ? Infinity : 0 }}
-        >
-          {halted ? "HALTED" : "RUNNING"}
-        </motion.span>
-        {mode && (
-          <span className={`badge ${mode === "mainnet" ? "badge-on" : mode === "paper" ? "badge-warn" : ""}`}
-            style={{ fontSize: 11 }}>
-            {mode === "mainnet" ? "LIVE" : mode}
-          </span>
-        )}
-        <div className="sub" style={{ marginLeft: "auto" }}>
-          Autonomous BSC agent · Convex live state
-        </div>
-      </div>
-
-      {/* ── Alerts ── */}
-      <AnimatePresence>
-        {floorHalt && (
-          <motion.div className="alert alert-halt"
-            initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }}
-            exit={{ opacity: 0, height: 0 }}>
-            Trading HALTED — equity floor hit. Fund wallet or raise floor, then Resume.
-          </motion.div>
-        )}
-        {floorWarn && (
-          <motion.div className="alert alert-warn"
-            initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }}
-            exit={{ opacity: 0, height: 0 }}>
-            Portfolio approaching equity floor (${floor.toFixed(0)}). Consider adding capital.
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* ── Main 3-panel grid ── */}
-      <div className="cockpit-grid">
-
-        {/* ── LEFT: Agent Roster + Co-pilot ── */}
-        <div className="cockpit-left">
-          <div className="panel" style={{ marginBottom: 12 }}>
-            <div className="panel-title" style={{ marginBottom: 10 }}>Agent team</div>
-            <AgentRoster
-              rosterMap={rosterMap}
-              onAgentClick={(name) =>
-                setCopilotPrefill(`What is ${name} currently doing?`)
-              }
-            />
-            <div className="sub" style={{ textAlign: "center", marginTop: 8 }}>
-              Click an agent to ask the co-pilot about them
-            </div>
-          </div>
-          <div className="panel" style={{ flex: 1 }}>
-            <div className="panel-title" style={{ marginBottom: 8 }}>Co-pilot</div>
-            <CoPilotChat
-              prefill={copilotPrefill}
-              onPrefillUsed={() => setCopilotPrefill("")}
-            />
-          </div>
-        </div>
-
-        {/* ── CENTER: Stats + Chart + Decisions + Wins ── */}
-        <div className="cockpit-center">
-          {/* Stats row */}
-          <div className="grid" style={{ marginBottom: 12 }}>
-            <div className="card">
-              <div className="label">Cumulative PnL</div>
-              <motion.div
-                className={`value ${(pnl ?? 0) >= 0 ? "pos" : "neg"}`}
-                key={pnl}
-                initial={{ scale: 1.1 }}
-                animate={{ scale: 1 }}
-              >
-                {usd(pnl)}
-              </motion.div>
-            </div>
-            <div className="card">
-              <div className="label">Max Drawdown</div>
-              <div className={`value ${(dd ?? 0) > 0.05 ? "neg" : (dd ?? 0) > 0 ? "" : "pos"}`}>
-                {pct(dd)}
-              </div>
-            </div>
-            <div className="card">
-              <div className="label">Open exposure</div>
-              <div className="value">{usd(risk?.open_exposure_usd)}</div>
-            </div>
-            <div className="card">
-              <div className="label">Circuit breaker</div>
-              <div className={`value ${risk?.circuit_breaker_active ? "neg" : "pos"}`}
-                style={{ fontSize: 16 }}>
-                {risk?.circuit_breaker_active ? "TRIPPED" : "OK"}
-              </div>
-            </div>
-          </div>
-
-          {/* Equity/Drawdown chart */}
-          <div className="panel" style={{ marginBottom: 12 }}>
-            <div className="panel-title" style={{ marginBottom: 8 }}>Equity &amp; Drawdown</div>
-            <div className="sub" style={{ marginBottom: 10 }}>
-              Green = cumulative PnL · Red area = drawdown (right axis, inverted)
-            </div>
-            <EquityChart />
-          </div>
-
-          {/* Recent decisions */}
-          <div className="card" style={{ marginBottom: 12 }}>
-            <div className="label" style={{ marginBottom: 8 }}>Recent decisions</div>
-            <table>
-              <thead>
-                <tr><th>Time</th><th>Symbol</th><th>Regime</th><th>Verdict</th><th>Size</th><th>Rate</th></tr>
-              </thead>
-              <tbody>
-                {(decisions ?? []).map((d) => (
-                  <tr key={d._id}>
-                    <td>{ts(d.timestamp_ms)}</td>
-                    <td>{d.symbol}</td>
-                    <td style={{ color: "#7dd3fc" }}>{d.regime}</td>
-                    <td>
-                      <span className={`tag tag-${d.risk_verdict}`}>{d.risk_verdict}</span>
-                    </td>
-                    <td>{usd(d.final_size_usd)}</td>
-                    <td>
-                      {d.setup_key ? (
-                        <span style={{ display: "inline-flex", gap: 4 }}>
-                          <button className="btn-rate" title={`Good setup (${d.setup_key})`}
-                            onClick={() => recordFeedback({
-                              cycle_id: d.cycle_id, setup_key: d.setup_key!,
-                              symbol: d.symbol, label: "good" })}>👍</button>
-                          <button className="btn-rate" title={`Bad setup (${d.setup_key}) — agent will avoid it`}
-                            onClick={() => recordFeedback({
-                              cycle_id: d.cycle_id, setup_key: d.setup_key!,
-                              symbol: d.symbol, label: "bad" })}>👎</button>
-                        </span>
-                      ) : <span className="sub">—</span>}
-                    </td>
-                  </tr>
-                ))}
-                {decisions?.length === 0 && (
-                  <tr><td colSpan={6} className="sub">No decisions yet.</td></tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Wins feed */}
-          {(wins ?? []).length > 0 && (
-            <div className="panel">
-              <div className="panel-title" style={{ marginBottom: 8 }}>
-                 Winning trades
-              </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                {(wins ?? []).map((w) => (
-                  <motion.div
-                    key={w._id}
-                    className="win-card"
-                    initial={{ opacity: 0, x: -8 }}
-                    animate={{ opacity: 1, x: 0 }}
-                  >
-                    <div style={{ display: "flex", justifyContent: "space-between",
-                      alignItems: "center", marginBottom: 4 }}>
-                      <span className="tag tag-allow">WIN</span>
-                      <span style={{ color: "#34d399", fontWeight: 700 }}>
-                        +{usd(w.outcome_pnl_usd)}
-                      </span>
-                    </div>
-                    <div className="sub" style={{ marginBottom: 2 }}>
-                      {w.regime} · {ts(w.timestamp_ms)}
-                    </div>
-                    {w.lesson && (
-                      <div style={{ fontSize: 12, color: "#8b98a5", fontStyle: "italic" }}>
-                        "{w.lesson}"
-                      </div>
-                    )}
-                  </motion.div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* ── RIGHT: Controls + Sliders + Signal health + Floor ── */}
-        <div className="cockpit-right">
-          {/* Kill switch + pause + stop */}
-          <div className="panel" style={{ marginBottom: 12 }}>
-            <div className="panel-title" style={{ marginBottom: 10 }}>Controls</div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              <div>
-                <button
-                  className={`btn ${halted ? "btn-resume" : "btn-halt"}`}
-                  style={{ width: "100%" }}
-                  onClick={onKillSwitch}
-                >
-                  {halted ? "Resume Trading" : "Kill Switch"}
-                </button>
-                <div className="sub" style={{ marginTop: 3 }}>
-                  Halts within one cycle · self-custody remains secure
-                </div>
-              </div>
-              <button
-                className="btn btn-pause"
-                style={{ width: "100%" }}
-                onClick={onPauseAgents}
-              >
-                {paused ? "Resume Agents" : "Pause Advisory Agents"}
-              </button>
-              <button className="btn btn-stop" style={{ width: "100%" }} onClick={() => {
-                if (!window.confirm("Cancel the current in-flight agent action?")) return;
-                setControl({ stop_response_id: String(Date.now()), updated_by: "user" });
-              }}>
-                Stop Response
-              </button>
-            </div>
-          </div>
-
-          {/* Trading mode */}
-          <div className="panel" style={{ marginBottom: 12 }}>
-            <div className="panel-title" style={{ marginBottom: 8 }}>Trading mode</div>
-            <div className="seg" role="group" style={{ width: "100%", justifyContent: "stretch" }}>
-              {(["testnet", "paper", "mainnet"] as const).map((m) => (
-                <button
-                  key={m}
-                  className={`seg-btn ${mode === m ? `seg-on seg-${m}` : ""}`}
-                  style={{ flex: 1 }}
-                  aria-pressed={mode === m}
-                  onClick={() => onModeClick(m)}
-                  disabled={config === undefined}
-                >
-                  {m === "mainnet" ? "LIVE" : m}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Signal health */}
-          <div className="panel" style={{ marginBottom: 12 }}>
-            <div className="panel-title" style={{ marginBottom: 8 }}>Signal health</div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-              {(["forecast", "sentiment"] as const).map((src) => {
-                const related = (events ?? []).filter(
-                  (e) => e.agent === "RiskGuard" && e.kind === "observation" &&
-                         typeof e.headline === "string" && e.headline.toLowerCase().includes(src),
-                );
-                const stale = related.length > 0 && related[0].headline.startsWith("STALE");
-                return (
-                  <div key={src} style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <motion.div
-                      style={{ width: 10, height: 10, borderRadius: "50%",
-                        background: stale ? "#f59e0b" : "#22c55e", flexShrink: 0 }}
-                      animate={stale
-                        ? { opacity: [1, 0.4, 1] }
-                        : { boxShadow: ["0 0 4px #22c55e60", "0 0 10px #22c55ea0", "0 0 4px #22c55e60"] }}
-                      transition={{ duration: 2, repeat: Infinity }}
-                    />
-                    <span className="sub">{src === "forecast" ? "Forecast (4h)" : "Sentiment (2h)"}</span>
-                    {stale && <span className="tag tag-control" style={{ fontSize: 10 }}>stale</span>}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Equity floor */}
-          <div className="panel" style={{ marginBottom: 12 }}>
-            <div className="panel-title">Equity floor</div>
-            <div className="sub" style={{ marginBottom: 8 }}>
-              {floor > 0 ? <strong>Floor: {usd(floor)}</strong> : "Disabled"}
-            </div>
-            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-              <input className="floor-input" style={{ flex: 1, minWidth: 80 }}
-                type="number" min="0" placeholder="e.g. 50"
-                value={floorInput} onChange={(e) => setFloorInput(e.target.value)} />
-              <button className="btn btn-set" onClick={onSetFloor} disabled={floorInput === ""}>
-                Set
-              </button>
-              {floor > 0 && (
-                <button className="btn btn-stop" onClick={() => updateLimits({ equity_floor: 0 })}>
-                  Off
-                </button>
-              )}
-            </div>
-          </div>
-
-          {/* Strategy + Autopilot */}
-          <StrategyAutopilotPanel
-            config={config}
-            setStrategy={setStrategy}
-            setAutopilot={setAutopilot}
-          />
-
-          {/* Risk cap sliders */}
-          <div className="panel">
-            <div style={{ display: "flex", justifyContent: "space-between",
-              alignItems: "center", marginBottom: showSliders ? 12 : 0 }}>
-              <div className="panel-title">Risk caps</div>
-              <button className="btn btn-stop" style={{ padding: "4px 10px", fontSize: 11 }}
-                onClick={() => setShowSliders(!showSliders)}>
-                {showSliders ? "Hide" : "Edit"}
-              </button>
-            </div>
-            <AnimatePresence>
-              {showSliders && (
-                <motion.div
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: "auto" }}
-                  exit={{ opacity: 0, height: 0 }}
-                  style={{ overflow: "hidden" }}
-                >
-                  <RiskSliders config={config} updateLimits={updateLimits} />
-                </motion.div>
-              )}
-            </AnimatePresence>
-            {!showSliders && config && (
-              <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                <div className="sub">
-                  Max position: <strong style={{ color: "#e6edf3" }}>{usd(config.max_position_usd)}</strong>
-                </div>
-                <div className="sub">
-                  Daily loss limit: <strong style={{ color: "#e6edf3" }}>{usd(config.daily_loss_limit_usd)}</strong>
-                </div>
-                <div className="sub">
-                  Max drawdown: <strong style={{ color: "#e6edf3" }}>{pct(config.max_drawdown_pct)}</strong>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* ── Agent activity channel ── */}
-      <div className="card" style={{ marginTop: 12 }}>
-        <div className="label" style={{ marginBottom: 8 }}>Agent activity channel</div>
-        {(events ?? []).length === 0 ? (
-          <div className="sub">No activity yet — start the agent to see the team's live reasoning.</div>
-        ) : (
-          <div className="channel">
-            {(events ?? []).map((e) => (
-              <div key={e._id} className="evt">
-                <div className="evt-meta">
-                  <span className="evt-agent" style={{
-                    color: AGENTS.find((a) => a.name === e.agent)?.color ?? "#7dd3fc",
-                  }}>
-                    {e.agent}
-                  </span>
-                  <span className={`tag ${KIND_COLOR[e.kind] ?? "tag-observe"}`}>{e.kind}</span>
-                  <span className="evt-time">{ts(e.ts_ms)}</span>
-                  {e.cycle_id && (
-                    <span className="evt-cycle">{String(e.cycle_id).slice(-8)}</span>
-                  )}
-                </div>
-                <div className="evt-headline">{e.headline}</div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* ── Live log console (spectate the agent) ── */}
-      <div className="card" style={{ marginTop: 12 }}>
-        <div className="label" style={{ marginBottom: 8 }}>Live log console</div>
-        {(auditLog ?? []).length === 0 ? (
-          <div className="sub">No log entries yet — the agent writes one row per event.</div>
-        ) : (
-          <div className="logconsole">
-            {(auditLog ?? []).map((a) => (
-              <div key={a._id} className={`logline log-${a.severity}`}>
-                <span className="log-time">{ts(a.timestamp_ms)}</span>
-                <span className="log-type">{a.event_type}</span>
-                {a.cycle_id && <span className="log-cycle">{String(a.cycle_id).slice(-8)}</span>}
-                <span className="log-payload">{a.payload}</span>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// ── Strategy picker + Autopilot capital manager ───────────────────────────────
-
-const STRATEGIES = [
-  { name: "momentum",   label: "Momentum",   blurb: "Rides confirmed uptrends." },
-  { name: "contrarian", label: "Contrarian", blurb: "Buys fear, trims greed. Best in down/choppy markets." },
-  { name: "balanced",   label: "Balanced",   blurb: "Momentum + derivatives + fear." },
-  { name: "defensive",  label: "Defensive",  blurb: "Rare high-conviction longs. Minimises drawdown." },
-];
-
-type AutopilotCfg = {
-  enabled: boolean;
-  profit_target_pct?: number;
-  profit_target_abs?: number;
-  protect_principal?: boolean;
-  trailing_giveback_pct?: number;
-  daily_profit_target_pct?: number;
-  min_recycle_confidence?: number;
-  recycle_blocked_regimes?: string[];
-  loss_cooldown_hours?: number;
-};
-
-function StrategyAutopilotPanel({
-  config,
-  setStrategy,
-  setAutopilot,
-}: {
-  config: { strategy_name?: string; autopilot?: AutopilotCfg } | null | undefined;
-  setStrategy: (args: { strategy_name: string }) => void;
-  setAutopilot: (args: { autopilot: AutopilotCfg }) => void;
-}) {
-  const ap = config?.autopilot;
-  const active = config?.strategy_name ?? "balanced";
-  // Local draft for the numeric target fields (commit on blur).
-  const [pct, setPct]   = useState("");
-  const [abs, setAbs]   = useState("");
-  const [trail, setTrail] = useState("");
-  const [daily, setDaily] = useState("");
-
-  const num = (s: string) => (s.trim() === "" ? undefined : Number(s));
-  const patch = (over: Partial<AutopilotCfg>) =>
-    setAutopilot({
-      autopilot: {
-        enabled: ap?.enabled ?? false,
-        profit_target_pct: ap?.profit_target_pct,
-        profit_target_abs: ap?.profit_target_abs,
-        protect_principal: ap?.protect_principal ?? true,
-        trailing_giveback_pct: ap?.trailing_giveback_pct,
-        daily_profit_target_pct: ap?.daily_profit_target_pct,
-        min_recycle_confidence: ap?.min_recycle_confidence,
-        recycle_blocked_regimes: ap?.recycle_blocked_regimes ?? ["crash", "high_vol"],
-        loss_cooldown_hours: ap?.loss_cooldown_hours,
-        ...over,
-      },
-    });
-
-  return (
-    <div className="panel" style={{ marginBottom: 12 }}>
-      <div className="panel-title" style={{ marginBottom: 8 }}>Strategy</div>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, marginBottom: 6 }}>
-        {STRATEGIES.map((s) => (
-          <button key={s.name}
-            className={`btn ${active === s.name ? "btn-set" : "btn-stop"}`}
-            style={{ padding: "6px 8px", fontSize: 12 }}
-            title={s.blurb}
-            onClick={() => setStrategy({ strategy_name: s.name })}>
-            {s.label}
-          </button>
-        ))}
-      </div>
-      <div className="sub" style={{ marginBottom: 12 }}>
-        {STRATEGIES.find((s) => s.name === active)?.blurb}
-      </div>
-
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-        <div className="panel-title">Autopilot</div>
-        <button
-          className={`btn ${ap?.enabled ? "btn-set" : "btn-stop"}`}
-          style={{ padding: "4px 12px", fontSize: 11 }}
-          onClick={() => patch({ enabled: !(ap?.enabled ?? false) })}>
-          {ap?.enabled ? "ON" : "OFF"}
-        </button>
-      </div>
-
-      {ap?.enabled && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          <APRow label="Take profit %" placeholder={pctStr(ap?.profit_target_pct)}
-            value={pct} onChange={setPct}
-            onCommit={() => patch({ profit_target_pct: num(pct) === undefined ? undefined : Number(pct) / 100 })} />
-          <APRow label="Take profit $" placeholder={ap?.profit_target_abs?.toString() ?? "—"}
-            value={abs} onChange={setAbs}
-            onCommit={() => patch({ profit_target_abs: num(abs) })} />
-          <APRow label="Trailing give-back %" placeholder={pctStr(ap?.trailing_giveback_pct)}
-            value={trail} onChange={setTrail}
-            onCommit={() => patch({ trailing_giveback_pct: num(trail) === undefined ? undefined : Number(trail) / 100 })} />
-          <APRow label="Daily target %" placeholder={pctStr(ap?.daily_profit_target_pct)}
-            value={daily} onChange={setDaily}
-            onCommit={() => patch({ daily_profit_target_pct: num(daily) === undefined ? undefined : Number(daily) / 100 })} />
-          <label className="sub" style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
-            <input type="checkbox" checked={ap?.protect_principal ?? true}
-              onChange={(e) => patch({ protect_principal: e.target.checked })} />
-            Protect principal (ratchet the whole balance, not just profit)
-          </label>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function pctStr(v?: number) {
-  return v === undefined ? "—" : `${(v * 100).toFixed(1)}`;
-}
-
-function APRow({
-  label, value, placeholder, onChange, onCommit,
-}: {
-  label: string; value: string; placeholder: string;
-  onChange: (v: string) => void; onCommit: () => void;
-}) {
-  return (
-    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
-      <span className="sub">{label}</span>
-      <input className="floor-input" style={{ width: 70 }} type="number" min="0"
-        placeholder={placeholder} value={value}
-        onChange={(e) => onChange(e.target.value)}
-        onBlur={onCommit} />
-    </div>
-  );
-}
-
-// ── Risk sliders ──────────────────────────────────────────────────────────────
-
-function RiskSliders({
-  config,
-  updateLimits,
-}: {
-  config: { max_position_usd: number; daily_loss_limit_usd: number; max_drawdown_pct: number } | null | undefined;
-  updateLimits: (args: Record<string, unknown>) => void;
-}) {
-  const [pos,  setPos]  = useState<number | null>(null);
-  const [loss, setLoss] = useState<number | null>(null);
-  const [dd,   setDd]   = useState<number | null>(null);
-
-  if (!config) return <div className="sub">Loading caps…</div>;
-
-  const posVal  = pos  ?? config.max_position_usd;
-  const lossVal = loss ?? config.daily_loss_limit_usd;
-  const ddVal   = dd   ?? Math.round(config.max_drawdown_pct * 100);
-
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-      <SliderRow label="Max position" value={posVal} min={100} max={10000} step={100}
-        fmt={usd} onChange={setPos}
-        onCommit={(v) => updateLimits({ max_position_usd: v })} />
-      <SliderRow label="Daily loss limit" value={lossVal} min={50} max={2000} step={50}
-        fmt={usd} onChange={setLoss}
-        onCommit={(v) => updateLimits({ daily_loss_limit_usd: v })} />
-      <SliderRow label="Max drawdown" value={ddVal} min={1} max={50} step={1}
-        fmt={(v) => `${v}%`} onChange={setDd}
-        onCommit={(v) => updateLimits({ max_drawdown_pct: v / 100 })} />
-    </div>
-  );
-}
-
-function SliderRow({
-  label, value, min, max, step, fmt, onChange, onCommit,
-}: {
-  label: string; value: number; min: number; max: number; step: number;
-  fmt: (v: number) => string;
-  onChange: (v: number) => void;
-  onCommit: (v: number) => void;
-}) {
-  return (
-    <div>
-      <div style={{ display: "flex", justifyContent: "space-between",
-        marginBottom: 4, fontSize: 12 }}>
-        <span className="sub">{label}</span>
-        <span style={{ color: "#e6edf3", fontWeight: 600 }}>{fmt(value)}</span>
-      </div>
-      <input
-        type="range" min={min} max={max} step={step} value={value}
-        style={{ width: "100%", accentColor: "#7dd3fc", cursor: "pointer" }}
-        onChange={(e) => onChange(Number(e.target.value))}
-        onMouseUp={(e) => onCommit(Number((e.target as HTMLInputElement).value))}
-        onTouchEnd={(e) => onCommit(Number((e.target as HTMLInputElement).value))}
+      <CoPilotDrawer
+        isOpen={copilotOpen}
+        onClose={() => { setCopilotOpen(false); setCopilotPrefill(""); setCopilotThreadId(undefined); setCopilotStartSpawn(false); }}
+        prefill={copilotPrefill}
+        initialThreadId={copilotThreadId as Id<"copilot_threads"> | undefined}
+        startSpawn={copilotStartSpawn}
       />
-    </div>
+
+      <Toaster position="bottom-right" theme="dark" richColors />
+    </>
   );
 }

@@ -74,6 +74,9 @@ def _make_loop(equity_floor=50.0, equity=45.0, is_halted=False):
     loop._daily_pnl_start = equity
     loop._daily_max_dd = 0.0
     loop._stale_sources = set()
+    # sustained-failure watchdog state (set in real __init__; this fixture bypasses it)
+    loop._first_exec_failure_ms = None
+    loop._sustained_warn_sent = False
     return loop, bridge
 
 

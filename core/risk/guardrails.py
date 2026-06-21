@@ -10,9 +10,18 @@ from typing import NamedTuple
 # ── Token allowlist ───────────────────────────────────────────────────────────
 # Our risk ceiling: the only tokens the agent will trade. A curated SUBSET of the
 # competition's 149 eligible BEP-20s (see reference-hackathon-rules / docs/docs.md)
-# — liquid majors with full CMC data for S1/S2. NOTE: BNB / BTC / BTCB are NOT in
-# the competition's eligible list, so trading them would not count toward PnL.
-TOKEN_ALLOWLIST: frozenset[str] = frozenset({"ETH", "CAKE", "UNI", "LINK", "AAVE"})
+# — liquid majors with full CMC data for S1/S2 and a proven walk-forward OOS edge.
+# NOTE: BNB / BTC / BTCB are NOT in the competition's eligible list, so trading
+# them would not count toward PnL.
+#
+# Curated to the proven 5: the anti-overfitting rule (2-3 signals, minimal knobs,
+# OOS-validated) outweighs adding high-beta names on narrative alone right before
+# freeze. FLOKI/SHIB/AVAX/FET are eligible-list tokens (docs/docs.md) and can be
+# re-added IF each clears a clean walk-forward OOS Sortino check.
+TRADING_UNIVERSE: tuple[str, ...] = (
+    "ETH", "CAKE", "UNI", "LINK", "AAVE",
+)
+TOKEN_ALLOWLIST: frozenset[str] = frozenset(TRADING_UNIVERSE)
 
 
 # ── Config ────────────────────────────────────────────────────────────────────
@@ -23,7 +32,7 @@ class RiskConfig:
     max_trade_usd: float = 2_000.0          # per-trade size cap
     max_position_pct: float = 0.25          # max single position as % of capital
     max_open_exposure_pct: float = 0.30     # max CUMULATIVE open exposure as % of equity
-    max_slippage_pct: float = 0.02          # abort if simulated slippage > 2%
+    max_slippage_pct: float = 0.02          # abort if simulated slippage > 2% (executor retries at 5%/8% on TX_FAILED)
     token_allowlist: frozenset = field(default_factory=lambda: TOKEN_ALLOWLIST)
 
     # Daily-loss kill switch
@@ -35,6 +44,11 @@ class RiskConfig:
     # Sizing params (used by RiskEngine + optimizer)
     target_vol_ann: float = 0.15            # 15% annualized target vol
     base_position_usd: float = 1_000.0      # base trade size before sizing adjustment
+
+    # ── Stop-loss (exit rules — the WS1 drawdown lever) ───────────────────────
+    atr_stop_mult: float = 2.0       # hard stop at entry - mult*ATR; 0 disables
+    atr_trail_mult: float = 3.0      # trailing stop at high_water - mult*ATR; 0 disables
+    atr_period: int = 14             # ATR lookback in bars
 
 
 # ── Guard result ──────────────────────────────────────────────────────────────

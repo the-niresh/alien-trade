@@ -18,6 +18,7 @@ dependencies = [
     "fastapi>=0.115",
     "uvicorn>=0.30",
     "qrcode>=7.4",
+    "textual>=8.0",
     # ── x402 pay-per-call (Step 1 / CMC special prize) ──
     "x402[evm,httpx]>=2.12",
 ]
@@ -32,6 +33,10 @@ build-backend = "hatchling.build"
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
+markers = [
+    "unit: unit test",
+    "integration: integration test",
+]
 
 [tool.ruff]
 line-length = 100

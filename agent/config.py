@@ -80,6 +80,8 @@ class AgentConfig:
     enforce_activity_floor: bool = field(
         default_factory=lambda: os.environ.get("ACTIVITY_FLOOR", "").lower()
         in ("1", "true", "yes"))
+    activity_trade_usd: float = field(
+        default_factory=lambda: float(os.environ.get("ACTIVITY_TRADE_USD", "15.0")))
 
     # Convex bus
     convex_url: str = field(default_factory=lambda: os.environ.get("CONVEX_URL", ""))
@@ -112,3 +114,12 @@ class AgentConfig:
         # A named strategy overrides the default params (keeping the chosen symbol).
         if self.strategy_name:
             self.strategy = get_strategy_params(self.strategy_name, symbol=self.symbol)
+        # Allow position size override via env so live capital doesn't have to match
+        # the backtest's notional $1000. On mainnet with $5 wallet, set POSITION_SIZE_USD=4.
+        pos_override = os.environ.get("POSITION_SIZE_USD", "").strip()
+        if pos_override:
+            try:
+                from dataclasses import replace as _replace
+                self.strategy = _replace(self.strategy, position_size_usd=float(pos_override))
+            except (ValueError, TypeError):
+                pass

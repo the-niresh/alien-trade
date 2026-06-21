@@ -1,0 +1,41 @@
+# Alien-Trade MAINNET live unit (Phase B9) — WRITTEN, NOT ENABLED.
+#
+# Mirrors the running paper unit (/etc/systemd/system/alien-trade.service) but runs
+# --mode mainnet, which selects TwakSwapExecutor (EXECUTION_BACKEND=twak) for real,
+# scoring `twak swap` execution. DO NOT enable until the operator critical path in
+# docs/LIVE_REHEARSAL.md §2 is complete (twak CLI installed + authed, wallet funded +
+# WALLET_ADDRESS set, twak compete register done) AND the supervised first swap (§3)
+# has produced a real tx_hash.
+#
+# To go live (operator):
+#   sudo cp docs/ops/alien-trade-mainnet.service /etc/systemd/system/alien-trade.service
+#   sudo systemctl daemon-reload && sudo systemctl restart alien-trade
+# To roll back to paper: restore the original unit and restart (LIVE_REHEARSAL.md §5).
+
+[Unit]
+Description=Alien-Trade MAINNET runtime (Track-1 live window — real twak swap)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/root/claude/projects/alien-trade
+Environment=PYTHONUNBUFFERED=1
+Environment=SECOND_BRAIN=0
+Environment=STRATEGY_NAME=contrarian
+Environment=AUTOPILOT=1
+Environment=AUTOPILOT_PROFIT_TARGET_PCT=0.05
+Environment=AUTOPILOT_PROTECT_PRINCIPAL=1
+Environment=AUTOPILOT_TRAIL_GIVEBACK_PCT=0.04
+Environment=AUTOPILOT_BLOCK_REGIMES=crash,high_vol
+# Activity floor: enable to satisfy the >=1 trade/day rule (keep size minimal — see
+# LIVE_REHEARSAL.md §1 on the forced-trade score drag). Off here by default; flip when ready.
+# Environment=ACTIVITY_FLOOR=1
+ExecStart=/root/claude/projects/alien-trade/core/.venv/bin/python -m agent.runtime --mode mainnet --symbol ETH
+Restart=always
+RestartSec=10
+StandardOutput=append:/var/log/alien-trade.log
+StandardError=append:/var/log/alien-trade.log
+
+[Install]
+WantedBy=multi-user.target

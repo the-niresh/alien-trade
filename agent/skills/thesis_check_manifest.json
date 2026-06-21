@@ -1,0 +1,35 @@
+{
+  "unique_name": "alien_trade_thesis_check",
+  "name": "Alien-Trade Thesis Check (Falsification-as-a-Service)",
+  "version": "1.0.0",
+  "description": "Given a free-text trading idea, returns whether it was VALIDATED or FALSIFIED in honest walk-forward + holdout testing against Alien-Trade's thesis ledger — with the out-of-sample objective (Sortino - 2*maxDD), the deflated Sharpe ratio (multiplicity-adjusted, Lopez de Prado), and the exact source citation (interview/article). The falsification log is the differentiator: it tells you what does NOT work and why.",
+  "category": "trading_research",
+  "tags": ["bsc", "research", "falsification", "walk-forward", "deflated-sharpe", "anti-overfitting"],
+  "author": "alien-trade",
+  "license": "MIT",
+  "endpoint": {
+    "method": "POST",
+    "path": "/skill/thesis_check"
+  },
+  "input_schema": {
+    "type": "object",
+    "required": ["idea_text"],
+    "properties": {
+      "idea_text": {
+        "type": "string",
+        "description": "A free-text trading idea/thesis to check against the ledger, e.g. 'momentum works in confirmed uptrends' or 'rotate into the strongest asset'."
+      }
+    }
+  },
+  "output_schema": {
+    "type": "object",
+    "properties": {
+      "status": { "type": "string", "description": "untested | validated | FALSIFIED" },
+      "verdict": { "type": "string", "description": "supported | avoid | unknown" },
+      "oos_objective": { "type": ["number", "null"], "description": "Out-of-sample Sortino - 2*maxDD." },
+      "deflated_sharpe": { "type": ["number", "null"], "description": "Multiplicity-adjusted DSR in [0,1]." },
+      "source": { "type": ["string", "null"], "description": "Exact citation for the matched thesis." },
+      "matched_claim": { "type": ["string", "null"], "description": "The ledger claim that matched the idea." }
+    }
+  }
+}

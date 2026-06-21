@@ -59,8 +59,13 @@ export default defineSchema({
     content: v.string(),
     sources_json: v.string(),   // JSON array of {id, kind, score, text} hits
     ts_ms: v.number(),
+    // Phase 3 additions — optional for backward compat with existing rows
+    thread_id:       v.optional(v.id("copilot_threads")),
+    partial_content: v.optional(v.string()),
+    is_streaming:    v.optional(v.boolean()),
   })
-    .index("by_ts", ["ts_ms"]),
+    .index("by_ts", ["ts_ms"])
+    .index("by_thread", ["thread_id"]),
 
   // Hermes self-learning: post-trade reflections stored for mistake-avoidance
   reflections: defineTable({
@@ -114,6 +119,9 @@ export default defineSchema({
     max_drawdown_pct: v.number(),
     token_allowlist: v.array(v.string()),
     equity_floor: v.optional(v.number()),   // halt if portfolio drops below this USD value (0 = disabled)
+    rug_check_enabled:  v.optional(v.boolean()),   // pre-trade rug-check gate via TWAK (default true)
+    rug_risk_threshold: v.optional(v.number()),    // 0–100, block swap if score >= threshold (default 75)
+    x402_budget_usd:    v.optional(v.number()),    // per-cycle x402 spend cap
     // Strategy pick from the registry (momentum|contrarian|balanced|defensive)
     strategy_name: v.optional(v.string()),
     // Autopilot capital manager — user-set targets (cockpit). enabled=false -> off.
@@ -323,4 +331,146 @@ export default defineSchema({
     ts_ms: v.number(),
   })
     .index("by_key", ["key"]),
+
+  // Operator command queue — imperative TWAK-signed actions dispatched from the cockpit.
+  // UI enqueues (token-gated); the agent command worker drains and executes.
+  agent_commands: defineTable({
+    command_type: v.string(),
+    params: v.string(),           // JSON
+    status: v.union(
+      v.literal("queued"), v.literal("running"),
+      v.literal("done"),  v.literal("failed"),
+    ),
+    result:        v.optional(v.string()),
+    error:         v.optional(v.string()),
+    audit_id:      v.optional(v.id("audit")),
+    queued_by:     v.string(),
+    queued_at_ms:  v.number(),
+    updated_at_ms: v.number(),
+  })
+    .index("by_status",    ["status"])
+    .index("by_queued_at", ["queued_at_ms"]),
+
+  // Co-pilot thread index — each named conversation.
+  copilot_threads: defineTable({
+    title:          v.string(),
+    created_ms:     v.number(),
+    last_active_ms: v.number(),
+  })
+    .index("by_last_active", ["last_active_ms"]),
+
+  spawned_agents: defineTable({
+    name:              v.string(),
+    task_summary:      v.string(),        // kept for back-compat (display)
+    goal:              v.optional(v.string()),
+    allowed_tools:     v.optional(v.array(v.string())),
+    trigger:           v.optional(v.object({ kind: v.string(), spec: v.string() })),
+    notify_policy:     v.optional(v.object({ webpush: v.boolean(), severity_min: v.string() })),
+    mode:              v.optional(v.union(v.literal("paper"), v.literal("live"))),
+    thread_id:         v.optional(v.id("copilot_threads")),
+    status:            v.union(v.literal("active"), v.literal("idle"), v.literal("archived")),
+    created_at:        v.number(),
+    last_activity_ms:  v.optional(v.number()),
+  })
+    .index("by_status",  ["status"])
+    .index("by_created", ["created_at"]),
+
+  agent_runs: defineTable({
+    agent_id:   v.id("spawned_agents"),
+    started_ms: v.number(),
+    ended_ms:   v.optional(v.number()),
+    ok:         v.boolean(),
+    summary:    v.string(),
+    tool_calls: v.array(v.object({ tool: v.string(), args: v.string() })),
+  })
+    .index("by_agent",   ["agent_id"])
+    .index("by_started", ["started_ms"]),
+
+  approval_requests: defineTable({
+    agent_id:    v.id("spawned_agents"),
+    kind:        v.string(),            // "trade"
+    payload:     v.string(),            // JSON: {command_type, params}
+    status:      v.union(v.literal("pending"), v.literal("approved"), v.literal("rejected")),
+    created_ms:  v.number(),
+    resolved_ms: v.optional(v.number()),
+  })
+    .index("by_status", ["status"])
+    .index("by_agent",  ["agent_id"]),
+
+  push_subscriptions: defineTable({
+    endpoint:   v.string(),
+    p256dh:     v.string(),
+    auth:       v.string(),
+    created_ms: v.number(),
+  })
+    .index("by_endpoint", ["endpoint"]),
+
+  // Sponsor telemetry — every CMC/TWAK/BNB_SDK call the agent makes.
+  // Fire-and-forget appends from agent/sponsor_telemetry.py; UI reads for Intelligence tab.
+  sponsor_calls: defineTable({
+    sponsor:    v.union(v.literal("CMC"), v.literal("TWAK"), v.literal("BNB_SDK")),
+    kind:       v.string(),
+    endpoint:   v.string(),
+    status:     v.union(v.literal("ok"), v.literal("error")),
+    latency_ms: v.number(),
+    cost_usd:   v.optional(v.number()),
+    tx_hash:    v.optional(v.string()),
+    cycle_id:   v.optional(v.string()),
+    detail:     v.string(),
+    ts_ms:      v.number(),
+  })
+    .index("by_ts",      ["ts_ms"])
+    .index("by_sponsor", ["sponsor"]),
+
+  // Live positions singleton — agent writes each cycle; cockpit reads for the
+  // holdings panel. One row per symbol, keyed by symbol string. Flat = quantity 0.
+  positions: defineTable({
+    symbol: v.string(),
+    quantity: v.number(),            // units held (0 = flat)
+    avg_entry_price: v.number(),     // weighted avg buy price
+    current_price: v.number(),       // price at last cycle bar close
+    current_value_usd: v.number(),   // quantity * current_price
+    unrealized_pnl_usd: v.number(),  // (current_price - avg_entry) * quantity
+    mode: v.string(),
+    updated_ms: v.number(),
+  })
+    .index("by_symbol", ["symbol"]),
+
+  // Thesis ledger + trial registry (AWAKE_SPRINT §4.4/§4.6). Every thesis the loop
+  // distills/tests is logged here — for multiplicity accounting (DSR) and the cockpit
+  // "science in public" feed. status: untested | validated | FALSIFIED. asset_results
+  // is a JSON blob {asset: {objective, ...}}; source is the exact citation.
+  price_ticks: defineTable({
+    symbol: v.string(),
+    price: v.float64(),
+    timestamp_ms: v.float64(),
+  })
+    .index("by_symbol_ts", ["symbol", "timestamp_ms"]),
+
+  thesis_ledger: defineTable({
+    thesis_id: v.string(),
+    claim: v.string(),
+    source: v.string(),
+    regime: v.string(),
+    status: v.string(),
+    oos_objective: v.union(v.number(), v.null()),
+    deflated_sharpe: v.union(v.number(), v.null()),
+    asset_results: v.string(),       // JSON
+    trial_n: v.number(),
+    ts_ms: v.number(),
+  })
+    .index("by_status", ["status"])
+    .index("by_ts", ["ts_ms"]),
+
+  // Live wallet balances — agent writes each cycle; cockpit reads for balance panel
+  wallet_state: defineTable({
+    address:   v.optional(v.string()),
+    usdt: v.number(),
+    eth: v.number(),
+    bnb: v.number(),
+    bnb_usd: v.number(),
+    total_usd: v.number(),
+    updated_ms: v.number(),
+    tokens: v.optional(v.array(v.object({ symbol: v.string(), balance: v.number() }))),
+  }),
 });

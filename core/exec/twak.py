@@ -74,7 +74,10 @@ class TWAKClient:
     ):
         self.access_id = access_id or os.environ.get("TW_ACCESS_ID", "")
         self._secret = hmac_secret or os.environ.get("TW_HMAC_SECRET", "")
-        resolved = api_base or os.environ.get("TWAK_API_BASE", TWAK_API_BASE_DEFAULT)
+        # `or` (not get's default) so a present-but-EMPTY TWAK_API_BASE in .env.local
+        # falls back to the real endpoint instead of yielding a scheme-less base URL
+        # (which httpx rejects with UnsupportedProtocol — silently broke the client).
+        resolved = api_base or os.environ.get("TWAK_API_BASE") or TWAK_API_BASE_DEFAULT
         self._base = resolved.rstrip("/")
         self._http = httpx.Client(timeout=20.0)
 

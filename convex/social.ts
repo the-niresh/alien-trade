@@ -141,3 +141,12 @@ export const toggleSource = mutation({
     return null;
   },
 });
+
+export const removeSource = mutation({
+  args: { id: v.id("social_sources") },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    await ctx.db.delete(args.id);
+    return null;
+  },
+});

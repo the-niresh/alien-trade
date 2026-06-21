@@ -54,6 +54,7 @@ type Props = {
   onClose: () => void;
   prefill?: string;
   initialThreadId?: Id<"copilot_threads">;
+  startSpawn?: boolean;
 };
 
 function ActionConfirmCard({
@@ -323,6 +324,7 @@ export function CoPilotDrawer({
   onClose,
   prefill = "",
   initialThreadId,
+  startSpawn = false,
 }: Props) {
   const [question, setQuestion] = useState("");
   const [loading, setLoading] = useState(false);
@@ -467,6 +469,20 @@ export function CoPilotDrawer({
       setLastPrefill(prefill);
     }
   }, [prefill, lastPrefill]);
+
+  // "+ New" entry point — open a fresh thread and auto-start the guided spawn flow.
+  const [spawnKicked, setSpawnKicked] = useState(false);
+  useEffect(() => {
+    if (!isOpen) { setSpawnKicked(false); return; }
+    if (!startSpawn || spawnKicked) return;
+    setSpawnKicked(true);
+    void (async () => {
+      const id = await createThread(withToken({ title: "New agent" }));
+      setActiveThreadId(id);
+      handleQuickAction("spawn");
+    })();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, startSpawn, spawnKicked]);
 
   const newThread = async () => {
     const id = await createThread(withToken({ title: "New Chat" }));
@@ -673,7 +689,7 @@ export function CoPilotDrawer({
         showCloseButton={false}
         className="w-[720px] max-sm:w-full p-0 flex flex-col gap-0 border-l-0 shadow-none bg-transparent overflow-hidden"
       >
-        <div className="absolute inset-0 bg-[#050508]" />
+        <div className="absolute inset-0 bg-bg border-l border-border" />
         <div
           className="absolute -top-16 -left-16 w-56 h-56 rounded-full pointer-events-none"
           style={{

@@ -42,6 +42,7 @@ _GUARDED_MUTATIONS = frozenset({
     "walletState:upsert",
     "agentEvents:append",
     "signals:record",
+    "sponsorCalls:append",
 })
 
 
@@ -336,13 +337,17 @@ class ConvexBridge:
 
     def update_wallet_state(self, *, usdt: float, eth: float, bnb: float,
                              bnb_usd: float, total_usd: float, updated_ms: int,
-                             address: str = "") -> None:
+                             address: str = "",
+                             tokens: list | None = None) -> None:
         addr = address or os.environ.get("WALLET_ADDRESS", "")
-        self._call("mutation", "walletState:upsert", {
+        payload: dict = {
             "address": addr,
             "usdt": usdt, "eth": eth, "bnb": bnb,
             "bnb_usd": bnb_usd, "total_usd": total_usd, "updated_ms": updated_ms,
-        })
+        }
+        if tokens is not None:
+            payload["tokens"] = tokens
+        self._call("mutation", "walletState:upsert", payload)
 
     def update_scorecard(self, **kw) -> None:
         """Upsert the live scorecard singleton (core/scorecard.py as_convex_row)."""
@@ -354,6 +359,10 @@ class ConvexBridge:
         """Append one AgentEvent to the Activity Channel (glass cockpit). Takes a
         contracts.AgentEvent; offline → logged like any other write."""
         return self._call("mutation", "agentEvents:append", event.as_row())
+
+    def emit_sponsor_call(self, call) -> Optional[str]:
+        """Forward a SponsorCall to Convex (fire-and-forget from the daemon thread)."""
+        return self._call("mutation", "sponsorCalls:append", call.as_row())
 
     def recent_events(self, limit: int = 50) -> list[dict]:
         return self._call("query", "agentEvents:recent", {"limit": limit}) or []
@@ -442,31 +451,38 @@ class ConvexBridge:
         })
 
     def audit(self, event_type: str, cycle_id: Optional[str], payload: dict, severity: str = "info") -> None:
-        self._call("mutation", "audit:log", {
+        args: dict = {
             "event_type": event_type,
-            "cycle_id": cycle_id,
             "payload": json.dumps(payload, default=str),
             "severity": severity,
-        })
+        }
+        if cycle_id is not None:
+            args["cycle_id"] = cycle_id
+        self._call("mutation", "audit:log", args)
 
     def append_audit(self, *, event_type: str, payload: str, severity: str = "info") -> None:
         """Keyword-arg variant used by the command worker (payload already JSON-encoded)."""
         self._call("mutation", "audit:log", {
             "event_type": event_type,
-            "cycle_id": None,
             "payload": payload,
             "severity": severity,
         })
 
     def pop_queued_command(self) -> Optional[dict]:
-        """Fetch the oldest queued agent_command. Returns None if queue is empty."""
-        rows = self._call("query", "agentCommands:list", {"limit": 1})
+        """Fetch the oldest queued agent_command. Returns None if queue is empty.
+
+        list returns newest-first (desc). We scan up to 20 rows and return the
+        oldest "queued" one so the queue is FIFO and a stuck/failed row never
+        permanently blocks later commands.
+        """
+        rows = self._call("query", "agentCommands:list", {"limit": 20})
         if not rows:
             return None
-        cmd = rows[0]
-        if cmd.get("status") != "queued":
+        # rows is newest-first; filter to queued, then take the oldest (last)
+        queued = [r for r in rows if r.get("status") == "queued"]
+        if not queued:
             return None
-        return cmd
+        return queued[-1]
 
     def update_command_status(
         self,
@@ -475,10 +491,12 @@ class ConvexBridge:
         result: Optional[str] = None,
         error: Optional[str] = None,
     ) -> None:
-        self._call("mutation", "agentCommands:updateStatus", {
-            "id": cmd_id, "status": status,
-            "result": result, "error": error,
-        })
+        payload: dict = {"id": cmd_id, "status": status}
+        if result is not None:
+            payload["result"] = result
+        if error is not None:
+            payload["error"] = error
+        self._call("mutation", "agentCommands:updateStatus", payload)
 
     def ensure_spawned_agent(
         self,

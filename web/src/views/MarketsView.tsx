@@ -5,15 +5,19 @@ import { Panel } from "../components/Panel";
 import { TradingChart } from "../components/TradingChart";
 import { cn } from "@/lib/utils";
 
-const SYMBOLS = ["ETH", "CAKE", "UNI", "LINK", "AAVE"] as const;
+const SYMBOLS = ["ETH", "CAKE", "UNI", "LINK", "AAVE", "FLOKI", "SHIB", "AVAX", "FET"] as const;
 type Sym = (typeof SYMBOLS)[number];
 
 const BINANCE_PAIR: Record<Sym, string> = {
-  ETH:  "ETHUSDT",
-  CAKE: "CAKEUSDT",
-  UNI:  "UNIUSDT",
-  LINK: "LINKUSDT",
-  AAVE: "AAVEUSDT",
+  ETH:   "ETHUSDT",
+  CAKE:  "CAKEUSDT",
+  UNI:   "UNIUSDT",
+  LINK:  "LINKUSDT",
+  AAVE:  "AAVEUSDT",
+  FLOKI: "FLOKIUSDT",
+  SHIB:  "SHIBUSDT",
+  AVAX:  "AVAXUSDT",
+  FET:   "FETUSDT",
 };
 
 type PriceTick = { timestamp_ms: number; price: number };
@@ -31,9 +35,10 @@ async function fetchBinanceHistory(symbol: Sym, limit = 200): Promise<PriceTick[
 }
 
 function formatPrice(price: number): string {
-  if (price >= 1000) return price.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  if (price >= 1)    return price.toFixed(4);
-  return price.toFixed(6);
+  if (price >= 1000)  return price.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  if (price >= 1)     return price.toFixed(4);
+  if (price >= 0.001) return price.toFixed(6);
+  return price.toFixed(8);
 }
 
 type Props = {

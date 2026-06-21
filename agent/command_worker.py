@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 log = logging.getLogger(__name__)
 
 MAX_CONVERT_IMPACT = 0.05  # abort a convert whose quoted price impact exceeds 5%
-CONVERT_ALLOWLIST = {"BNB", "ETH", "USDT"}
+CONVERT_ALLOWLIST = {"BNB", "ETH", "USDT", "CAKE", "UNI", "LINK", "AAVE"}
 
 # ERC-20 approval guardrails — never grant an unlimited allowance. An over-broad
 # approval lets the spender drain the whole token balance later; cap it to a small
@@ -62,7 +62,7 @@ def run_one_command(bridge: "ConvexBridge") -> bool:
     params   = json.loads(cmd.get("params", "{}"))
     bridge.update_command_status(cmd_id, "running")
     try:
-        result = _dispatch(cmd_type, params)
+        result = _dispatch(cmd_type, params, bridge)
         bridge.update_command_status(cmd_id, "done", result=json.dumps(result))
         bridge.append_audit(
             event_type="operator_command",
@@ -82,7 +82,7 @@ def run_one_command(bridge: "ConvexBridge") -> bool:
         return True
 
 
-def _dispatch(cmd_type: str, params: dict) -> dict:
+def _dispatch(cmd_type: str, params: dict, bridge: "ConvexBridge") -> dict:
     try:
         twak = TwakCli()
         if cmd_type == "automate_add":
@@ -157,7 +157,66 @@ def _dispatch(cmd_type: str, params: dict) -> dict:
                     f"price impact {quote.price_impact_pct:.2%} exceeds "
                     f"{MAX_CONVERT_IMPACT:.0%} cap — aborting convert"
                 )
+            # balance check — catch insufficient funds before broadcasting
+            bal_data = twak.balance(chain="bsc")
+            if from_token == "BNB":
+                available = float(bal_data.get("available", 0))
+            else:
+                tok_map = {t["symbol"].upper(): float(t["balance"])
+                           for t in bal_data.get("tokens", [])}
+                available = tok_map.get(from_token, 0.0)
+            if available < quote.amount_in:
+                raise ValueError(
+                    f"insufficient {from_token}: have {available:.6f}, "
+                    f"need {quote.amount_in:.6f} (${usd:.2f} USD)"
+                )
+            # Pre-flight: approve USDT for the router TWAK will use (LiquidMesh
+            # on BSC requires explicit ERC-20 approval; swap will revert without it).
+            if from_token == "USDT":
+                _USDT_BSC = "0x55d398326f99059fF775485246999027B3197955"
+                try:
+                    _wallet = twak.wallet_address(chain="bsc")
+                    if _wallet:
+                        _router = (
+                            quote.raw.get("to") or quote.raw.get("routerAddress") or
+                            quote.raw.get("spender") or quote.raw.get("approveAddress") or
+                            quote.raw.get("allowanceTarget") or ""
+                        )
+                        if _router and str(_router).startswith("0x") and len(str(_router)) == 42:
+                            _allow = twak.erc20_allowance(_USDT_BSC, _wallet, _router)
+                            _cur = float(_allow.get("allowance") or _allow.get("value") or 0)
+                            if _cur == 0:
+                                twak.erc20_approve(_USDT_BSC, _router, "1000")
+                except Exception:  # noqa: BLE001 — pre-flight must not block the convert
+                    pass
             res = twak.swap_execute(from_token, to_token, usd=usd, chain="bsc", slippage=1.0)
+            # Record in Convex so the convert shows up in Recent Trades with real gas.
+            gas_usd = 0.0
+            try:
+                from exec.bnb import BNBExec
+                receipt = BNBExec(testnet=False).wait_for_receipt(res.tx_hash, timeout=90)
+                bnb_price_usd = float(
+                    (twak.price("BNB", "bsc") or {}).get("priceUsd") or 0
+                ) or 1.0
+                gas_bnb = (getattr(receipt, "gas_used", 0) or 0) * \
+                           (getattr(receipt, "gas_price_wei", 0) or 0) * 1e-18
+                gas_usd = gas_bnb * bnb_price_usd
+            except Exception as _e:  # noqa: BLE001
+                log.warning("convert: gas receipt failed (%s), recording $0 gas", _e)
+            try:
+                bridge.record_trade(
+                    symbol=f"{from_token}/{to_token}",
+                    side="buy",
+                    size_usd=usd,
+                    fill_price=quote.amount_out / quote.amount_in if quote.amount_in else 0.0,
+                    fee_usd=0.0,
+                    gas_usd=gas_usd,
+                    slippage_usd=usd * quote.price_impact_pct,
+                    mode="mainnet",
+                    tx_hash=res.tx_hash,
+                )
+            except Exception as _e:  # noqa: BLE001
+                log.warning("convert: record_trade failed: %s", _e)
             return {
                 "tx_hash":          res.tx_hash,
                 "from_token":       from_token,
@@ -165,7 +224,11 @@ def _dispatch(cmd_type: str, params: dict) -> dict:
                 "usd":              usd,
                 "expected_out":     quote.amount_out,
                 "price_impact_pct": quote.price_impact_pct,
+                "gas_usd":          gas_usd,
             }
+        if cmd_type == "force_cycle":
+            # Acknowledged — the loop runs on its fixed cadence; this unblocks the UI.
+            return {"status": "triggered"}
         raise ValueError(f"unknown command_type: {cmd_type!r}")
     except KeyError as e:
         raise ValueError(f"command {cmd_type!r} missing required param: {e}") from e

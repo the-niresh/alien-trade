@@ -11,6 +11,7 @@ export const upsert = mutation({
     bnb_usd:   v.number(),
     total_usd: v.number(),
     updated_ms: v.number(),
+    tokens:    v.optional(v.array(v.object({ symbol: v.string(), balance: v.number() }))),
     control_token: v.optional(v.string()),
   },
   returns: v.null(),
@@ -40,6 +41,7 @@ export const get = query({
     bnb_usd:   v.number(),
     total_usd: v.number(),
     updated_ms: v.number(),
+    tokens:    v.optional(v.array(v.object({ symbol: v.string(), balance: v.number() }))),
   })),
   handler: async (ctx) => {
     return await ctx.db.query("wallet_state").first();

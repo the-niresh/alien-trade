@@ -33,18 +33,25 @@ class SponsorCall:
     ts_ms:      int = field(default_factory=lambda: int(time.time() * 1000))
 
     def as_row(self) -> dict:
-        return {
+        # Convex `v.optional(...)` accepts an ABSENT field but rejects an explicit
+        # null, so omit the optional fields entirely when they have no value rather
+        # than sending None (which serialises to JSON null → ArgumentValidationError).
+        row: dict = {
             "sponsor":    self.sponsor,
             "kind":       self.kind,
             "endpoint":   self.endpoint,
             "status":     self.status,
             "latency_ms": self.latency_ms,
-            "cost_usd":   self.cost_usd,
-            "tx_hash":    self.tx_hash,
-            "cycle_id":   self.cycle_id,
             "detail":     self.detail,
             "ts_ms":      self.ts_ms,
         }
+        if self.cost_usd is not None:
+            row["cost_usd"] = self.cost_usd
+        if self.tx_hash is not None:
+            row["tx_hash"] = self.tx_hash
+        if self.cycle_id is not None:
+            row["cycle_id"] = self.cycle_id
+        return row
 
 
 def _worker() -> None:

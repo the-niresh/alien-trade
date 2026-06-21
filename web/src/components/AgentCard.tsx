@@ -1,8 +1,20 @@
-import { motion } from "framer-motion";
+import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { Bot, BookOpen, FlaskConical, Sparkles, Wallet, type LucideIcon } from "lucide-react";
 import { ts } from "../lib/formatters";
 import { Skeleton } from "@/components/ui/skeleton";
-import { cn } from "@/lib/utils";
+
+function stripMd(text: string): string {
+  return text
+    .replace(/\*\*(.*?)\*\*/g, "$1")
+    .replace(/\*(.*?)\*/g, "$1")
+    .replace(/`(.*?)`/g, "$1");
+}
+
+export type AgentTool = {
+  label: string;
+  color: string;
+};
 
 export type AgentDef = {
   name: string;
@@ -10,14 +22,73 @@ export type AgentDef = {
   color: string;
   bg: string;
   role: string;
+  tools: AgentTool[];
 };
 
 export const AGENT_DEFS: AgentDef[] = [
-  { name: "CoPilot",       icon: Bot,           color: "var(--cyan)",   bg: "#00d4ff14", role: "Answers your questions about the market, regime and trades." },
-  { name: "Historian",     icon: BookOpen,      color: "var(--yellow)", bg: "#ffd60a14", role: "Queries the Second Brain for institutional memory before each trade." },
-  { name: "Researcher",    icon: FlaskConical,  color: "var(--purple)", bg: "#a855f714", role: "Auto-researches market anomalies and builds the research digest." },
-  { name: "Reflector",     icon: Sparkles,      color: "var(--red)",    bg: "#ff306014", role: "Writes structured reflections after every trade for Hermes learning." },
-  { name: "WalletManager", icon: Wallet,        color: "var(--green)",  bg: "#22c55e14", role: "Monitors real wallet vs ledger, detects swap failures, auto-realigns positions." },
+  {
+    name: "CoPilot",
+    icon: Bot,
+    color: "var(--cyan)",
+    bg: "#00d4ff14",
+    role: "Answers your questions about the market, regime and trades.",
+    tools: [
+      { label: "Claude API", color: "var(--cyan)" },
+      { label: "CMC MCP", color: "var(--yellow)" },
+      { label: "Second Brain", color: "var(--purple)" },
+      { label: "Convex", color: "var(--cyan)" },
+    ],
+  },
+  {
+    name: "Historian",
+    icon: BookOpen,
+    color: "var(--yellow)",
+    bg: "#ffd60a14",
+    role: "Queries the Second Brain for institutional memory before each trade.",
+    tools: [
+      { label: "Upstash Vector", color: "var(--purple)" },
+      { label: "Second Brain", color: "var(--purple)" },
+      { label: "Convex", color: "var(--cyan)" },
+    ],
+  },
+  {
+    name: "Researcher",
+    icon: FlaskConical,
+    color: "var(--purple)",
+    bg: "#a855f714",
+    role: "Auto-researches market anomalies and builds the research digest.",
+    tools: [
+      { label: "CMC API", color: "var(--yellow)" },
+      { label: "Web Search", color: "var(--purple)" },
+      { label: "Claude API", color: "var(--cyan)" },
+      { label: "Upstash Vector", color: "var(--purple)" },
+    ],
+  },
+  {
+    name: "Reflector",
+    icon: Sparkles,
+    color: "var(--red)",
+    bg: "#ff306014",
+    role: "Writes structured reflections after every trade for Hermes learning.",
+    tools: [
+      { label: "Claude API", color: "var(--cyan)" },
+      { label: "Upstash Vector", color: "var(--purple)" },
+      { label: "Convex", color: "var(--cyan)" },
+    ],
+  },
+  {
+    name: "WalletManager",
+    icon: Wallet,
+    color: "var(--green)",
+    bg: "#22c55e14",
+    role: "Monitors real wallet vs ledger, detects swap failures, auto-realigns positions.",
+    tools: [
+      { label: "TWAK", color: "var(--green)" },
+      { label: "BNB SDK", color: "var(--yellow)" },
+      { label: "Telegram", color: "var(--cyan)" },
+      { label: "Convex", color: "var(--cyan)" },
+    ],
+  },
 ];
 
 const KIND_COLOR: Record<string, string> = {
@@ -29,9 +100,11 @@ const KIND_COLOR: Record<string, string> = {
 };
 
 type LastEvent = { ts_ms: number; kind: string; headline: string };
-type Props = { def: AgentDef; lastEvent?: LastEvent; onClick: () => void };
+type Props = { def: AgentDef; lastEvent?: LastEvent };
 
-export function AgentCard({ def, lastEvent, onClick }: Props) {
+export function AgentCard({ def, lastEvent }: Props) {
+  const [expanded, setExpanded] = useState(false);
+
   const now = Date.now();
   const ageSec = lastEvent ? (now - lastEvent.ts_ms) / 1000 : Infinity;
   const isActive = ageSec < 60;
@@ -41,7 +114,7 @@ export function AgentCard({ def, lastEvent, onClick }: Props) {
   const kindColor = lastEvent ? (KIND_COLOR[lastEvent.kind] ?? "var(--border-hi)") : "var(--border-hi)";
 
   return (
-    <button
+    <div
       className="panel group relative w-full text-left p-5 cursor-pointer overflow-hidden panel-interactive"
       style={{ transition: "border-color 180ms ease, transform 180ms ease, box-shadow 180ms ease" }}
       onMouseEnter={(e) => {
@@ -50,7 +123,7 @@ export function AgentCard({ def, lastEvent, onClick }: Props) {
       onMouseLeave={(e) => {
         (e.currentTarget as HTMLElement).style.borderColor = "";
       }}
-      onClick={onClick}
+      onClick={() => setExpanded((v) => !v)}
     >
       {/* Agent colour ambient wash — top right */}
       <span
@@ -118,7 +191,7 @@ export function AgentCard({ def, lastEvent, onClick }: Props) {
         />
         {lastEvent ? (
           <>
-            <div className="text-[12.5px] text-text/85 leading-relaxed line-clamp-2 pl-1">{lastEvent.headline}</div>
+            <div className="text-[12.5px] text-text/85 leading-relaxed line-clamp-2 pl-1">{stripMd(lastEvent.headline)}</div>
             <div className="font-mono text-[10px] text-muted-fg mt-1.5 pl-1 flex items-center gap-1.5">
               <span>{ts(lastEvent.ts_ms)}</span>
               <span className="text-border-hi">·</span>
@@ -136,7 +209,38 @@ export function AgentCard({ def, lastEvent, onClick }: Props) {
           </div>
         )}
       </div>
-    </button>
+
+      {/* Tool chips — expand on click */}
+      <AnimatePresence>
+        {expanded && (
+          <motion.div
+            initial={{ opacity: 0, height: 0, marginTop: 0 }}
+            animate={{ opacity: 1, height: "auto", marginTop: 12 }}
+            exit={{ opacity: 0, height: 0, marginTop: 0 }}
+            transition={{ duration: 0.18, ease: "easeOut" }}
+            className="overflow-hidden"
+          >
+            <div className="pt-1">
+              <div className="flex flex-wrap gap-1.5">
+                {def.tools.map((tool) => (
+                  <span
+                    key={tool.label}
+                    className="font-mono text-[10px] font-semibold px-2 py-0.5 rounded"
+                    style={{
+                      color: tool.color,
+                      background: `color-mix(in oklab, ${tool.color} 10%, transparent)`,
+                      border: `1px solid color-mix(in oklab, ${tool.color} 28%, transparent)`,
+                    }}
+                  >
+                    {tool.label}
+                  </span>
+                ))}
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
   );
 }
 

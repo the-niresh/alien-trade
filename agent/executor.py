@@ -35,12 +35,25 @@ REJECTED = "rejected"       # pre-send guard blocked it (e.g. slippage cap)
 FAILED = "failed"           # broadcast/confirm error
 DUPLICATE = "duplicate"     # idempotency key already executed
 
-# USDT on BSC (BEP-20, 18 decimals) — must be approved for any router before a
-# USDT→token swap. TWAK routes through LiquidMesh (Trust Wallet's aggregator)
-# which does NOT handle approvals internally (unlike 0x). Without a prior approval
-# the router's safeTransferFrom reverts with 0xf4059071.
+# USDT on BSC (BEP-20, 18 decimals). A USDT→token swap reverts in the router's
+# safeTransferFrom with 0xf4059071 in two cases: (a) USDT not approved for the
+# aggregator's operator, or (b) the wallet balance can't cover size × (1+fee).
+# We handle (a) by approving the known operators below and (b) by clamping the
+# trade size to the live balance before sending.
 _USDT_BSC = "0x55d398326f99059fF775485246999027B3197955"
-_USDT_APPROVAL_AMOUNT = "1000"   # human-readable USDT; covers ~250 × $4 trades
+# Aggregator operator/spender addresses TWAK routes USDT through on BSC. These are
+# the `approval.operatorAddress` values from the swap route (LiquidMesh primary,
+# 0x fallback); stable, so we approve the set rather than parse the hidden route.
+_BSC_USDT_OPERATORS = (
+    "0x8157a9d65807521FBB8db8f37EEEcEfDD247E9B1",  # LiquidMesh aggregator
+    "0x0000000000001fF3684f28c67538d4D072C22734",  # 0x AllowanceHolder
+)
+_USDT_APPROVAL_WEI = str(10**24)   # 1,000,000 USDT (18 dp) — generous one-time bound
+# Headroom over the nominal USD size to cover the affiliate fee (~0.7%) plus
+# quote→fill price drift, so safeTransferFrom never pulls more than the balance.
+_FEE_HEADROOM_PCT = 0.06
+# Below this, gas + fees dominate — skip rather than send dust.
+_MIN_TRADE_USD = 1.0
 
 
 @dataclass
@@ -289,36 +302,58 @@ class TwakSwapExecutor(_IdempotentBase):
         self._approved_routers: set = set()  # routers already approved this session
 
     def _ensure_usdt_approval(self, from_tok: str, to_tok: str, size_usd: float) -> None:
-        """Pre-flight: if TWAK will route USDT through a router that requires prior
-        ERC-20 approval (LiquidMesh / any aggregator), grant it now. Discovers the
-        router from a quote response, checks allowance, and approves once per session.
-        Never raises — a failure here falls back to the existing slippage retry path."""
-        if from_tok.upper() not in ("USDT", _USDT_BSC):
+        """Pre-flight: ensure USDT is approved for the aggregator operators TWAK
+        routes through on BSC (LiquidMesh / 0x). Their spender addresses are stable
+        and the swap route only exposes them in metadata the CLI hides, so we
+        approve the known set once per session. Without this a USDT→token swap
+        reverts in the router's safeTransferFrom (0xf4059071). Never raises."""
+        if self._chain != "bsc" or from_tok.upper() not in ("USDT", _USDT_BSC):
             return
         try:
             wallet = self._twak.wallet_address(self._chain)
-            if not wallet:
-                return
-            quote = self._twak.swap_quote(from_tok, to_tok, usd=size_usd,
-                                           chain=self._chain, slippage=1.0)
-            raw = quote.raw
-            # TWAK quote responses expose the spender under several field names
-            # depending on CLI version (to, routerAddress, spender, approveAddress).
-            router = (
-                raw.get("to") or raw.get("routerAddress") or raw.get("spender") or
-                raw.get("approveAddress") or raw.get("router") or raw.get("allowanceTarget") or ""
+        except Exception:  # noqa: BLE001
+            return
+        if not wallet:
+            return
+        required_wei = int(size_usd * (1.0 + _FEE_HEADROOM_PCT) * 1e18)
+        for operator in _BSC_USDT_OPERATORS:
+            if operator in self._approved_routers:
+                continue
+            try:
+                allow = self._twak.erc20_allowance(_USDT_BSC, wallet, operator, chain=self._chain)
+                current = int(allow.get("allowance") or allow.get("value") or 0)
+                if current < required_wei:
+                    self._twak.erc20_approve(_USDT_BSC, operator, _USDT_APPROVAL_WEI, chain=self._chain)
+                self._approved_routers.add(operator)
+            except Exception:  # noqa: BLE001 — approval pre-flight must never crash a cycle
+                continue
+
+    def _clamp_buy_to_balance(self, order: Order) -> tuple[Order, Optional[str]]:
+        """Size a USDT-funded buy to what the wallet can actually cover.
+
+        The router pulls size_usd × (1 + fee) USDT via safeTransferFrom; if that
+        exceeds the balance it reverts on-chain (0xf4059071) — historically
+        mislabelled 'router mismatch'. Clamp down to the available balance (with
+        fee headroom) so the swap fills with what's there, or reject cleanly with
+        an honest reason when even the minimum can't be met. Never raises."""
+        from dataclasses import replace
+        try:
+            bal = self._twak.balance(self._chain) or {}
+            tokens = {str(t.get("symbol", "")).upper(): _coerce_float(t.get("balance"))
+                      for t in bal.get("tokens", [])}
+            available = tokens.get(self.QUOTE_CCY, 0.0)
+        except Exception:  # noqa: BLE001 — balance probe must never crash a cycle
+            return order, None   # can't read balance → let the swap path decide
+        spendable = available / (1.0 + _FEE_HEADROOM_PCT)
+        if order.size_usd <= spendable:
+            return order, None
+        if spendable < _MIN_TRADE_USD:
+            return order, (
+                f"insufficient {self.QUOTE_CCY}: have {available:.2f}, need "
+                f"~{order.size_usd * (1.0 + _FEE_HEADROOM_PCT):.2f} for a "
+                f"${order.size_usd:.2f} trade (min ${_MIN_TRADE_USD:.0f})"
             )
-            if not router or not str(router).startswith("0x") or len(str(router)) != 42:
-                return
-            if router in self._approved_routers:
-                return  # already approved this session
-            allow = self._twak.erc20_allowance(_USDT_BSC, wallet, router)
-            current = float(allow.get("allowance") or allow.get("value") or 0)
-            if current == 0:
-                self._twak.erc20_approve(_USDT_BSC, router, _USDT_APPROVAL_AMOUNT)
-            self._approved_routers.add(router)
-        except Exception:  # noqa: BLE001 — approval pre-flight must never crash a cycle
-            pass
+        return replace(order, size_usd=round(spendable, 2)), None
 
     def _rug_check(self, asset_id: str) -> None:
         """Block the swap if TWAK risk endpoint flags the token as a rug.
@@ -363,9 +398,13 @@ class TwakSwapExecutor(_IdempotentBase):
         rug_checked = False
         last_err = "no slippage level succeeded"
 
-        # Pre-flight ERC-20 approval: ensure USDT allowance exists for whichever
-        # router TWAK will use (LiquidMesh on BSC requires explicit approval).
+        # Pre-flight for USDT-funded buys: size the trade to the live wallet
+        # balance (a swap larger than the balance reverts in safeTransferFrom),
+        # then ensure USDT is approved for the aggregator operators.
         if order.side == "buy" and not self._dry_run:
+            order, reject_reason = self._clamp_buy_to_balance(order)
+            if reject_reason is not None:
+                return ExecutionReport(REJECTED, order, reason=reject_reason)
             self._ensure_usdt_approval(from_tok, to_tok, order.size_usd)
 
         for slip in slip_ladder:
@@ -405,8 +444,10 @@ class TwakSwapExecutor(_IdempotentBase):
             except TwakError as e:
                 err_str = str(e)
                 if "TX_FAILED" in err_str or "execution reverted" in err_str:
-                    # On-chain revert — likely wrong router; retry with higher slippage
-                    last_err = f"TX_FAILED at {slip}% (router mismatch), stepping up"
+                    # On-chain revert (e.g. 0xf4059071). Balance and approval are
+                    # handled pre-flight; a remaining revert is usually slippage /
+                    # transient routing — step up and retry.
+                    last_err = f"on-chain swap revert at {slip}% slippage, stepping up"
                     continue
                 # Other errors (network, auth, etc.) — don't retry
                 return ExecutionReport(FAILED, order, reason=f"twak swap error: {e}")

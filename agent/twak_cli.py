@@ -377,16 +377,24 @@ class TwakCli:
 
     # ── erc20 ─────────────────────────────────────────────────────────────────
 
-    def erc20_allowance(self, token: str, owner: str, spender: str) -> dict:
+    def erc20_allowance(
+        self, token: str, owner: str, spender: str, *, chain: Optional[str] = None,
+    ) -> dict:
+        # With --chain set, twak treats --token as a contract address. Without it,
+        # --token must be an asset id (c60_t0x…) and a bare 0x… address is rejected.
         return self._run(
             "erc20", "allowance",
-            "--token", token, "--owner", owner, "--spender", spender, "--json",
+            "--token", token, "--owner", owner, "--spender", spender,
+            "--chain", chain or self.chain, "--json",
         )
 
-    def erc20_approve(self, token: str, spender: str, amount: str) -> dict:
+    def erc20_approve(
+        self, token: str, spender: str, amount: str, *, chain: Optional[str] = None,
+    ) -> dict:
         return self._run(
             "erc20", "approve",
-            "--token", token, "--spender", spender, "--amount", amount, "--json",
+            "--token", token, "--spender", spender, "--amount", amount,
+            "--chain", chain or self.chain, "--json",
         )
 
     def erc20_revoke(self, token: str, spender: str) -> dict:

@@ -19,6 +19,7 @@ type Props = {
   onDeposit?: () => void;
   onAgentOpen?: (threadId: string) => void;
   onSpawnAgent?: () => void;
+  banner?: ReactNode;
 };
 
 export function AppShell({
@@ -35,9 +36,11 @@ export function AppShell({
   onDeposit,
   onAgentOpen,
   onSpawnAgent,
+  banner,
 }: Props) {
   return (
     <div className="flex flex-col h-screen">
+      {banner}
       <LiveHeader
         halted={halted}
         mode={mode}

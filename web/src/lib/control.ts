@@ -4,12 +4,23 @@
 // then attached to every guarded mutation. Read-only queries never need it.
 const KEY = "alien_control_token";
 
-/** Capture a token from the URL hash (`#t=...`) into localStorage, then return it. */
+/**
+ * Capture a token from the URL into localStorage, then return it.
+ * Accepts both the hash form (`#t=...`, preferred — never hits server logs) and
+ * the query form (`?t=...`, robust to link processors). The secret is stripped from
+ * the address bar after capture; any other params (e.g. `?readonly`) are preserved.
+ */
 export function loadToken(): string | null {
-  const hash = new URLSearchParams(location.hash.slice(1)).get("t");
-  if (hash) {
-    localStorage.setItem(KEY, hash);
-    history.replaceState(null, "", location.pathname); // strip the secret from the URL
+  const hashParams = new URLSearchParams(location.hash.slice(1));
+  const queryParams = new URLSearchParams(location.search);
+  const incoming = hashParams.get("t") ?? queryParams.get("t");
+  if (incoming) {
+    localStorage.setItem(KEY, incoming.trim());
+    hashParams.delete("t");
+    queryParams.delete("t");
+    const q = queryParams.toString();
+    const h = hashParams.toString();
+    history.replaceState(null, "", location.pathname + (q ? `?${q}` : "") + (h ? `#${h}` : ""));
   }
   return localStorage.getItem(KEY);
 }

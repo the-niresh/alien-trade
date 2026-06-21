@@ -19,8 +19,11 @@ import json
 import os
 import shutil
 import subprocess
+import time as _time
 from dataclasses import dataclass
 from typing import Optional
+
+from agent import sponsor_telemetry as _telemetry
 
 
 class TwakError(RuntimeError):
@@ -50,11 +53,15 @@ class TwakSwapResult:
 # BSC tokens that `twak swap` does NOT resolve by symbol — must use contract addresses.
 # ETH works by symbol; everything else on BSC requires the 0x... address.
 _BSC_TOKEN_REGISTRY: dict[str, str] = {
-    "CAKE": "0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82",
-    "UNI":  "0xBf5140A22578168FD562DCcF235E5D43A02ce9B1",
-    "LINK": "0xF8A0BF9cF54Bb92F17374d9e9A321E6a111a51bD",
-    "AAVE": "0xfb6115445Bff7b52FeB98650C87f44907E58f802",
-    "USDT": "0x55d398326f99059fF775485246999027B3197955",
+    "CAKE":  "0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82",
+    "UNI":   "0xBf5140A22578168FD562DCcF235E5D43A02ce9B1",
+    "LINK":  "0xF8A0BF9cF54Bb92F17374d9e9A321E6a111a51bD",
+    "AAVE":  "0xfb6115445Bff7b52FeB98650C87f44907E58f802",
+    "USDT":  "0x55d398326f99059fF775485246999027B3197955",
+    "FLOKI": "0xfb5B838b6cfEEdC2873aB27866079AC55363D37",  # BSC-native
+    "SHIB":  "0x2859e4544C4bB03966803b044A93563Bd2D0DD4D",  # BEP-20 multichain
+    "FET":   "0x031b41e504677879370e9DBcF937283A8691fa7f",  # BEP-20
+    # AVAX: resolved by symbol via Amber aggregator (no registry entry needed)
 }
 
 def _resolve_bsc_token(symbol: str) -> str:
@@ -65,10 +72,24 @@ def _resolve_bsc_token(symbol: str) -> str:
 class TwakCli:
     """Subprocess wrapper. Construct once; reuse across cycles."""
 
+    # Known install locations for twak when it isn't on PATH (e.g. systemd units
+    # that don't inherit the user's bun/npm global bin directory).
+    _FALLBACK_PATHS = [
+        "/root/.bun/bin/twak",
+        "/usr/local/bin/twak",
+        os.path.expanduser("~/.npm-global/bin/twak"),
+    ]
+
     def __init__(self, chain: str = "bsc", binary: Optional[str] = None, timeout: float = 120.0):
         self.chain = chain
         self.timeout = timeout
-        self._bin = binary or shutil.which("twak")
+        found = binary or shutil.which("twak")
+        if not found:
+            for p in self._FALLBACK_PATHS:
+                if os.path.isfile(p):
+                    found = p
+                    break
+        self._bin = found
 
     # ── availability ───────────────────────────────────────────────────────────
 
@@ -82,32 +103,80 @@ class TwakCli:
         cmd: list[str] = [self._bin, *args]
         if os.name == "nt" and self._bin.lower().endswith((".cmd", ".bat")):
             cmd = [os.environ.get("COMSPEC", "cmd.exe"), "/c", *cmd]
-        proc = subprocess.run(
-            cmd, capture_output=True, text=True, timeout=timeout or self.timeout,
-        )
-        out = (proc.stdout or "").strip()
-        # Windows libuv quirk: twak can print a valid JSON result and THEN crash
-        # on exit (UV_HANDLE_CLOSING assertion -> nonzero code). A parseable JSON
-        # payload is the truth; trust it even on a nonzero exit. The on-chain
-        # receipt (BNB SDK) is the final confirmation for any swap regardless.
-        if out:
-            try:
-                return json.loads(out)
-            except json.JSONDecodeError:
-                # twak swap prefixes human-readable status lines before the JSON
-                # block (e.g. "Swapping ... Swap executed!\n{...}"). Extract the
-                # last top-level JSON object from the mixed output.
-                start = out.rfind("{")
-                end = out.rfind("}") + 1
-                if start != -1 and end > start:
-                    try:
-                        return json.loads(out[start:end])
-                    except json.JSONDecodeError:
-                        pass
-        if proc.returncode != 0:
-            raise TwakError(f"twak {' '.join(args)} failed (exit {proc.returncode}): "
-                            f"{(proc.stderr or out).strip()[:400]}")
-        return {"_raw": out} if out else {}
+
+        t0 = _time.monotonic()
+        _exc: Optional[Exception] = None
+        _result: dict = {}
+        try:
+            proc = subprocess.run(
+                cmd, capture_output=True, text=True, timeout=timeout or self.timeout,
+            )
+            out = (proc.stdout or "").strip()
+            # Windows libuv quirk: twak can print a valid JSON result and THEN crash
+            # on exit (UV_HANDLE_CLOSING assertion -> nonzero code). A parseable JSON
+            # payload is the truth; trust it even on a nonzero exit. The on-chain
+            # receipt (BNB SDK) is the final confirmation for any swap regardless.
+            if out:
+                try:
+                    data = json.loads(out)
+                except json.JSONDecodeError:
+                    # twak swap prefixes human-readable status lines before the JSON
+                    # block (e.g. "Swapping ... Swap executed!\n{...}"). Extract the
+                    # last top-level JSON object from the mixed output.
+                    data = None
+                    start = out.rfind("{")
+                    end = out.rfind("}") + 1
+                    if start != -1 and end > start:
+                        try:
+                            data = json.loads(out[start:end])
+                        except json.JSONDecodeError:
+                            pass
+                if data is not None:
+                    # Detect explicit error responses (e.g. TX_FAILED, execution reverted).
+                    # The Windows libuv quirk (nonzero exit but valid result JSON) only
+                    # applies to SUCCESS responses — those never have "error"/"errorCode".
+                    if proc.returncode != 0 and ("error" in data or "errorCode" in data):
+                        code = data.get("errorCode", "")
+                        msg  = data.get("error", "swap error")
+                        raise TwakError(f"twak {args[0]} {code}: {msg}".strip())
+                    _result = data
+                elif proc.returncode != 0:
+                    raise TwakError(f"twak {' '.join(args)} failed (exit {proc.returncode}): "
+                                    f"{(proc.stderr or out).strip()[:400]}")
+                else:
+                    _result = {"_raw": out}
+            elif proc.returncode != 0:
+                raise TwakError(f"twak {' '.join(args)} failed (exit {proc.returncode}): "
+                                f"{(proc.stderr or out).strip()[:400]}")
+        except Exception as e:
+            _exc = e
+        finally:
+            latency_ms = (_time.monotonic() - t0) * 1000
+            _cmd = args[0] if args else ""
+            _sub = args[1] if len(args) > 1 and not args[1].startswith("-") else ""
+            _endpoint = " ".join(a for a in args[:2] if not a.startswith("-"))
+            if _cmd == "x402":
+                _sponsor = "CMC"
+                _kind = "data"
+                _cost = _result.get("cost") or _result.get("cost_usd") if _result else None
+                _tx = _result.get("txHash") or _result.get("tx_hash") if _result else None
+            else:
+                _sponsor = "TWAK"
+                _kind = _sub if _sub else _cmd
+                _tx = (_result.get("txHash") or _result.get("tx_hash")) if _result else None
+                _cost = None
+            _status = "error" if _exc else "ok"
+            _detail = json.dumps({"args": list(args[:3])})
+            if _exc:
+                _detail = json.dumps({"args": list(args[:3]), "err": str(_exc)[:200]})
+            _telemetry.record_sponsor_call(
+                _sponsor, _kind, _endpoint, _status, latency_ms,
+                cost_usd=_cost, tx_hash=_tx, detail=_detail,
+            )
+
+        if _exc is not None:
+            raise _exc
+        return _result
 
     # ── read-only checks ───────────────────────────────────────────────────────
 

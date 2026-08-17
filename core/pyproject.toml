@@ -71,7 +71,7 @@ testpaths = ["tests"]
 asyncio_mode = "auto"
 markers = [
     "unit: unit test",
-    "integration: integration test",
+    "integration: needs something the machine may not have — parquet history under core/data/parquet (gitignored), live network access, or wallet credentials from .env.local. Deselected in CI with -m 'not integration'; run locally after `python -m fetch_data`.",
 ]
 
 [tool.ruff]

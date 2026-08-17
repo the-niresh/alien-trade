@@ -51,6 +51,10 @@ jobs:
       - name: Ruff (syntax + undefined names — these DO fail the build)
         run: core/.venv/bin/ruff check --select E9,F63,F7,F82 core agent onboard research scripts
 
+      # Integration tests are deselected, not deleted. They need the parquet history
+      # (gitignored — fetch it with `python -m fetch_data`), live network access, or
+      # wallet credentials. On a CI runner all three are absent, so they would fail
+      # for reasons that say nothing about the code. Everything else runs.
       - name: Tests
         env:
           # Every external seam is stubbed in tests. These are set so nothing can
@@ -61,4 +65,4 @@ jobs:
         run: |
           core/.venv/bin/python -m pytest \
             agent/tests core/tests onboard/tests research/tests scripts/tests \
-            -q --timeout=120
+            -q --timeout=120 -m "not integration"

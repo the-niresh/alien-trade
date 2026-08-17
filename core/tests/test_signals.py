@@ -292,6 +292,7 @@ class TestOptimizer:
 
 # ── Walk-forward on real data ─────────────────────────────────────────────────
 
+@pytest.mark.integration   # reads parquet history from core/data/parquet (gitignored)
 class TestWalkForwardOnRealData:
     def test_oos_report_on_bnb_730_bars(self):
         """

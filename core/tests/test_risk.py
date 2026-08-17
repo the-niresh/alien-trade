@@ -274,6 +274,7 @@ class TestMaxExposureInvariant:
 
 # ── Walk-forward: risk engine reduces max drawdown ────────────────────────────
 
+@pytest.mark.integration   # reads parquet history from core/data/parquet (gitignored)
 class TestWalkForwardWithRisk:
     def test_risk_engine_cuts_drawdown_on_real_data(self):
         from backtest.data_loader import load_bars

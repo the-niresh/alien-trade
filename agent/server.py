@@ -20,9 +20,14 @@ from __future__ import annotations
 import os
 from contextlib import asynccontextmanager
 
+from typing import TYPE_CHECKING
+
 from agent.config import AgentConfig
 from agent.loop import DecisionLoop, CycleResult
 from agent.runtime import build_loop
+
+if TYPE_CHECKING:                # imported lazily at call time; annotation only
+    from agent.twak_cli import TwakCli
 
 try:
     from fastapi import FastAPI, HTTPException, Request
@@ -238,8 +243,9 @@ def _copilot_fallback(question: str) -> str:
     system = (
         "You are the Alien-Trade Co-Pilot — an intelligent assistant embedded inside an autonomous BSC trading agent.\n\n"
         "## About Alien-Trade\n"
-        "Alien-Trade is a fully autonomous, self-custody BSC trading agent built for BNB Hack 2026 (DoraHacks).\n"
-        "- Eligible tokens: ETH, CAKE, UNI, LINK, AAVE — traded on PancakeSwap spot via Trust Wallet Agent Kit (TWAK)\n"
+        "Alien-Trade is a fully autonomous, self-custody BSC trading agent.\n"
+        "- Token allowlist: ETH, CAKE, UNI, LINK, AAVE — traded on PancakeSwap spot via Trust Wallet Agent Kit (TWAK).\n"
+        "  The allowlist is a risk control: these are the only tokens the strategy was tested on.\n"
         "- Self-custody: all signing goes through TWAK; private keys never touch the code or logs\n"
         "- Strategy engine: deterministic Python makes all buy/sell decisions on a 1-hour cycle — LLM is advisory only\n"
         "- Strategy: contrarian approach using Fear & Greed index, momentum (S1), derivatives/funding rate (S2), sentiment (S3), on-chain flow (S4)\n"

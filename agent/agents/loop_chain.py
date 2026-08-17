@@ -8,7 +8,7 @@ Does NOT require SECOND_BRAIN=1 or upstash — uses a StubSupervisor that:
   CoPilot     → short summary built from researcher output
 
 Writes tool_calls[] to agent_runs so the cockpit Neural Mesh shows
-Researcher → Historian → CoPilot live during the competition window.
+Researcher → Historian → CoPilot live as the loop runs.
 """
 from __future__ import annotations
 

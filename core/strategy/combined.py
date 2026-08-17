@@ -9,8 +9,9 @@ Decision flow per bar:
   4. compare target to current position         → enter / exit / hold
 
 Rebalance band prevents constant churning on noise (saves gas + slippage).
-Spot-long-only: perp shorts were dropped from the scored path (only `twak swap`
-transactions count toward competition PnL — see reference-hackathon-rules).
+Spot-long-only. Perp shorts were dropped deliberately: every position is a
+`twak swap` on PancakeSwap, so the agent can never take on funding-rate or
+liquidation risk it has no model for.
 """
 from __future__ import annotations
 
@@ -74,8 +75,8 @@ class StrategyParams:
     bypass_trend_filter: bool = False
     # Position sizing
     position_size_usd: float = 1_000.0
-    # Traded symbol — must be a competition-eligible BEP-20 (see docs/GOAL.md).
-    # BNB/BTC/BTCB are NOT eligible; ETH is the liquid default.
+    # Traded symbol — must be in risk.guardrails.TOKEN_ALLOWLIST (the tested set).
+    # BNB/BTC/BTCB are never traded; ETH is the liquid default.
     symbol: str = "ETH"
 
 

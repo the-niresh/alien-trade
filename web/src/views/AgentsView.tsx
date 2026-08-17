@@ -3,6 +3,7 @@ import { useState } from "react";
 import { api } from "../../../convex/_generated/api";
 import { cn } from "@/lib/utils";
 import { AgentDetailView } from "./agent-detail/AgentDetailView";
+import { WatchesPanel } from "@/components/WatchesPanel";
 import type { DetailAgent } from "./agent-detail/types";
 import type { Id } from "../../../convex/_generated/dataModel";
 
@@ -135,6 +136,8 @@ export function AgentsView({ onAgentOpen, onNewAgent }: Props) {
           );
         })}
       </div>
+
+      <WatchesPanel />
     </div>
   );
 }

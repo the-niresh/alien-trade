@@ -19,7 +19,7 @@ dependencies = [
     "uvicorn>=0.30",
     "qrcode>=7.4",
     "textual>=8.0",
-    # ── x402 pay-per-call (Step 1 / CMC special prize) ──
+    # ── x402 pay-per-call (metered CMC data access) ──
     "x402[evm,httpx]>=2.12",
 ]
 

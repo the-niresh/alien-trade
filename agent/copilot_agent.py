@@ -18,15 +18,28 @@ from typing import Any
 TOOLS: list[dict] = [
     {
         "name": "create_agent",
-        "description": "Spawn a new user-owned Agent that pursues a goal using the "
-                       "specialized Agent Tools. Default mode is paper (no real trades).",
+        "description": (
+            "Spawn a new persistent, user-owned Agent that autonomously pursues `goal` by "
+            "calling the Agent Tools you grant in `allowed_tools` (any of: get_wallet, "
+            "get_price, get_trending, check_token_risk, cmc_market_skill, get_agent_state, "
+            "or 'agent:<id>' to delegate to an existing agent). `trigger` sets cadence: "
+            "{\"kind\":\"schedule\", \"spec\":\"1h\"|\"4h\"|\"24h\"}. `mode` defaults to "
+            "\"paper\" (observes and notifies, never trades); pass \"live\" ONLY if the "
+            "operator explicitly says so — a live agent can place real on-chain trades that "
+            "spend real funds. ONLY call this when the operator explicitly asks to create or "
+            "run a new agent, and confirm goal + allowed_tools first. Returns "
+            "{created, mode, id}."
+        ),
         "input_schema": {
             "type": "object",
             "properties": {
                 "name": {"type": "string"},
                 "goal": {"type": "string"},
                 "allowed_tools": {"type": "array", "items": {"type": "string"}},
-                "trigger": {"type": "object"},
+                "trigger": {
+                    "type": "object",
+                    "description": "How the agent runs, e.g. {\"kind\":\"schedule\",\"spec\":\"1h\"}",
+                },
                 "mode": {"type": "string", "enum": ["paper", "live"]},
             },
             "required": ["name", "goal", "allowed_tools"],
@@ -34,18 +47,31 @@ TOOLS: list[dict] = [
     },
     {
         "name": "check_token_risk",
-        "description": "Security / rug-risk check for a token (TWAK asset id).",
+        "description": (
+            "Security / rug-pull risk assessment for ONE token, keyed by its TWAK asset id "
+            "(not a bare symbol). Use before discussing buying an unfamiliar token, or "
+            "whenever the operator asks 'is X safe / a scam / a rug'. Returns TWAK's risk "
+            "verdict and contract red-flags. For price use get_price; for market data or "
+            "sentiment use cmc_market_skill — this tool only judges contract safety."
+        ),
         "input_schema": {
             "type": "object",
-            "properties": {"asset_id": {"type": "string"}},
+            "properties": {"asset_id": {"type": "string", "description": "TWAK asset id, not a symbol"}},
             "required": ["asset_id"],
         },
     },
     {
         "name": "cmc_market_skill",
-        "description": "Run a CoinMarketCap market-data skill (OHLCV, funding/OI, "
-                       "social/sentiment, on-chain flow) for an open-ended market "
-                       "question. Returns the top matching skill's result.",
+        "description": (
+            "Catch-all CoinMarketCap lookup for open-ended or multi-factor market questions "
+            "the other tools don't cover: OHLCV / price history, funding rate & open "
+            "interest, social sentiment / KOL attention, and on-chain exchange flow & whale "
+            "moves. Pass a natural-language `query`; it runs the single best-matching CMC "
+            "skill and returns its result. Use get_price for a simple current price and "
+            "get_trending for movers; use this for anything deeper. May return "
+            "{\"status\":\"offline\"} if the skill hub is disabled — if so, say so and offer "
+            "an alternative."
+        ),
         "input_schema": {
             "type": "object",
             "properties": {"query": {"type": "string"}},
@@ -54,15 +80,23 @@ TOOLS: list[dict] = [
     },
     {
         "name": "get_agent_state",
-        "description": "Current trading agent state: realized PnL, drawdown, "
-                       "halted flag, mode/strategy, and the last few decisions "
-                       "(regime + risk verdict + reason). Use for 'how am I doing', "
-                       "'why did it (not) trade', PnL/drawdown/history questions.",
+        "description": (
+            "Live state of the MAIN autonomous trading agent (NOT user-spawned agents): "
+            "realized PnL, current drawdown %, halted flag, mode/strategy, and the last few "
+            "hourly decisions (each with regime, risk verdict, and reason). Source of truth "
+            "for 'how am I doing', 'why/when did it (not) trade', PnL/drawdown, and what the "
+            "engine is waiting on. Returns the numbers plus a recent_decisions list. Only "
+            "surface PnL/drawdown when the operator explicitly asks about performance."
+        ),
         "input_schema": {"type": "object", "properties": {}},
     },
     {
         "name": "get_price",
-        "description": "Live spot price for a token symbol or TWAK asset id.",
+        "description": (
+            "Live spot price in USD for ONE token, by symbol (e.g. ETH, CAKE) or TWAK asset "
+            "id. `chain` defaults to bsc. Use for a quick current price; for price history / "
+            "OHLCV use cmc_market_skill. Returns the current price and quote metadata."
+        ),
         "input_schema": {
             "type": "object",
             "properties": {
@@ -74,7 +108,12 @@ TOOLS: list[dict] = [
     },
     {
         "name": "get_trending",
-        "description": "Trending BNB-chain tokens by recent price change.",
+        "description": (
+            "Current trending BNB-chain tokens ranked by recent price change. Optional "
+            "`limit` (default 10). Use for 'what's hot / what's moving' questions. Returns a "
+            "ranked list of tokens with their recent % change; to assess one, follow up with "
+            "check_token_risk or get_price."
+        ),
         "input_schema": {
             "type": "object",
             "properties": {"limit": {"type": "integer", "description": "default 10"}},
@@ -82,9 +121,12 @@ TOOLS: list[dict] = [
     },
     {
         "name": "get_wallet",
-        "description": "Live on-chain wallet holdings and USD values across chains "
-                       "(via the self-custody TWAK wallet). Use for balance / "
-                       "wallet / holdings questions.",
+        "description": (
+            "Live on-chain holdings and USD values for the agent's self-custody TWAK wallet, "
+            "across chains. Use for balance / holdings / 'how much do I have' questions and "
+            "to ground any claim about available capital. Returns per-asset balances and USD "
+            "values. Read-only — it never moves funds."
+        ),
         "input_schema": {"type": "object", "properties": {}},
     },
 ]
@@ -151,7 +193,8 @@ SYSTEM = """\
 You are the Alien-Trade Co-Pilot — an assistant embedded inside an autonomous BSC trading agent. You explain and observe; you never execute trades yourself.
 
 ## How Alien-Trade works
-- Self-custody BSC agent for BNB Hack 2026. Eligible tokens: ETH, CAKE, UNI, LINK, AAVE — spot only, on PancakeSwap via Trust Wallet Agent Kit (TWAK). Keys never touch code or logs.
+- Self-custody BSC trading agent. It trades a fixed allowlist — ETH, CAKE, UNI, LINK, AAVE — spot only, on PancakeSwap via Trust Wallet Agent Kit (TWAK). Keys never touch code or logs.
+- The allowlist is a risk control, not a preference: these are the only tokens the strategy was tested on, and they are liquid enough that the cost model holds. The agent will not trade anything outside it.
 - A deterministic Python engine (NOT an LLM) makes every buy/sell decision. It runs once per hour.
 - Contrarian strategy on the Fear & Greed index, combined with momentum (S1), funding/OI (S2), sentiment (S3), and on-chain flow (S4).
 - Optimization target: Sortino ratio with low drawdown — risk-adjusted, not raw return.

@@ -27,11 +27,18 @@ jobs:
         uses: astral-sh/setup-uv@v5
         with:
           enable-cache: true
+          cache-dependency-glob: core/pyproject.toml
 
       - name: Install core (and its test deps)
+        # The secondbrain and stream extras are installed on purpose. Both are
+        # optional at runtime, but `agent/graph/supervisor.py` imports langgraph at
+        # module level, so without it three supervisor tests fail at collection
+        # rather than skipping. Better that CI exercises that code than pretends it
+        # is not there. The social and corpus extras stay out — those imports are
+        # genuinely lazy and their tests skip cleanly.
         run: |
           uv venv core/.venv
-          uv pip install --python core/.venv/bin/python -e ./core
+          uv pip install --python core/.venv/bin/python -e "./core[secondbrain,stream]"
           uv pip install --python core/.venv/bin/python pytest-timeout ruff
 
       # Lint is advisory for now: ruff was configured but never run, so the existing

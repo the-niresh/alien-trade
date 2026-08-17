@@ -21,6 +21,42 @@ dependencies = [
     "textual>=8.0",
     # ── x402 pay-per-call (metered CMC data access) ──
     "x402[evm,httpx]>=2.12",
+    # ── Imported directly at module level, so declared directly ──
+    # These three arrive transitively today (pydantic via fastapi, eth-abi via
+    # eth-account, and pywebpush not at all). Relying on that is how CI ended up
+    # unable to import agent/push.py: an undeclared import works right up until the
+    # package that happened to pull it in changes its own dependencies.
+    "pywebpush>=1.14",
+    "pydantic>=2.0",
+    "eth-abi>=4.0",
+]
+
+[project.optional-dependencies]
+# Everything below is imported lazily, inside a function or a try/except, so the
+# agent runs and the tests pass without any of it. Grouped rather than dumped into
+# `dependencies` because each group is heavy and only one code path needs it.
+
+# Second Brain: reflection, research digests, co-pilot chat. Off by default
+# (SECOND_BRAIN=0). With this group absent the model layer returns stubs.
+secondbrain = [
+    "langgraph>=0.2",
+    "anthropic>=0.40",
+    "upstash-redis>=1.1",
+    "upstash-vector>=0.6",
+]
+# Social sentiment ingest (S3 inputs beyond the Fear & Greed index).
+social = [
+    "telethon>=1.36",
+    "twscrape>=0.13",
+]
+# Long-form corpus ingest for the research agent.
+corpus = [
+    "trafilatura>=1.12",
+    "youtube-transcript-api>=0.6",
+]
+# Live price stream for the cockpit ticker.
+stream = [
+    "websockets>=12.0",
 ]
 
 [tool.hatch.build.targets.wheel]

@@ -3,9 +3,11 @@ import { AnimatePresence, motion } from "framer-motion";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { loadToken, setToken, withToken } from "./lib/control";
+import { VALID_VIEWS } from "./lib/nav";
 import { startTour, hasTourBeenSeen, startPostTradeTour, hasPostTradeTourBeenSeen } from "./lib/tour";
 import { AppShell } from "./components/AppShell";
 import { CoPilotDrawer } from "./components/CoPilotDrawer";
+import { VisitorGuide } from "./components/VisitorGuide";
 import { OverviewView } from "./views/OverviewView";
 import { PositionsView } from "./views/PositionsView";
 import { AgentsView } from "./views/AgentsView";
@@ -37,18 +39,29 @@ import type { Id } from "../../convex/_generated/dataModel";
 
 // ── Pairing wizard ────────────────────────────────────────────────────────────
 
-// Demo control token surfaced on the pair card so judges can operate the live
-// agent in one tap. Public by design (the BUIDL is public) — rotate CONTROL_TOKEN
-// after the Jun 28 judging window to retire it.
-const JUDGE_TOKEN = "e9a31a371233f14be95a35801fd98e6661c8a3e872c05675";
+// A control token used to live here as a hardcoded constant, so that anyone
+// judging a demo could operate the agent in one tap. It shipped to a public repo
+// and stayed there. Never put a token in client source: everything in this bundle
+// is readable by everyone who loads the page, and git remembers it even after the
+// line is deleted.
+//
+// Visitors who want to look around use the read-only path instead — Convex queries
+// are open, only mutations are gated — so no shared secret is needed for that.
 
 type PairingStep = "welcome" | "pair" | "done";
 
-function PairingScreen({ onPaired, onClose }: { onPaired: (t: string) => void; onClose: () => void }) {
+function PairingScreen({
+  onPaired,
+  onClose,
+  onObserve,
+}: {
+  onPaired: (t: string) => void;
+  onClose: () => void;
+  onObserve?: () => void;
+}) {
   const [step, setStep]       = useState<PairingStep>("welcome");
   const [val, setVal]         = useState("");
   const [error, setError]     = useState("");
-  const [judgePrefill, setJudgePrefill] = useState(false);
   const [checking, setChecking] = useState(false);
   const canvasRef           = useRef<HTMLCanvasElement>(null);
   const pingMutation        = useMutation(api.ping.ping);
@@ -144,13 +157,17 @@ function PairingScreen({ onPaired, onClose }: { onPaired: (t: string) => void; o
                 <div className="flex-1 h-px bg-border" />
               </div>
               <Input
-                type={judgePrefill ? "text" : "password"}
+                type="password"
                 value={val}
                 placeholder="control token"
-                onChange={(e) => { setVal(e.target.value); setJudgePrefill(false); setError(""); }}
+                onChange={(e) => { setVal(e.target.value); setError(""); }}
                 onKeyDown={(e) => e.key === "Enter" && submit()}
                 className="w-full bg-bg border-border text-text font-mono text-[13px] focus-visible:ring-green mb-2"
               />
+              <p className="font-mono text-[10px] text-muted-fg mb-2 leading-relaxed">
+                This is your own <code>CONTROL_TOKEN</code> from <code>.env.local</code>. There is
+                no shared or demo token — one in the page source would be public to everyone.
+              </p>
               {error && (
                 <p className="font-mono text-[11px] text-red mb-2">{error}</p>
               )}
@@ -159,21 +176,25 @@ function PairingScreen({ onPaired, onClose }: { onPaired: (t: string) => void; o
                 onClick={() => submit()}
                 disabled={!val.trim() || checking}
               >
-                {checking ? "Verifying…" : judgePrefill ? "Connect →" : "Pair cockpit →"}
+                {checking ? "Verifying…" : "Pair cockpit →"}
               </Button>
 
-              <div className="flex items-center gap-2 my-3">
-                <div className="flex-1 h-px bg-border" />
-                <span className="text-[11px] text-muted-fg">judges</span>
-                <div className="flex-1 h-px bg-border" />
-              </div>
-              <Button
-                className="w-full bg-yellow/10 border border-yellow/30 text-yellow font-bold hover:bg-yellow/20 cursor-pointer disabled:opacity-50"
-                onClick={() => { setVal(JUDGE_TOKEN); setJudgePrefill(true); setError(""); }}
-                disabled={checking}
-              >
-                Pair as Judge (demo) →
-              </Button>
+              {onObserve && (
+                <>
+                  <div className="flex items-center gap-2 my-3">
+                    <div className="flex-1 h-px bg-border" />
+                    <span className="text-[11px] text-muted-fg">no token?</span>
+                    <div className="flex-1 h-px bg-border" />
+                  </div>
+                  <Button
+                    className="w-full bg-elevated border border-border text-text font-semibold hover:bg-border/40 cursor-pointer"
+                    onClick={onObserve}
+                    disabled={checking}
+                  >
+                    Look around, read-only →
+                  </Button>
+                </>
+              )}
             </div>
           )}
 
@@ -202,7 +223,8 @@ function PairingScreen({ onPaired, onClose }: { onPaired: (t: string) => void; o
 }
 
 // ── History API routing helpers ────────────────────────────────────────────────
-const VALID_VIEWS = new Set(["overview","trackers","intelligence","chart","positions","agents","tools","controls","pipeline","portfolio","logs","notifications","docs","history"]);
+// Route allowlist comes from lib/nav so a new view cannot be reachable in the rail
+// but unreachable by URL, or the reverse. nav.test.ts pins the two together.
 function pathToView(): View {
   const seg = window.location.pathname.slice(1); // strip leading /
   return (VALID_VIEWS.has(seg) ? seg : "overview") as View;
@@ -211,15 +233,21 @@ function pathToView(): View {
 // ── Read-only observer banner ───────────────────────────────────────────────────
 // Shown when the cockpit is open without a control token (judges / public demo).
 // Live data is fully visible; every state-changing action is server-rejected.
-function ReadOnlyBanner({ onPair }: { onPair: () => void }) {
+function ReadOnlyBanner({ onPair, onGuide }: { onPair: () => void; onGuide: () => void }) {
   return (
-    <div className="flex items-center justify-center gap-3 bg-yellow/10 border-b border-yellow/25 px-4 py-1.5 text-center">
+    <div className="flex items-center justify-center gap-3 max-sm:flex-col max-sm:gap-1 bg-yellow/10 border-b border-yellow/25 px-4 py-1.5 text-center">
       <span className="font-mono text-[11px] text-yellow tracking-[0.04em]">
-        👁 READ-ONLY · observing the live autonomous agent — controls are disabled
+        Read-only — you can look at everything, but not change anything
       </span>
       <button
+        onClick={onGuide}
+        className="font-mono text-[11px] font-bold text-cyan hover:underline underline-offset-2 cursor-pointer"
+      >
+        New here? Ask the guide →
+      </button>
+      <button
         onClick={onPair}
-        className="font-mono text-[11px] text-yellow/80 hover:text-yellow underline underline-offset-2 cursor-pointer"
+        className="font-mono text-[11px] text-yellow/70 hover:text-yellow underline underline-offset-2 cursor-pointer"
       >
         pair to operate
       </button>
@@ -250,6 +278,7 @@ export default function App() {
   const [view, setViewState]                = useState<View>(pathToView);
   const setView = (v: View) => { history.pushState(null, "", "/" + v); setViewState(v); };
   const [copilotOpen, setCopilotOpen]       = useState(false);
+  const [guideOpen, setGuideOpen]           = useState(false);
   const [fundingOpen, setFundingOpen]       = useState(false);
   const [copilotPrefill, setCopilotPrefill] = useState("");
   const [copilotThreadId, setCopilotThreadId] = useState<string | undefined>(undefined);
@@ -338,6 +367,13 @@ export default function App() {
               setTimeout(startTour, 600);
             }
           }}
+          onObserve={() => {
+            setShowPairing(false);
+            if (location.hash.startsWith("#t=")) {
+              history.replaceState(null, "", location.pathname + location.search);
+            }
+            setReadOnly(true);
+          }}
           onClose={() => {
             setShowPairing(false);
             // Strip any leftover #t= deep-link so the gate doesn't re-open pairing.
@@ -394,12 +430,12 @@ export default function App() {
       <AppShell
         activeView={view}
         onViewChange={setView}
-        onCopilot={() => setCopilotOpen(true)}
+        onCopilot={() => (token ? setCopilotOpen(true) : setGuideOpen(true))}
         onTour={() => startTour(view)}
         halted={halted}
         mode={mode}
         onKillToggle={onKillToggle}
-        banner={!token ? <ReadOnlyBanner onPair={() => { setPairFrom("readonly"); setReadOnly(false); setShowPairing(true); }} /> : undefined}
+        banner={!token ? <ReadOnlyBanner onPair={() => { setPairFrom("readonly"); setReadOnly(false); setShowPairing(true); }} onGuide={() => setGuideOpen(true)} /> : undefined}
         selectedSymbol={selectedSymbol}
         onSymbolChange={setSelectedSymbol}
         onDeposit={() => setFundingOpen(true)}
@@ -435,6 +471,12 @@ export default function App() {
         prefill={copilotPrefill}
         initialThreadId={copilotThreadId as Id<"copilot_threads"> | undefined}
         startSpawn={copilotStartSpawn}
+      />
+
+      <VisitorGuide
+        isOpen={guideOpen}
+        onClose={() => setGuideOpen(false)}
+        onNavigate={(v) => setView(v as View)}
       />
 
       <Toaster position="bottom-right" theme="dark" richColors />

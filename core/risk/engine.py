@@ -158,31 +158,45 @@ class RiskEngine:
         if order is None:
             return None
 
-        # ── Volatility-targeted sizing ────────────────────────────────────────
-        sized_usd = compute_position_size(
-            history=history,
-            base_size_usd=self._config.base_position_usd,
-            capital=current_equity,
-            recent_pnls=self._pos.recent_pnls,
-            max_pct=self._config.max_position_pct,
-            target_vol=self._config.target_vol_ann,
-        )
-        sized_usd = min(sized_usd, self._config.max_trade_usd)
+        # ── Sizing ────────────────────────────────────────────────────────────
+        # Entries and exits are sized by different rules, and conflating them is a
+        # correctness bug, not a style choice. Volatility targeting answers "how much
+        # should I put at risk?" — a question that only has meaning for a new position.
+        # An exit is bounded by what is actually held; running it through the entry
+        # sizer produces a sell unrelated to the position, which then either fails to
+        # close it or asks to sell more than exists.
+        if order.side == "sell":
+            held_usd = self._pos.units * price
+            sized_usd = min(order.size_usd, held_usd)
+            if sized_usd <= 1e-9:
+                return None       # nothing to exit
+        else:
+            sized_usd = compute_position_size(
+                history=history,
+                base_size_usd=self._config.base_position_usd,
+                capital=current_equity,
+                recent_pnls=self._pos.recent_pnls,
+                max_pct=self._config.max_position_pct,
+                target_vol=self._config.target_vol_ann,
+            )
+            sized_usd = min(sized_usd, self._config.max_trade_usd)
 
-        # ── Full guardrail check on final sized order ─────────────────────────
-        check = check_guardrails(
-            symbol=order.symbol,
-            size_usd=sized_usd,
-            daily_loss_pct=daily_loss_pct,
-            consecutive_losses=self._pos.consecutive_losses,
-            capital=current_equity,
-            config=self._config,
-        )
-        if not check.allowed:
-            return None
+            # ── Full guardrail check on final sized order ─────────────────────
+            # Buys only. A guardrail that can veto an exit is a guardrail that can
+            # trap capital in a losing position — the opposite of risk control.
+            check = check_guardrails(
+                symbol=order.symbol,
+                size_usd=sized_usd,
+                daily_loss_pct=daily_loss_pct,
+                consecutive_losses=self._pos.consecutive_losses,
+                capital=current_equity,
+                config=self._config,
+            )
+            if not check.allowed:
+                return None
 
-        if sized_usd < 10.0:
-            return None
+            if sized_usd < 10.0:
+                return None
 
         # ── Max-exposure invariant: a buy may never push CUMULATIVE open
         #    exposure past the cap (a sequence of legal buys can't pile over).

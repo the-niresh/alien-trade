@@ -7,10 +7,9 @@ Output schema: {symbol, timestamp, regime, regime_gate, momentum_score,
                 derivatives_score, sentiment_score, flow_score,
                 composite_score, verdict, signal_strength, bars_used[, error]}
 
-This is the Track-2 artifact: the same /core strategy that drives the live
-agent is queryable as a hosted skill. Other AI agents can call POST
-/skill/signal_score to get a structured, walk-forward-validated signal score
-for any competition-eligible BSC token.
+The same /core strategy that drives the live agent is queryable as a hosted
+skill. Other AI agents can call POST /skill/signal_score to get a structured,
+walk-forward-validated signal score for any token on the tested allowlist.
 
 The implementation is a thin wrapper: fetch recent daily bars from Binance
 (free, no auth), pass to /core score_breakdown(), rename fields to the public

@@ -2,16 +2,16 @@
 The agent's goal, made measurable — the single scorecard that says how well the
 agent met its objective. Sim and live share this module (locked decision #2): the
 backtest scores a BacktestResult, the live runtime scores the same shapes built
-from real fills, so "how we're judged in sim" and "how we're judged live" can
-never drift.
+from real fills, so "how it scores in sim" and "how it scores live" can never
+drift.
 
-The objective is NOT raw profit. It is the Track-1 judging objective (CLAUDE.md
-decision #6, mirrored in core/strategy/optimizer.py):
+The objective is NOT raw profit. It is a drawdown-penalised risk-adjusted score
+(mirrored in core/strategy/optimizer.py):
 
     objective  =  sortino  -  LAMBDA * |max_drawdown|        (LAMBDA = 2.0)
 
-Everything else on the card is either an INPUT to that objective, a SCORECARD
-line the judges read, or a RULE-ADHERENCE fact (the agent respected its hard
+Everything else on the card is either an INPUT to that objective, a reported
+SCORECARD line, or a RULE-ADHERENCE fact (the agent respected its hard
 constraints). The doc that defines all of this is docs/GOAL.md.
 
 This module only COMPUTES the market-performance lines from an equity curve +

@@ -8,16 +8,20 @@ from dataclasses import dataclass, field
 from typing import NamedTuple
 
 # ── Token allowlist ───────────────────────────────────────────────────────────
-# Our risk ceiling: the only tokens the agent will trade. A curated SUBSET of the
-# competition's 149 eligible BEP-20s (see reference-hackathon-rules / docs/docs.md)
-# — liquid majors with full CMC data for S1/S2 and a proven walk-forward OOS edge.
-# NOTE: BNB / BTC / BTCB are NOT in the competition's eligible list, so trading
-# them would not count toward PnL.
+# A hard risk ceiling: the only tokens the agent will ever trade.
 #
-# Curated to the proven 5: the anti-overfitting rule (2-3 signals, minimal knobs,
-# OOS-validated) outweighs adding high-beta names on narrative alone right before
-# freeze. FLOKI/SHIB/AVAX/FET are eligible-list tokens (docs/docs.md) and can be
-# re-added IF each clears a clean walk-forward OOS Sortino check.
+# This is a real control, not a formality. Two reasons it exists:
+#   1. These five are the ONLY tokens the strategy was backtested on. Trading a
+#      token outside this set means trading a setup that was never measured.
+#   2. They are liquid majors with full CMC coverage for S1/S2, so the cost model
+#      (gas + slippage + fees) is calibrated against real fills. On a thin pair,
+#      slippage swamps any edge and the backtest stops predicting anything.
+#
+# Adding a token requires a clean walk-forward out-of-sample check first. Do not
+# widen this list to chase a narrative.
+#
+# BNB / BTC / BTCB are deliberately absent: BNB is held for gas, and none of the
+# three were part of the tested universe.
 TRADING_UNIVERSE: tuple[str, ...] = (
     "ETH", "CAKE", "UNI", "LINK", "AAVE",
 )
@@ -104,8 +108,9 @@ def check_max_exposure(
     Cumulative open-exposure cap. `check_guardrails` only bounds a *single* trade
     vs capital; this bounds the *total* open position after adding `new_size_usd`,
     so a sequence of individually-legal buys can never pile past the cap. This is
-    the max-exposure invariant the risk engine enforces on every buy (Track 1 is
-    scored on drawdown/exposure, so the bound must be provable, not incidental).
+    the max-exposure invariant the risk engine enforces on every buy. The bound
+    must be provable rather than incidental — drawdown is the metric this agent is
+    judged on, and an incidental bound is one that fails on the path nobody tested.
     """
     if equity <= 0:
         return GuardrailResult(True, "")

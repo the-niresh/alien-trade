@@ -1,0 +1,57 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: lint + tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Install core (and its test deps)
+        run: |
+          uv venv core/.venv
+          uv pip install --python core/.venv/bin/python -e ./core
+          uv pip install --python core/.venv/bin/python pytest-timeout ruff
+
+      # Lint is advisory for now: ruff was configured but never run, so the existing
+      # code has a backlog of style findings. Failing CI on them would mean a large
+      # unrelated diff. It reports, and the count is meant to come down over time.
+      - name: Ruff
+        continue-on-error: true
+        run: core/.venv/bin/ruff check core agent onboard research scripts
+
+      - name: Ruff (syntax + undefined names — these DO fail the build)
+        run: core/.venv/bin/ruff check --select E9,F63,F7,F82 core agent onboard research scripts
+
+      - name: Tests
+        env:
+          # Every external seam is stubbed in tests. These are set so nothing can
+          # silently reach for a real key and hit the network from CI.
+          TRADING_MODE: paper
+          CONVEX_URL: ""
+          ANTHROPIC_API_KEY: ""
+        run: |
+          core/.venv/bin/python -m pytest \
+            agent/tests core/tests onboard/tests research/tests scripts/tests \
+            -q --timeout=120

@@ -10,7 +10,7 @@ Two honest, out-of-sample views (never selects on in-sample — locked decision 
      plus its OOS scorecard (the same core/scorecard.py the live agent reports).
 
 DATA SOURCES:
-  cmc      — CMCClient (needs CMC_API_KEY); the competition-aligned source. NOTE:
+  cmc      — CMCClient (needs CMC_API_KEY); the richest field coverage. NOTE:
              the historical extended fields (funding_rate/open_interest/social_score/
              net_flow) are currently STUBBED to 0.0 in cmc_client._parse_ohlcv until
              the Agent Hub derivatives/social/flow endpoints are wired.

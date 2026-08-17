@@ -85,11 +85,11 @@ CMC_BASE_URL = "https://pro-api.coinmarketcap.com"
 
 # CMC integer IDs for the trading universe
 CMC_SYMBOL_IDS: dict[str, int] = {
-    "BNB":  1839,   # dev/reference only — NOT competition-eligible
-    "BTC":  1,      # dev/reference only — NOT competition-eligible
+    "BNB":  1839,   # gas + reference only — never traded (see TOKEN_ALLOWLIST)
+    "BTC":  1,      # reference only — never traded (see TOKEN_ALLOWLIST)
     "ETH":  1027,
     "USDT": 825,
-    # Competition-eligible allowlist (see reference-hackathon-rules)
+    # Tested trading allowlist — see risk.guardrails.TOKEN_ALLOWLIST for why
     "CAKE":  7186,
     "UNI":   7083,
     "LINK":  1975,
@@ -105,12 +105,12 @@ CMC_SYMBOL_IDS: dict[str, int] = {
 BINANCE_BASE_URL = "https://api.binance.com"
 
 BINANCE_SYMBOL_PAIRS: dict[str, str] = {
-    "BNB":  "BNBUSDT",   # dev/reference only — NOT competition-eligible
+    "BNB":  "BNBUSDT",   # gas + reference only — never traded
     "WBNB": "BNBUSDT",
-    "BTC":  "BTCUSDT",   # dev/reference only — NOT competition-eligible
+    "BTC":  "BTCUSDT",   # reference only — never traded
     "BTCB": "BTCUSDT",
     "ETH":  "ETHUSDT",
-    # Competition-eligible allowlist (see reference-hackathon-rules)
+    # Tested trading allowlist — see risk.guardrails.TOKEN_ALLOWLIST for why
     "CAKE":  "CAKEUSDT",
     "UNI":   "UNIUSDT",
     "LINK":  "LINKUSDT",

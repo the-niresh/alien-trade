@@ -6,7 +6,7 @@ Any agent can call it; callers that include a valid x402 payment header
 (0.01 USDC on Base) receive a structured multi-signal score. Callers
 without payment get an HTTP 402 with machine-readable payment requirements.
 
-This is the "both sides of x402" story for the TWAK special prize:
+This module sits on both sides of x402 — it pays for data and charges for signal:
 
   CONSUME  core/data/cmc_client.py pays $0.01 per CMC live data call.
   PROVIDE  this module charges $0.01 per /skill/signal_score call.

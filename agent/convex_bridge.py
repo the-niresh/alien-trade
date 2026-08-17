@@ -171,6 +171,20 @@ class ConvexBridge:
     def latest_ledger(self) -> Optional[dict]:
         return self._call("query", "ledger:latest", {})
 
+    # ── market/trade watches (deterministic monitor; see agent/watches.py) ───────
+
+    def active_watches(self) -> list[dict]:
+        """Active watch rows for the loop's per-cycle predicate check. Offline → []."""
+        return self._call("query", "watches:active", {}) or []
+
+    def set_watch_state(self, watch_id: Any, last_state: str,
+                        last_fired_ms: Optional[int] = None) -> None:
+        """Persist a watch's edge-trigger arming flag (clear|fired)."""
+        args: dict = {"id": watch_id, "last_state": last_state}
+        if last_fired_ms is not None:
+            args["last_fired_ms"] = last_fired_ms
+        self._call("mutation", "watches:setState", args)
+
     def set_halted(self, halted: bool) -> None:
         """Flip the kill switch (used by the API /halt and /resume routes)."""
         self._call("mutation", "config:setHalted", {"halted": halted})

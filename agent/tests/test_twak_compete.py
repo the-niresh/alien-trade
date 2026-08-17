@@ -1,7 +1,7 @@
 """
-twak competition registration — pin the exact CLI args. Registration is a one-shot
-on-chain action before the trading window; wrong args = silent DQ, so the command
-shape is worth locking down. No real `twak` binary needed (we stub `_run`).
+twak on-chain agent registration — pin the exact CLI args. Registration is a
+one-shot on-chain action; wrong args fail silently, so the command shape is worth
+locking down. No real `twak` binary needed (we stub `_run`).
 """
 from __future__ import annotations
 

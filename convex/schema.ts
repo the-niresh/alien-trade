@@ -386,6 +386,21 @@ export default defineSchema({
     .index("by_agent",   ["agent_id"])
     .index("by_started", ["started_ms"]),
 
+  // Deterministic market/trade watches — the agent loop evaluates these each cycle
+  // with a cheap predicate (no LLM) and edge-fires alerts. See agent/watches.py.
+  watches: defineTable({
+    kind:          v.string(),   // price | regime | drawdown | equity
+    target:        v.string(),   // symbol (price) | regime name (regime) | "" (drawdown/equity)
+    op:            v.string(),   // lt | gt | eq(regime)
+    threshold:     v.number(),
+    label:         v.optional(v.string()),
+    status:        v.union(v.literal("active"), v.literal("cancelled")),
+    last_state:    v.string(),   // clear | fired  (edge-trigger arming)
+    created_at_ms: v.number(),
+    last_fired_ms: v.optional(v.number()),
+  })
+    .index("by_status", ["status"]),
+
   approval_requests: defineTable({
     agent_id:    v.id("spawned_agents"),
     kind:        v.string(),            // "trade"

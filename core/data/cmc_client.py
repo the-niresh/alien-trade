@@ -14,7 +14,7 @@ from __future__ import annotations
 import datetime
 import os
 from pathlib import Path
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
 import httpx
 import polars as pl
@@ -58,6 +58,10 @@ def _build_x402_http(
         )
     except Exception:
         return None
+
+
+if TYPE_CHECKING:                      # import cycle at runtime; annotation only
+    from x402.clients.httpx import x402HTTPClientSync
 
 
 class _X402HttpxClient:

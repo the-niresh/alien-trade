@@ -54,7 +54,7 @@ def _autopilot_from_env() -> AutopilotConfig:
 
 @dataclass
 class AgentConfig:
-    # Market — must be a competition-eligible BEP-20 (BNB/BTC/BTCB are NOT eligible).
+    # Market — must be in risk.guardrails.TOKEN_ALLOWLIST (BNB/BTC/BTCB are never traded).
     symbol: str = "ETH"
     bar_interval: str = "1h"          # decision cadence (matches STRATEGY.md)
     history_bars: int = 200           # rolling window handed to the strategy
@@ -74,9 +74,9 @@ class AgentConfig:
     # Loop cadence (seconds between cycles when running live/forever)
     cycle_seconds: int = 3600
 
-    # Competition activity floor: force >= 1 trade/day (Track-1 qualification).
-    # OFF by default — it would diverge a paper run from the sim, so enable it only
-    # for the live window (ACTIVITY_FLOOR=1 or runtime --activity-floor).
+    # Minimum-activity mode: force >= 1 trade/day. OFF by default — a forced trade
+    # has no signal behind it and makes a live run diverge from the backtest. Enable
+    # only if an external rule requires it (ACTIVITY_FLOOR=1 or --activity-floor).
     enforce_activity_floor: bool = field(
         default_factory=lambda: os.environ.get("ACTIVITY_FLOOR", "").lower()
         in ("1", "true", "yes"))

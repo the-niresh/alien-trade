@@ -1,6 +1,6 @@
 """
-Activity floor — Track 1 requires >= 1 trade per calendar day. When enabled, the
-loop forces ONE minimal compliance swap late in the day if nothing has traded yet.
+Activity floor — a minimum-activity rule of >= 1 trade per calendar day. When
+enabled, the loop forces ONE minimal swap late in the day if nothing has traded yet.
 These tests pin: off by default, fires only past the deadline hour with zero trades,
 skips when a real trade already happened, trims when holding (never breaches caps),
 and resets per calendar day.

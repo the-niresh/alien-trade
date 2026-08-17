@@ -43,7 +43,7 @@ cat <<'EOF'
    ╚═╝  ╚═╝╚══════╝╚═╝╚══════╝╚═╝  ╚═══╝         ╚═╝   ╚═╝  ╚═╝╚═╝  ╚═╝╚═════╝ ╚══════╝
 EOF
 echo -e "${NC}${BOLD}  Autonomous BSC Trading Agent — Onboarding Wizard${NC}"
-echo -e "  BNB Hack 2026 · self-custody · Convex real-time bus\n"
+echo -e "  Autonomous BSC trading agent · self-custody · Convex real-time bus\n"
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

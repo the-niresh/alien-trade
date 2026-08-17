@@ -122,6 +122,26 @@ def build_loop(cfg: AgentConfig, *, feed=None, dry_run: bool = False,
         symbol_scanner=scanner,
     )
     loop.second_brain = sb   # co-pilot / research / telemetry access (may be None)
+
+    # Autonomous-agent mesh wiring (off the scored hot path — locked decision #1).
+    # The scheduled spawned-agent tick in DecisionLoop calls
+    #   run_agent(twak=self.twak, skills=self.skills, client=self.anthropic_client)
+    # and _explain_watch reads self.anthropic_client. These attrs are ONLY set
+    # here; without them every scheduled run dies on a missing-attribute access
+    # that the tick swallows (except: pass), so the level-1 research mesh and the
+    # watch explain-on-fire never think in the live trading process. Read-only
+    # tools; constructing TwakCli/SkillHub is cheap and needs no credentials.
+    from agent.twak_cli import TwakCli
+    from agent.skills import SkillHub
+    loop.twak = TwakCli(chain=cfg.chain)
+    loop.skills = SkillHub()
+    _anthropic_key = os.environ.get("ANTHROPIC_API_KEY", "")
+    if _anthropic_key:
+        import anthropic
+        loop.anthropic_client = anthropic.Anthropic(api_key=_anthropic_key)
+    else:
+        loop.anthropic_client = None
+
     if recover:
         from agent.recovery import recover as _recover
         rep = _recover(loop)
@@ -150,7 +170,7 @@ def main(argv: Optional[list[str]] = None) -> None:
     ap.add_argument("--replay", action="store_true", help="replay recent live bars deterministically")
     ap.add_argument("--recover", action="store_true", help="rebuild state from Convex on startup")
     ap.add_argument("--activity-floor", action="store_true",
-                    help="force >= 1 trade/day (Track-1 qualification; live window only)")
+                    help="force >= 1 trade/day (minimum-activity rule; breaks sim/live parity)")
     args = ap.parse_args(argv)
 
     cfg = AgentConfig(symbol=args.symbol)

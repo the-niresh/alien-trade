@@ -1,7 +1,7 @@
-"""Competition score simulator (AWAKE_SPRINT §4.5).
+"""Objective-score simulator.
 
-Bootstrap historical N-day windows through the EXACT rubric objective
-(Sortino − 2·|maxDD|) → a distribution of our competition score per strategy variant.
+Bootstrap historical N-day windows through the objective
+(Sortino − 2·|maxDD|) → a distribution of the score per strategy variant.
 We tune for expected percentile, turning "is cash-default too timid vs a pump regime?"
 from a fear into a measured tradeoff. Also usable to price the activity-floor drag.
 """

@@ -17,7 +17,7 @@ from __future__ import annotations
 import logging
 import time
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Callable, Optional
+from typing import TYPE_CHECKING, Any, Callable, Optional
 
 from backtest.engine import Bar, Fill, Order, StrategyFn, Trade
 from risk.guardrails import check_equity_floor
@@ -122,13 +122,15 @@ class DecisionLoop:
         self._was_halted = False
         self._was_circuit = False
 
-        # ── Activity floor (competition qualification) ──────────────────────
-        # Track 1 requires >= 1 trade per calendar day (7 over the window). A quiet
-        # regime that emits no signal must not disqualify us, so when enabled the
-        # loop forces ONE minimal compliance swap late in the day if nothing has
-        # traded yet. OFF by default: it would diverge a paper run from the sim
-        # (the backtest has no such forced trade), so it's enabled only for the
-        # live competition window — never during parity/rehearsal.
+        # ── Activity floor: minimum-trades-per-day mode ─────────────────────
+        # Some venues and mandates require at least one trade per calendar day. When
+        # enabled, the loop forces ONE minimal swap late in the day if nothing has
+        # traded yet.
+        #
+        # OFF by default, and it should stay off unless an external rule demands it:
+        # a forced trade has no signal behind it, so it costs gas and slippage for
+        # no expected edge, and it makes a live run diverge from the backtest (which
+        # has no such forced trade). Enabling it breaks sim/live parity by design.
         self.enforce_activity_floor = enforce_activity_floor
         self.activity_deadline_hour = activity_deadline_hour
         self.activity_trade_usd = activity_trade_usd
@@ -356,10 +358,94 @@ class DecisionLoop:
         # ── Activity floor: guarantee >= 1 trade this calendar day ───────────
         self._maybe_compliance_trade(bar, cycle_id)
 
+        # ── Deterministic watches: edge-fire alerts (no LLM unless one trips) ──
+        self._check_watches(bar, regime.value, cycle_id)
+
         return self._finalise(
             cycle_id, bar, regime.value, verdict, reason, order, execution,
             target_usd, final_size, trade_id, breakdown, signals, halted=False,
         )
+
+    # ── deterministic market/trade watches ───────────────────────────────────
+
+    @staticmethod
+    def _watch_base_symbol(symbol: str) -> str:
+        """Normalize a trading symbol to its base token for price-watch matching
+        (e.g. 'CAKEUSDT' → 'CAKE')."""
+        s = symbol.upper()
+        for quote in ("USDT", "BUSD", "USDC", "USD"):
+            if s.endswith(quote) and len(s) > len(quote):
+                return s[: -len(quote)]
+        return s
+
+    def _check_watches(self, bar: Bar, regime_value: str, cycle_id: str) -> None:
+        """Evaluate active watches against a point-in-time snapshot. Pure predicate
+        (no LLM); the one short explain call happens only on an actual fire. Wrapped
+        so a watch bug can never crash the trade cycle (locked decision #6)."""
+        try:
+            watches = self.bridge.active_watches()
+            if not watches:
+                return
+            from agent.watches import process_watches, FIRED
+
+            base_sym = self._watch_base_symbol(self.symbol)
+            # Latency upgrade: if an optional push feed is attached and fresh, use it;
+            # otherwise fall back to this cycle's price. Default (no feed) = bar.close.
+            price = bar.close
+            stream = getattr(self, "price_stream", None)
+            if stream is not None:
+                fp = stream.cache.fresh_price(base_sym)
+                if fp is not None:
+                    price = fp
+
+            snapshot = {
+                "symbol": base_sym,
+                "price": price,
+                "regime": regime_value,
+                "drawdown_pct": self.ledger.drawdown_pct(bar.close) * 100.0,
+                "equity_usd": self.ledger.mark(bar.close),
+            }
+
+            def _state(watch_id: Any, new_state: str) -> None:
+                fired_ms = int(bar.timestamp) if new_state == FIRED else None
+                self.bridge.set_watch_state(watch_id, new_state, fired_ms)
+
+            def _fire(watch: dict, res: dict) -> None:
+                headline = res["headline"]
+                try:
+                    from agent.graph.contracts import AgentEvent, KIND_OBSERVATION
+                    self.bridge.emit_event(AgentEvent(
+                        agent="Watcher", kind=KIND_OBSERVATION,
+                        headline=f"WATCH: {headline}", cycle_id=cycle_id, detail=res,
+                    ))
+                except Exception:  # noqa: BLE001 — channel write must not crash the cycle
+                    pass
+                why = self._explain_watch(headline)
+                self._notify(f"🔔 {headline}" + (f"\n{why}" if why else ""))
+
+            process_watches(watches, snapshot, fire_cb=_fire, state_cb=_state)
+        except Exception:  # noqa: BLE001 — monitoring must never break trading
+            pass
+
+    def _explain_watch(self, headline: str) -> str:
+        """One short, token-frugal 'why it matters' line. Runs only on a fire, only if
+        an Anthropic client is wired; any failure degrades to no explanation."""
+        client = getattr(self, "anthropic_client", None)
+        if client is None:
+            return ""
+        try:
+            resp = client.messages.create(
+                model="claude-haiku-4-5-20251001",
+                max_tokens=80,
+                system=("You explain a market alert for a drawdown-first BSC spot trader in "
+                        "ONE short sentence. No preamble."),
+                messages=[{"role": "user",
+                           "content": f"Alert: {headline}. Why does it matter, in one sentence?"}],
+            )
+            return "".join(getattr(b, "text", "") for b in resp.content
+                           if getattr(b, "type", None) == "text").strip()
+        except Exception:  # noqa: BLE001 — explanation is best-effort
+            return ""
 
     # ── live mode toggle ─────────────────────────────────────────────────────
 
@@ -531,8 +617,8 @@ class DecisionLoop:
     # ── activity floor ─────────────────────────────────────────────────────────
 
     def _maybe_compliance_trade(self, bar: Bar, cycle_id: str) -> None:
-        """Force ONE minimal swap late in the day if nothing has traded yet, so we
-        meet Track 1's >= 1-trade/day qualification. Safe by construction: it TRIMS
+        """Force ONE minimal swap late in the day if nothing has traded yet, to
+        satisfy a minimum-activity rule. Safe by construction: it TRIMS
         an open position when we hold one (a sell can never breach an exposure cap)
         and otherwise opens a tiny position. Never fires when disabled, when a trade
         already happened today, or before the deadline hour. Routed through the same
@@ -1407,10 +1493,12 @@ class DecisionLoop:
             try:
                 from agent.agents.schedule import due_agents, deliver_push
                 from agent.agents.runner import run_agent
+                from agent.agents.registry import list_active
                 from agent.push import build_push_payload
                 import os
                 _vapid = {"private_key": os.environ.get("VAPID_PRIVATE_KEY", ""),
                           "subject": os.environ.get("VAPID_SUBJECT", "mailto:noreply@alien-trade.app")}
+                _now = int(time.time() * 1000)
                 _agents = list_active(self.bridge)
                 for _a in due_agents(_agents, _now):
                     _res = run_agent(_a, twak=self.twak, skills=getattr(self, "skills", None),

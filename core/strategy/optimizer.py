@@ -10,7 +10,7 @@ from __future__ import annotations
 from dataclasses import asdict
 from itertools import product
 
-from backtest.engine import Bar, run_backtest
+from backtest.engine import Bar, StrategyFn, run_backtest
 from backtest.costs import BSCCostModel
 from strategy.combined import StrategyParams, make_strategy
 

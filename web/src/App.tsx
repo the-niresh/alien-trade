@@ -63,6 +63,9 @@ function PairingScreen({
   const [val, setVal]         = useState("");
   const [error, setError]     = useState("");
   const [checking, setChecking] = useState(false);
+  // True once the deployment reports it has no CONTROL_TOKEN at all — control is
+  // switched off here on purpose, so pairing can never succeed and should say so.
+  const [disabled, setDisabled] = useState(false);
   const canvasRef           = useRef<HTMLCanvasElement>(null);
   const pingMutation        = useMutation(api.ping.ping);
 
@@ -86,9 +89,17 @@ function PairingScreen({
       setChecking(false);
       setStep("done");
       setTimeout(() => onPaired(t), 1200);
-    } catch {
+    } catch (e) {
       setChecking(false);
-      setError("Wrong token — check your .env.local CONTROL_TOKEN.");
+      // The deployment can refuse for two different reasons, and telling a person
+      // "wrong token" when no token can ever work sends them hunting for a typo.
+      const msg = e instanceof Error ? e.message : String(e);
+      if (msg.includes("CONTROL_TOKEN not configured")) {
+        setDisabled(true);
+        setError("");
+      } else {
+        setError("That token was not accepted. It is the CONTROL_TOKEN from your own .env.local.");
+      }
     }
   };
 
@@ -171,13 +182,28 @@ function PairingScreen({
               {error && (
                 <p className="font-mono text-[11px] text-red mb-2">{error}</p>
               )}
-              <Button
-                className="w-full bg-green text-[#04140c] font-bold hover:bg-green/80 cursor-pointer disabled:opacity-50"
-                onClick={() => submit()}
-                disabled={!val.trim() || checking}
-              >
-                {checking ? "Verifying…" : "Pair cockpit →"}
-              </Button>
+              {disabled && (
+                <div className="rounded-lg border border-cyan/25 bg-cyan/[0.06] px-3 py-2.5 mb-2">
+                  <p className="text-[12px] text-text/85 leading-relaxed">
+                    <span className="font-semibold">Control is switched off here.</span>{" "}
+                    This public deployment has no control token set, so no token will work
+                    and nothing can be changed from the internet.
+                  </p>
+                  <p className="text-[11.5px] text-muted-fg leading-relaxed mt-1.5">
+                    Everything is still readable — carry on read-only. To operate an agent,
+                    run your own copy from the repo.
+                  </p>
+                </div>
+              )}
+              {!disabled && (
+                <Button
+                  className="w-full bg-green text-[#04140c] font-bold hover:bg-green/80 cursor-pointer disabled:opacity-50"
+                  onClick={() => submit()}
+                  disabled={!val.trim() || checking}
+                >
+                  {checking ? "Verifying…" : "Pair cockpit →"}
+                </Button>
+              )}
 
               {onObserve && (
                 <>

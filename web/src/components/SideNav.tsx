@@ -6,26 +6,13 @@ import { toggleTheme, getTheme } from "../lib/theme";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { eventSeverity } from "../lib/eventSeverity";
-import { LayoutDashboard, List, Users, Settings, FileText, Bot, Sun, Moon, Bell, Activity, BookOpen, LineChart, GraduationCap, PieChart, Brain, History, Wrench } from "lucide-react";
+import { Bot, Sun, Moon, GraduationCap } from "lucide-react";
+import { NAV_ITEMS } from "../lib/nav";
+import type { View } from "../lib/nav";
 
-export type View = "overview" | "trackers" | "intelligence" | "chart" | "positions" | "agents" | "tools" | "controls" | "pipeline" | "portfolio" | "logs" | "notifications" | "docs" | "history";
-
-const NAV_ITEMS: { view: View; icon: React.ComponentType<{ className?: string }>; label: string }[] = [
-  { view: "overview",      icon: LayoutDashboard, label: "Overview" },
-  { view: "trackers",      icon: Activity,        label: "Trackers" },
-  { view: "intelligence",  icon: Brain,           label: "Intelligence" },
-  { view: "chart",         icon: LineChart,       label: "Markets" },
-  { view: "portfolio",     icon: PieChart,        label: "Portfolio" },
-  { view: "pipeline",      icon: Activity,        label: "Pipeline" },
-  { view: "positions",     icon: List,            label: "Positions" },
-  { view: "history",       icon: History,         label: "History" },
-  { view: "tools",         icon: Wrench,          label: "Tools" },
-  { view: "agents",        icon: Users,           label: "Your Agents" },
-  { view: "controls",      icon: Settings,        label: "Controls" },
-  { view: "logs",          icon: FileText,        label: "Logs" },
-  { view: "notifications", icon: Bell,            label: "Alerts" },
-  { view: "docs",          icon: BookOpen,        label: "Docs" },
-];
+// Re-exported so the many `import type { View } from ".../SideNav"` sites keep working.
+// The definition itself lives in lib/nav.ts alongside the icons and labels.
+export type { View };
 
 type Props = {
   active: View;
@@ -36,7 +23,11 @@ type Props = {
   onSpawnAgent?: () => void;
 };
 
-export function SideNav({ active, onSelect, onCopilot, onTour, onAgentOpen, onSpawnAgent }: Props) {
+// `onAgentOpen` / `onSpawnAgent` stay on Props because AppShell passes them, but the
+// rail never wired them to anything — they are accepted and dropped. Left in place
+// rather than removed from the interface so the caller keeps compiling; if the rail is
+// meant to open an agent, that is the hook to use.
+export function SideNav({ active, onSelect, onCopilot, onTour }: Props) {
   const [theme, setTheme] = useState(getTheme);
   const events = useQuery(api.agentEvents.recent, { limit: 20 }) ?? [];
   // Count events in the last 30 minutes that are non-info
@@ -93,8 +84,13 @@ export function SideNav({ active, onSelect, onCopilot, onTour, onAgentOpen, onSp
                   )}
                 </button>
               </TooltipTrigger>
-              <TooltipContent side="right">
-                {item.label}{showBadge ? ` (${badgeCount} recent)` : ""}
+              <TooltipContent side="right" className="max-w-[220px]">
+                <span className="font-semibold">
+                  {item.label}{showBadge ? ` (${badgeCount} recent)` : ""}
+                </span>
+                <span className="block text-[11px] opacity-70 mt-0.5 leading-snug">
+                  {item.blurb}
+                </span>
               </TooltipContent>
             </Tooltip>
           );

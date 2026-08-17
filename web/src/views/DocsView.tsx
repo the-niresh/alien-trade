@@ -17,9 +17,17 @@ export function DocsView() {
       <div className="mb-2">
         <div className="font-mono text-[10px] text-muted-fg tracking-[0.22em] uppercase mb-1.5 flex items-center gap-2">
           <span className="h-[2px] w-4 bg-green rounded-full inline-block" style={{ boxShadow: "0 0 6px var(--green)" }} />
-          Sponsor Integration Depth
+          Reference
         </div>
-        <h1 className="font-display text-[22px] font-bold tracking-wide text-text">Control Documentation</h1>
+        <h1 className="font-display text-[22px] font-bold tracking-wide text-text">What every control does</h1>
+        <p className="text-[13px] text-muted-fg mt-2 leading-relaxed">
+          Each row is one action the operator can take, grouped by the service that
+          carries it out — <span className="text-text">TWAK</span> signs transactions,{" "}
+          <span className="text-text">CMC</span> supplies market data,{" "}
+          <span className="text-text">BNB_SDK</span> talks to the chain, and{" "}
+          <span className="text-text">agent</span> is the bot itself. In read-only mode you
+          can read all of them; running them needs the operator&apos;s control token.
+        </p>
       </div>
       {grouped.map(({ sponsor, controls }) => (
         <Panel key={sponsor} label={<span className={cn("font-mono font-bold", SPONSOR_COLOR[sponsor])}>{sponsor}</span>}>

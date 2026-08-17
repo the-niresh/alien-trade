@@ -106,7 +106,7 @@ export function IntelligenceView() {
             className="h-[2px] w-4 bg-green rounded-full inline-block"
             style={{ boxShadow: "0 0 6px var(--green)" }}
           />
-          Sponsor Stack &amp; Intelligence
+          The thinking layer
         </div>
         <h1 className="font-display text-[22px] font-bold tracking-wide text-text">
           Intelligence
@@ -137,10 +137,10 @@ export function IntelligenceView() {
         </div>
       </div>
 
-      {/* ── Sponsor stack ────────────────────────────────────────────────── */}
+      {/* ── External services this agent depends on ──────────────────────── */}
       <div>
         <div className="panel-label mb-3" style={{ "--tick": "var(--green)" } as React.CSSProperties}>
-          Sponsor Stack
+          Services it depends on
         </div>
         <div className="grid grid-cols-3 gap-3 max-[780px]:grid-cols-1 max-[1100px]:grid-cols-2">
           {/* CMC */}

@@ -8,17 +8,40 @@ import time
 from agent.copilot_agent import run_read_loop
 
 
+# What each Agent Tool is for — injected into the prompt so the level-1 researcher
+# routes correctly instead of guessing from the bare tool name.
+_TOOL_JOBS: dict[str, str] = {
+    "get_wallet":       "live self-custody holdings + USD values",
+    "get_price":        "live USD spot price for one token",
+    "get_trending":     "ranked BNB-chain movers",
+    "check_token_risk": "rug / contract safety for one token",
+    "cmc_market_skill": "deep market data (OHLCV, funding/OI, sentiment, on-chain flow)",
+    "get_agent_state":  "the main trader's PnL / drawdown / regime / last decisions",
+    "create_agent":     "spawn a sub-agent (rarely needed)",
+}
+
+
 def _goal_prompt(rec: dict) -> str:
-    tools = ", ".join(rec.get("allowed_tools") or []) or "(no tools)"
+    names = rec.get("allowed_tools") or []
+    if names:
+        lines = "\n".join(
+            f"  - {n:<16} {_TOOL_JOBS.get(n, 'specialized tool')}"
+            for n in names
+        )
+    else:
+        lines = "  (no tools granted)"
     return (
-        f"You are '{rec['name']}', an expert autonomous agent and orchestrator. "
-        f"You have access to these Agent Tools: {tools}. "
-        f"You may call any of them multiple times and in any combination to fully "
-        f"accomplish your mandate — you are the decision-maker, not just a retrieval bot. "
-        f"Your mandate: {rec['goal']}. "
-        f"Reason carefully, use your tools to gather all relevant data, synthesize a "
-        f"decision or finding, and report concisely: what you found, your conclusion, "
-        f"and whether the user should be notified."
+        f"You are '{rec['name']}', a specialized research agent in the Alien-Trade mesh.\n"
+        f"Your tools and what each is for:\n{lines}\n"
+        f"You are specialized at research with these tools: call them as many times and in "
+        f"whatever combination it takes to ground your answer in live data — never guess when "
+        f"a tool can tell you.\n"
+        f"Your mandate: {rec['goal']}.\n"
+        f"Work the mandate, then hand up a fast, decisive synthesis:\n"
+        f"  (1) what you found (grounded in tool output),\n"
+        f"  (2) your call in one line — act / wait / avoid, or the specific alert,\n"
+        f"  (3) whether the operator should be notified now.\n"
+        f"Be token-frugal: stop calling tools the moment you can answer. No padding."
     )
 
 

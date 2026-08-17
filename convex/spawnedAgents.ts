@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { assertControlToken } from "./control";
 
 export const list = query({
   args: {},
@@ -49,8 +50,12 @@ export const setStatus = mutation({
   args: {
     id:     v.id("spawned_agents"),
     status: v.union(v.literal("active"), v.literal("idle"), v.literal("archived")),
+    control_token: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    // Pause / Resume / Terminate are state-changing — gate them like every other
+    // control mutation (parity with config.ts). Convex deployment URLs are public.
+    assertControlToken(args.control_token);
     await ctx.db.patch(args.id, { status: args.status });
   },
 });

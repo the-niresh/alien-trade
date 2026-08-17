@@ -40,6 +40,7 @@ import type * as thesisLedger from "../thesisLedger.js";
 import type * as trades from "../trades.js";
 import type * as twak from "../twak.js";
 import type * as walletState from "../walletState.js";
+import type * as watches from "../watches.js";
 
 import type {
   ApiFromModules,
@@ -80,6 +81,7 @@ declare const fullApi: ApiFromModules<{
   trades: typeof trades;
   twak: typeof twak;
   walletState: typeof walletState;
+  watches: typeof watches;
 }>;
 
 /**

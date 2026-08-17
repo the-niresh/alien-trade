@@ -110,6 +110,7 @@ class TestCMCClient:
 
 # ── TWAK Client ──────────────────────────────────────────────────────────────
 
+@pytest.mark.integration   # needs TW_ACCESS_ID / TW_HMAC_SECRET from .env.local
 class TestTWAKSigner:
     def test_imports_cleanly(self):
         from exec.twak import TWAKClient, TWAKSigner, build_auth_headers

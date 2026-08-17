@@ -301,6 +301,7 @@ class TestEngineNewFeatures:
 
 # ── Data loader ───────────────────────────────────────────────────────────────
 
+@pytest.mark.integration   # reads parquet history from core/data/parquet (gitignored)
 class TestDataLoader:
     def test_loads_bnb_bars(self):
         from backtest.data_loader import load_bars

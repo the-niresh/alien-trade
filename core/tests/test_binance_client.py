@@ -10,6 +10,7 @@ from pathlib import Path
 UNIVERSE = ["BNB", "BTC", "ETH"]  # USDT is cash, no OHLCV needed
 
 
+@pytest.mark.integration   # hits the live Binance API; blocked from CI runners
 class TestBinanceClient:
     def test_imports_cleanly(self):
         from data.binance_client import BinanceClient, SYMBOL_PAIRS

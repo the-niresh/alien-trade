@@ -198,7 +198,7 @@ The part that earned its keep. A strategy with a negative edge lost 44 cents.
 
 ### Testing and evaluation
 
-- 81 test files across `agent/`, `core/`, `onboard/`, `research/`, `scripts/`.
+- 81 test files across `agent/`, `core/`, `onboard/` and `research/`.
 - **Simulation/live parity tests** — the paper loop must reproduce the backtest fill for
   fill. If they drift the backtest is fiction.
 - **Failure-mode tests** — bad quote, failed transaction, timeout, risk veto, double

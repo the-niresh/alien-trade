@@ -14,7 +14,7 @@ def test_compete_register_and_status_args(monkeypatch):
     monkeypatch.setattr(cli, "_run", lambda *a, **k: calls.append(a) or {"ok": True})
 
     # NOTE: `twak compete` does NOT accept --chain (unlike wallet/swap). Passing it
-    # is rejected by the CLI, so compete_register/status must omit it. See CLAUDE.md.
+    # is rejected by the CLI, so compete_register/status must omit it.
     cli.compete_register()
     assert calls[-1] == ("compete", "register", "--json")
 

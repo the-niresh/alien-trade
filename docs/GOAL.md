@@ -15,7 +15,7 @@ violate. It is not aspirational prose — every line here maps to a number compu
 ## 1. The objective (the one number we optimise)
 
 The goal is **not** raw profit. It is the Track-1 judging objective — risk-adjusted
-return with an explicit drawdown penalty (CLAUDE.md decision #6, enforced in
+return with an explicit drawdown penalty (locked decision #6, enforced in
 `core/strategy/optimizer.py`):
 
 ```
@@ -27,7 +27,7 @@ objective  =  Sortino_oos  −  λ · |max_drawdown_oos|        (λ = 2.0)
 - **λ = 2.0** is shared between the optimizer (which *selects* params on the train
   objective) and the scorecard (which *scores* the realised one). Same lambda, same goal.
 - Out-of-sample only. We never report or select on in-sample numbers
-  (CLAUDE.md decision #7).
+  (locked decision #7).
 
 Everything below is either an **input** to this objective, a **scorecard line** the
 judges read alongside it, or a **rule-adherence** fact.

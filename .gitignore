@@ -80,3 +80,8 @@ RALPH.md
 skills-lock.json
 agent/skills/convex/
 agent/skills/convex-*/
+
+# Autonomous-loop tooling from the contest build — kept on disk, out of the repo
+scripts/
+docs/AUTONOMY.md
+convex/_generated/ai/ai-files.state.json

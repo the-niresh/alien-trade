@@ -67,3 +67,21 @@ core/test_supervisor.py.skip
 # Plans and specs live on disk, not in the repo
 docs/superpowers/
 docs/plans/
+
+# Agent-harness files — kept on disk, out of the repo
+CLAUDE.md
+AGENTS.md
+RALPH.md
+.mcp.json
+.claude/
+.agents/
+
+# Convex AI skill packs, installed by `npx convex ai-files install`
+skills-lock.json
+agent/skills/convex/
+agent/skills/convex-*/
+
+# Autonomous-loop tooling from the contest build — kept on disk, out of the repo
+scripts/
+docs/AUTONOMY.md
+convex/_generated/ai/ai-files.state.json

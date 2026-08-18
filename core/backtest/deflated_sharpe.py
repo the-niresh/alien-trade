@@ -4,7 +4,7 @@ Adjusts an observed Sharpe for the number of trials (multiplicity), the sample
 length, and the return distribution's skew/kurtosis. A survivor of 100 trials may be
 luck; DSR counts the trials. Stdlib only (statistics.NormalDist) — no new dependency.
 
-A thesis ships only if it clears DSR AND the >=4/5-asset objective gate (AUTONOMY.md).
+A thesis ships only if it clears DSR AND the >=4/5-asset objective gate.
 """
 from __future__ import annotations
 

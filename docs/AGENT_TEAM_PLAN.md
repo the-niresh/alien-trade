@@ -2,13 +2,13 @@
 
 > How many agents we have, what each one is, how they form a team, and who is the
 > single point of contact for the user. Grounded in the code that already exists
-> (`agent/`, `core/`, `agent/secondbrain/`) and the locked decisions in `CLAUDE.md`.
+> (`agent/`, `core/`, `agent/secondbrain/`) and the project's locked architectural decisions.
 
 ---
 
 ## 0. The one rule that shapes everything
 
-Two locked decisions (`CLAUDE.md` #1 and #6) govern this whole design:
+Two locked architectural decisions (#1 and #6) govern this whole design:
 
 1. **The LLM is OFF the trade hot path.** The buy/sell + size decision is
    deterministic Python in `/core`. No LLM picks an order. Ever.

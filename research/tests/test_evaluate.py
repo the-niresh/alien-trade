@@ -3,7 +3,7 @@
 This is the keystone that turns a distilled thesis card's `proposed_rule` (DSL) into a
 per-asset out-of-sample scorecard over the eligible universe, using the SHARED /core
 engine + the real BSC cost model (locked decision #2: no separate sim path). All tests
-are offline/deterministic — bars are injected, never fetched.
+are offline/deterministic - bars are injected, never fetched.
 """
 from __future__ import annotations
 

@@ -1,5 +1,5 @@
 """
-Brave Search API client — news + web (free tier, key in BRAVE_API_KEY).
+Brave Search API client - news + web (free tier, key in BRAVE_API_KEY).
 
 Offline-first: with no key the client is a no-op that returns [] so the whole intel
 layer degrades gracefully (tests run with zero network; a laptop demo never hangs on

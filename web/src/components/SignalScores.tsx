@@ -51,7 +51,7 @@ function SignalRow({ label, score }: SignalRowProps) {
           isPositive ? "text-green" : "text-red",
         )}
       >
-        {hasValue ? (score >= 0 ? "+" : "") + score.toFixed(2) : "—"}
+        {hasValue ? (score >= 0 ? "+" : "") + score.toFixed(2) : "-"}
       </span>
     </div>
   );

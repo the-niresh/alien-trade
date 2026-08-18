@@ -4,7 +4,7 @@ import type { View } from "./nav";
 
 /**
  * These exist because the rail shipped with Trackers and Pipeline on the same icon.
- * Two buttons that look identical are not a cosmetic problem — the icon is the only
+ * Two buttons that look identical are not a cosmetic problem - the icon is the only
  * label a 44px rail button has, so a repeat makes one of them unreachable by sight.
  */
 

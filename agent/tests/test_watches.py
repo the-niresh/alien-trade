@@ -1,4 +1,4 @@
-"""Tests for the deterministic watch checker — edge-trigger correctness and the
+"""Tests for the deterministic watch checker - edge-trigger correctness and the
 zero-LLM token invariant."""
 from __future__ import annotations
 
@@ -74,7 +74,7 @@ def test_malformed_watch_degrades_to_none():
     assert evaluate({"kind": "price"}, {"symbol": "CAKE", "price": 1.0}) is None
 
 
-# ── token invariant — idle watches never invoke the fire callback (the LLM path) ──
+# ── token invariant - idle watches never invoke the fire callback (the LLM path) ──
 
 def test_idle_watches_make_zero_fire_calls():
     llm_calls = []

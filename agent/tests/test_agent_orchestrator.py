@@ -1,4 +1,4 @@
-"""Tests for agent/agents/orchestrator.py — Level-1 chains + Level-2 delegation."""
+"""Tests for agent/agents/orchestrator.py - Level-1 chains + Level-2 delegation."""
 from __future__ import annotations
 
 import pytest

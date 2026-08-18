@@ -2,7 +2,7 @@
   "unique_name": "alien_trade_thesis_check",
   "name": "Alien-Trade Thesis Check (Falsification-as-a-Service)",
   "version": "1.0.0",
-  "description": "Given a free-text trading idea, returns whether it was VALIDATED or FALSIFIED in honest walk-forward + holdout testing against Alien-Trade's thesis ledger — with the out-of-sample objective (Sortino - 2*maxDD), the deflated Sharpe ratio (multiplicity-adjusted, Lopez de Prado), and the exact source citation (interview/article). The falsification log is the differentiator: it tells you what does NOT work and why.",
+  "description": "Given a free-text trading idea, returns whether it was VALIDATED or FALSIFIED in honest walk-forward + holdout testing against Alien-Trade's thesis ledger - with the out-of-sample objective (Sortino - 2*maxDD), the deflated Sharpe ratio (multiplicity-adjusted, Lopez de Prado), and the exact source citation (interview/article). The falsification log is the differentiator: it tells you what does NOT work and why.",
   "category": "trading_research",
   "tags": ["bsc", "research", "falsification", "walk-forward", "deflated-sharpe", "anti-overfitting"],
   "author": "alien-trade",

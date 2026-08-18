@@ -1,5 +1,5 @@
 """
-Binance public klines — free 2-year OHLCV history, no auth required.
+Binance public klines - free 2-year OHLCV history, no auth required.
 Used as the primary historical source until CMC Pro / Agent Hub is confirmed.
 Output schema is identical to cmc_client so the backtest engine is indifferent.
 
@@ -404,7 +404,7 @@ def _parse_klines(klines: list[list]) -> pl.DataFrame:
                 "low":   float(k[3]),
                 "close": float(k[4]),
                 "volume": float(k[5]),
-                # Extended signal fields — wired from CMC Agent Hub in Phase 6
+                # Extended signal fields - wired from CMC Agent Hub in Phase 6
                 "funding_rate":   0.0,
                 "open_interest":  0.0,
                 "social_score":   0.0,

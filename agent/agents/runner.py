@@ -8,7 +8,7 @@ import time
 from agent.copilot_agent import run_read_loop
 
 
-# What each Agent Tool is for — injected into the prompt so the level-1 researcher
+# What each Agent Tool is for - injected into the prompt so the level-1 researcher
 # routes correctly instead of guessing from the bare tool name.
 _TOOL_JOBS: dict[str, str] = {
     "get_wallet":       "live self-custody holdings + USD values",
@@ -34,12 +34,12 @@ def _goal_prompt(rec: dict) -> str:
         f"You are '{rec['name']}', a specialized research agent in the Alien-Trade mesh.\n"
         f"Your tools and what each is for:\n{lines}\n"
         f"You are specialized at research with these tools: call them as many times and in "
-        f"whatever combination it takes to ground your answer in live data — never guess when "
+        f"whatever combination it takes to ground your answer in live data - never guess when "
         f"a tool can tell you.\n"
         f"Your mandate: {rec['goal']}.\n"
         f"Work the mandate, then hand up a fast, decisive synthesis:\n"
         f"  (1) what you found (grounded in tool output),\n"
-        f"  (2) your call in one line — act / wait / avoid, or the specific alert,\n"
+        f"  (2) your call in one line - act / wait / avoid, or the specific alert,\n"
         f"  (3) whether the operator should be notified now.\n"
         f"Be token-frugal: stop calling tools the moment you can answer. No padding."
     )

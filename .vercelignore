@@ -1,6 +1,6 @@
 # Deny everything by default, then allow only what the cockpit build needs.
 # This is a live-funds trading repo (core/, agent/, .env.local hold wallet
-# secrets) — whitelist, don't blacklist, so a new top-level dir can never
+# secrets) - whitelist, don't blacklist, so a new top-level dir can never
 # leak into a Vercel upload by accident.
 *
 !web
@@ -13,7 +13,7 @@
 !tsconfig.json
 !vercel.json
 
-# Re-deny inside the allowed dirs — .vercelignore replaces .gitignore
+# Re-deny inside the allowed dirs - .vercelignore replaces .gitignore
 # entirely once present, so these must be re-stated explicitly.
 web/node_modules
 web/dist

@@ -70,7 +70,7 @@ def test_convert_rejects_same_from_and_to():
 
 def test_convert_rejects_unsupported_token():
     import pytest
-    # DOGE is not in CONVERT_ALLOWLIST (CAKE/ETH/etc. ARE) — must be rejected.
+    # DOGE is not in CONVERT_ALLOWLIST (CAKE/ETH/etc. ARE) - must be rejected.
     with patch("agent.command_worker.TwakCli"):
         with pytest.raises(ValueError, match="unsupported"):
             _dispatch("convert", {"from_token": "DOGE", "to_token": "USDT", "usd": 4.0}, MagicMock())

@@ -1,8 +1,8 @@
-"""Deflated Sharpe Ratio (López de Prado) — AWAKE_SPRINT §4.4.
+"""Deflated Sharpe Ratio (López de Prado) - AWAKE_SPRINT §4.4.
 
 Adjusts an observed Sharpe for the number of trials (multiplicity), the sample
 length, and the return distribution's skew/kurtosis. A survivor of 100 trials may be
-luck; DSR counts the trials. Stdlib only (statistics.NormalDist) — no new dependency.
+luck; DSR counts the trials. Stdlib only (statistics.NormalDist) - no new dependency.
 
 A thesis ships only if it clears DSR AND the >=4/5-asset objective gate.
 """
@@ -12,7 +12,7 @@ import math
 from statistics import NormalDist
 
 _N = NormalDist()
-_EULER = 0.5772156649015329  # Euler–Mascheroni
+_EULER = 0.5772156649015329  # Euler-Mascheroni
 
 
 def expected_max_sharpe(n_trials: int, n_obs: int) -> float:

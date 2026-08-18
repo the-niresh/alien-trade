@@ -32,7 +32,7 @@ const TAB_TOURS: Record<string, DriveStep[]> = {
       element: '[data-tour="nav-overview"]',
       popover: {
         title: "Overview",
-        description: "Live equity curve, cumulative PnL, max drawdown, and signal scores — everything you need to judge the agent's health at a glance.",
+        description: "Live equity curve, cumulative PnL, max drawdown, and signal scores - everything you need to judge the agent's health at a glance.",
         side: "right",
       },
     },
@@ -40,7 +40,7 @@ const TAB_TOURS: Record<string, DriveStep[]> = {
       element: '[data-tour="kill-switch"]',
       popover: {
         title: "Kill Switch",
-        description: "Halts ALL trading instantly. Red = halted, pulsing green = live. One click — no confirmation dialog.",
+        description: "Halts ALL trading instantly. Red = halted, pulsing green = live. One click - no confirmation dialog.",
         side: "bottom",
         align: "end",
       },
@@ -105,7 +105,7 @@ const TAB_TOURS: Record<string, DriveStep[]> = {
       element: '[data-tour="kill-switch"]',
       popover: {
         title: "Emergency Stop",
-        description: "If something looks wrong, hit the kill switch first — then adjust controls. Safe-first, always.",
+        description: "If something looks wrong, hit the kill switch first - then adjust controls. Safe-first, always.",
         side: "bottom",
         align: "end",
       },
@@ -116,7 +116,7 @@ const TAB_TOURS: Record<string, DriveStep[]> = {
       element: '[data-tour="nav-intelligence"]',
       popover: {
         title: "Intelligence Layer",
-        description: "See how CMC data, Trust Wallet Agent Kit, and BNB AI Agent SDK power the agent — plus the Hermes reflection loop and Second Brain memory.",
+        description: "See how CMC data, Trust Wallet Agent Kit, and BNB AI Agent SDK power the agent - plus the Hermes reflection loop and Second Brain memory.",
         side: "right",
       },
     },
@@ -144,7 +144,7 @@ const TAB_TOURS: Record<string, DriveStep[]> = {
       element: '[data-tour="nav-intelligence"]',
       popover: {
         title: "What feeds it",
-        description: "Intelligence shows the sponsor data sources — CMC OHLCV, funding/OI, and social — powering the signals at the top of this pipeline.",
+        description: "Intelligence shows the sponsor data sources - CMC OHLCV, funding/OI, and social - powering the signals at the top of this pipeline.",
         side: "right",
       },
     },
@@ -154,7 +154,7 @@ const TAB_TOURS: Record<string, DriveStep[]> = {
       element: '[data-tour="nav-positions"]',
       popover: {
         title: "Positions",
-        description: "Every open and closed position — size, entry price, and live unrealized PnL. Your per-trade ground truth.",
+        description: "Every open and closed position - size, entry price, and live unrealized PnL. Your per-trade ground truth.",
         side: "right",
       },
     },
@@ -172,7 +172,7 @@ const TAB_TOURS: Record<string, DriveStep[]> = {
       element: '[data-tour="nav-agents"]',
       popover: {
         title: "Your Agent Team",
-        description: "Each agent composes the specialized, sponsor-powered Agent Tools — CMC research, TWAK signing, and Hermes memory — to pursue a goal you set.",
+        description: "Each agent composes the specialized, sponsor-powered Agent Tools - CMC research, TWAK signing, and Hermes memory - to pursue a goal you set.",
         side: "right",
       },
     },
@@ -180,7 +180,7 @@ const TAB_TOURS: Record<string, DriveStep[]> = {
       element: '[data-tour="nav-copilot"]',
       popover: {
         title: "Spawn one here",
-        description: 'Tell the Co-Pilot "make an agent that watches CAKE and alerts me when funding flips negative" — it spawns a new agent for you.',
+        description: 'Tell the Co-Pilot "make an agent that watches CAKE and alerts me when funding flips negative" - it spawns a new agent for you.',
         side: "right",
       },
     },
@@ -190,7 +190,7 @@ const TAB_TOURS: Record<string, DriveStep[]> = {
       element: '[data-tour="nav-logs"]',
       popover: {
         title: "Decision & Audit Logs",
-        description: "The raw decision/audit JSON stream, one entry per cycle — exactly what the agent did and why. Nothing hidden.",
+        description: "The raw decision/audit JSON stream, one entry per cycle - exactly what the agent did and why. Nothing hidden.",
         side: "right",
       },
     },
@@ -198,7 +198,7 @@ const TAB_TOURS: Record<string, DriveStep[]> = {
       element: '[data-tour="kill-switch"]',
       popover: {
         title: "Something off?",
-        description: "If a log entry looks wrong, hit the kill switch first — it halts all trading instantly — then investigate.",
+        description: "If a log entry looks wrong, hit the kill switch first - it halts all trading instantly - then investigate.",
         side: "bottom",
         align: "end",
       },
@@ -227,7 +227,7 @@ const TAB_TOURS: Record<string, DriveStep[]> = {
       element: '[data-tour="nav-docs"]',
       popover: {
         title: "Docs",
-        description: "The strategy, architecture, and sponsor-integration writeups behind the cockpit — the thinking under the hood.",
+        description: "The strategy, architecture, and sponsor-integration writeups behind the cockpit - the thinking under the hood.",
         side: "right",
       },
     },
@@ -346,7 +346,7 @@ export function startPostTradeTour(): void {
         element: '[data-tour="nav-portfolio"]',
         popover: {
           title: "Check your portfolio",
-          description: "Portfolio shows your TWAK wallet balance — USDT, ETH, BNB, and total value after the trade.",
+          description: "Portfolio shows your TWAK wallet balance - USDT, ETH, BNB, and total value after the trade.",
           side: "right",
         },
       },

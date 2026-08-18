@@ -1,4 +1,4 @@
-"""CMC Crypto Skill Hub integration — two-tier loader (curated + dynamic), used by
+"""CMC Crypto Skill Hub integration - two-tier loader (curated + dynamic), used by
 the research + co-pilot agents only (off the hot path, locked decision #1)."""
 from agent.skills.format import (
     detect_symbol,

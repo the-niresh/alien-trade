@@ -1,5 +1,5 @@
 """
-Co-pilot — grounded Q&A over the Second Brain.
+Co-pilot - grounded Q&A over the Second Brain.
 
 Answers "why this trade?", "what regime are we in?", "what did the last 2 years
 teach us about this setup?" by retrieving from all three memory kinds
@@ -8,7 +8,7 @@ decisions + ledger), and asking the LLM to answer **only from the supplied
 context** with sources. Cheap by design: tier-routed (T1 default) and
 cache-backed, so a repeated question is free.
 
-Off the hot path — never touches the trade decision.
+Off the hot path - never touches the trade decision.
 """
 from __future__ import annotations
 
@@ -52,7 +52,7 @@ class CoPilot:
         prompt = self._build_prompt(question, hits, live, skill_lines)
         res = self.llm.complete(prompt, system=_COPILOT_SYSTEM, tier=tier, max_tokens=400)
         # 8.13 co-pilot self-check: prepend a warning if the answer has retrievable
-        # memories but fails to cite any of them. No LLM call — pure text scan.
+        # memories but fails to cite any of them. No LLM call - pure text scan.
         answer = res.text
         if hits and _is_uncited(answer):
             answer = "Some claims could not be grounded in retrieved memory.  " + answer
@@ -72,13 +72,13 @@ class CoPilot:
         """Live CMC skill reads for an open-ended question. Curated-first: if the
         question maps to pinned skills (known-good params), run those; only fall
         back to dynamic find_skill for the long tail (best-effort params, fragile).
-        Guarded throughout — a skill failing is advisory, never breaks an answer
+        Guarded throughout - a skill failing is advisory, never breaks an answer
         (failure-matrix). Empty when offline or nothing usable comes back."""
         if self.skills is None or not self.skills.enabled:
             return []
         symbol = detect_symbol(question)
 
-        # Tier 1 — curated (reliable). Reuse the hub's pinned param-builders.
+        # Tier 1 - curated (reliable). Reuse the hub's pinned param-builders.
         curated = route_curated(question)[:max_skills]
         if curated:
             ctx = SkillContext(symbol=symbol)
@@ -86,14 +86,14 @@ class CoPilot:
             for key in curated:
                 try:
                     brief = skill_summary(self.skills.run_curated(key, ctx), key)
-                except Exception:  # noqa: BLE001 — advisory only
+                except Exception:  # noqa: BLE001 - advisory only
                     brief = ""
                 if brief:
                     out.append(brief)
             if out:
                 return out
 
-        # Tier 2 — dynamic discovery for questions no curated skill covers.
+        # Tier 2 - dynamic discovery for questions no curated skill covers.
         return self._dynamic_evidence(question, symbol, top_k=top_k, max_skills=max_skills)
 
     def _dynamic_evidence(self, question, symbol, *, top_k, max_skills) -> list[str]:
@@ -107,7 +107,7 @@ class CoPilot:
             try:
                 params = params_from_schema(cand.get("inputSchema", {}), question, symbol)
                 brief = skill_summary(self.skills.execute_skill(name, params), name)
-            except Exception:  # noqa: BLE001 — advisory only
+            except Exception:  # noqa: BLE001 - advisory only
                 brief = ""
             if brief:
                 out.append(brief)
@@ -177,7 +177,7 @@ def main(argv: list[str] | None = None) -> None:
         pass
     load_dotenv(Path(__file__).resolve().parents[2] / ".env.local")
 
-    ap = argparse.ArgumentParser(description="Second-Brain co-pilot — ask one question")
+    ap = argparse.ArgumentParser(description="Second-Brain co-pilot - ask one question")
     ap.add_argument("question", nargs="+", help="the question to ask")
     args = ap.parse_args(argv)
 

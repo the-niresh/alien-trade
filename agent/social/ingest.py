@@ -1,5 +1,5 @@
 """
-Ingest orchestrator + CLI — the "agent watches your list for you" loop.
+Ingest orchestrator + CLI - the "agent watches your list for you" loop.
 
   load watchlist -> fan out across platform adapters -> normalise -> score
   -> emit summary (and, when wired, write Convex social_posts + sentiment_state).
@@ -74,7 +74,7 @@ def ingest(symbols: list[str], specs: list[SourceSpec], *, since_ms: int = 0, li
             counts[platform] = len(got)
         except NotConfigured as exc:
             skipped[platform] = str(exc)
-        except Exception as exc:  # never fatal — one source can't sink the run
+        except Exception as exc:  # never fatal - one source can't sink the run
             skipped[platform] = f"error: {exc}"
 
     now_ms = int(time.time() * 1000)

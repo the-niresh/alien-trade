@@ -3,7 +3,7 @@ Co-pilot ↔ SkillHub wiring (Tier-2 dynamic). For open-ended questions the co-p
 discovers a skill via find_skill, runs it with best-effort params from the returned
 schema, and folds the evidence into its answer context. Pins: schema→params
 building, symbol detection, the discover→execute→summarise flow, guarding, and
-offline-first. Hermetic — fake hub, no network/LLM.
+offline-first. Hermetic - fake hub, no network/LLM.
 """
 from __future__ import annotations
 
@@ -139,7 +139,7 @@ def test_build_prompt_includes_skill_block():
 
 
 def test_ask_marks_grounded_on_skill_evidence_only():
-    # no memory, no live state — skill evidence alone should ground the answer
+    # no memory, no live state - skill evidence alone should ground the answer
     out = _pilot(_FakeHub()).ask("where is ETH funding carry hottest?")
     assert out["grounded"] is True
     assert out["skills"]

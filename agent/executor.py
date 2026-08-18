@@ -1,16 +1,16 @@
 """
-Executor — turns a core Order into a Fill, with execution-reliability discipline.
+Executor - turns a core Order into a Fill, with execution-reliability discipline.
 
 Two implementations behind one interface:
 
-  PaperExecutor   — prices the fill exactly like backtest.engine (same cost model,
+  PaperExecutor   - prices the fill exactly like backtest.engine (same cost model,
                     same slippage-on-price math) so paper == sim, provably.
-  OnchainExecutor — simulate-before-send → slippage cap → sign (TWAK) → broadcast
+  OnchainExecutor - simulate-before-send → slippage cap → sign (TWAK) → broadcast
                     (BNB) → confirm → reconcile the REAL fill from the receipt.
 
 Both share:
   • Idempotency: an order carries an idempotency key (the cycle_id). A key that
-    has already produced a fill returns status="duplicate" and never re-sends —
+    has already produced a fill returns status="duplicate" and never re-sends -
     this is what prevents double-execution on retries / replays.
   • A typed ExecutionReport so the loop always knows what happened and why.
 """
@@ -48,11 +48,11 @@ _BSC_USDT_OPERATORS = (
     "0x8157a9d65807521FBB8db8f37EEEcEfDD247E9B1",  # LiquidMesh aggregator
     "0x0000000000001fF3684f28c67538d4D072C22734",  # 0x AllowanceHolder
 )
-_USDT_APPROVAL_WEI = str(10**24)   # 1,000,000 USDT (18 dp) — generous one-time bound
+_USDT_APPROVAL_WEI = str(10**24)   # 1,000,000 USDT (18 dp) - generous one-time bound
 # Headroom over the nominal USD size to cover the affiliate fee (~0.7%) plus
 # quote→fill price drift, so safeTransferFrom never pulls more than the balance.
 _FEE_HEADROOM_PCT = 0.06
-# Below this, gas + fees dominate — skip rather than send dust.
+# Below this, gas + fees dominate - skip rather than send dust.
 _MIN_TRADE_USD = 1.0
 
 
@@ -113,7 +113,7 @@ class _IdempotentBase:
 
 class PaperExecutor(_IdempotentBase):
     """
-    Fills at bar.close with cost-model slippage priced into the fill price —
+    Fills at bar.close with cost-model slippage priced into the fill price -
     byte-for-byte the same math as backtest.engine._apply_fill (non-delayed
     path). This is the contract that makes the paper run a faithful sim mirror.
     """
@@ -147,7 +147,7 @@ class OnchainExecutor(_IdempotentBase):
     fill from the receipt. bnb_exec + signer are injected so this is unit-testable
     with mocks (chaos: failed tx, timeout, bad quote).
 
-    dry_run=True stops after a successful simulation (status="simulated") — used
+    dry_run=True stops after a successful simulation (status="simulated") - used
     for the rehearsal phase before a wallet is funded.
     """
 
@@ -178,7 +178,7 @@ class OnchainExecutor(_IdempotentBase):
         # 1. simulate-before-send
         try:
             sim = self._bnb.simulate_swap(swap, self._wallet)
-        except Exception as e:  # noqa: BLE001 — surface as a clean report, never crash the loop
+        except Exception as e:  # noqa: BLE001 - surface as a clean report, never crash the loop
             return ExecutionReport(FAILED, order, reason=f"simulate error: {e}")
         if not sim.success:
             return ExecutionReport(REJECTED, order, reason=f"sim failed: {sim.error}")
@@ -276,7 +276,7 @@ class TwakSwapExecutor(_IdempotentBase):
       buy  symbol X  →  USDT → X
       sell symbol X  →  X → USDT
 
-    `twak swap` is mainnet — paper mode covers pre-mainnet rehearsal.
+    `twak swap` is mainnet - paper mode covers pre-mainnet rehearsal.
     """
 
     QUOTE_CCY = "USDT"
@@ -289,7 +289,7 @@ class TwakSwapExecutor(_IdempotentBase):
         bnb_exec=None,        # optional: confirm receipt + real gas
         chain: str = "bsc",
         dry_run: bool = False,
-        bridge=None,          # ConvexBridge — for rug-check config lookups
+        bridge=None,          # ConvexBridge - for rug-check config lookups
     ):
         super().__init__()
         self._twak = twak
@@ -325,14 +325,14 @@ class TwakSwapExecutor(_IdempotentBase):
                 if current < required_wei:
                     self._twak.erc20_approve(_USDT_BSC, operator, _USDT_APPROVAL_WEI, chain=self._chain)
                 self._approved_routers.add(operator)
-            except Exception:  # noqa: BLE001 — approval pre-flight must never crash a cycle
+            except Exception:  # noqa: BLE001 - approval pre-flight must never crash a cycle
                 continue
 
     def _clamp_buy_to_balance(self, order: Order) -> tuple[Order, Optional[str]]:
         """Size a USDT-funded buy to what the wallet can actually cover.
 
         The router pulls size_usd × (1 + fee) USDT via safeTransferFrom; if that
-        exceeds the balance it reverts on-chain (0xf4059071) — historically
+        exceeds the balance it reverts on-chain (0xf4059071) - historically
         mislabelled 'router mismatch'. Clamp down to the available balance (with
         fee headroom) so the swap fills with what's there, or reject cleanly with
         an honest reason when even the minimum can't be met. Never raises."""
@@ -342,7 +342,7 @@ class TwakSwapExecutor(_IdempotentBase):
             tokens = {str(t.get("symbol", "")).upper(): _coerce_float(t.get("balance"))
                       for t in bal.get("tokens", [])}
             available = tokens.get(self.QUOTE_CCY, 0.0)
-        except Exception:  # noqa: BLE001 — balance probe must never crash a cycle
+        except Exception:  # noqa: BLE001 - balance probe must never crash a cycle
             return order, None   # can't read balance → let the swap path decide
         spendable = available / (1.0 + _FEE_HEADROOM_PCT)
         if order.size_usd <= spendable:
@@ -408,7 +408,7 @@ class TwakSwapExecutor(_IdempotentBase):
             self._ensure_usdt_approval(from_tok, to_tok, order.size_usd)
 
         for slip in slip_ladder:
-            # 1. quote = simulate-before-send (re-quote per rung — provider may differ)
+            # 1. quote = simulate-before-send (re-quote per rung - provider may differ)
             try:
                 quote = self._twak.swap_quote(
                     from_tok, to_tok, usd=order.size_usd,
@@ -430,7 +430,7 @@ class TwakSwapExecutor(_IdempotentBase):
                                     reason=f"dry-run: quote ok, impact {quote.price_impact_pct:.2%}"),
                 )
 
-            # 3. rug-check gate — run once only (idempotent per order)
+            # 3. rug-check gate - run once only (idempotent per order)
             if not rug_checked:
                 self._rug_check(to_tok)
                 rug_checked = True
@@ -446,17 +446,17 @@ class TwakSwapExecutor(_IdempotentBase):
                 if "TX_FAILED" in err_str or "execution reverted" in err_str:
                     # On-chain revert (e.g. 0xf4059071). Balance and approval are
                     # handled pre-flight; a remaining revert is usually slippage /
-                    # transient routing — step up and retry.
+                    # transient routing - step up and retry.
                     last_err = f"on-chain swap revert at {slip}% slippage, stepping up"
                     continue
-                # Other errors (network, auth, etc.) — don't retry
+                # Other errors (network, auth, etc.) - don't retry
                 return ExecutionReport(FAILED, order, reason=f"twak swap error: {e}")
 
             if not res.tx_hash:
                 last_err = f"no tx hash at {slip}%, stepping up"
                 continue
 
-            # SUCCESS — confirm on-chain (BNB SDK receipt = source of truth)
+            # SUCCESS - confirm on-chain (BNB SDK receipt = source of truth)
             gas_usd = 0.0
             if self._bnb is not None:
                 try:
@@ -515,7 +515,7 @@ def _fill_price_from_swap(raw: dict, side: str, fallback: float) -> float:
 
     The quote/swap JSON reports the actual token amounts moved on-chain. Since one leg is
     always the USD-stable quote currency (USDT), price = USD_leg / asset_leg. Using this
-    instead of bar.close keeps the live ledger, drawdown, and stop levels honest — a
+    instead of bar.close keeps the live ledger, drawdown, and stop levels honest - a
     0.5-2% slippage on a volatile 1h bar otherwise compounds into wrong position accounting.
     Falls back to bar.close only when the response lacks parseable amounts.
     """

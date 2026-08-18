@@ -1,5 +1,5 @@
 """
-Live trading-mode toggle — the UI writes config.trading_mode and the loop swaps
+Live trading-mode toggle - the UI writes config.trading_mode and the loop swaps
 its executor to match, but only while FLAT (a position opened under one mode must
 close under that same mode). These tests pin the guard: flat switches, open
 positions defer, deferral applies on the first flat cycle, and offline / no-factory
@@ -38,7 +38,7 @@ class _ModeBridge(ConvexBridge):
 
 
 class _Exec:
-    """Marker executor — the swap only stores it; _sync never calls execute()."""
+    """Marker executor - the swap only stores it; _sync never calls execute()."""
     def __init__(self, tag):
         self.tag = tag
 
@@ -133,5 +133,5 @@ def test_failed_rebuild_keeps_current_mode_and_audits_error():
     bridge = _ModeBridge("mainnet")
     loop = _loop(bridge, factory=_boom, mode="paper")  # flat
     loop._sync_trading_mode(_BAR, "c1")
-    assert loop.mode == "paper"            # stayed put — never trade on a broken executor
+    assert loop.mode == "paper"            # stayed put - never trade on a broken executor
     assert "error" in bridge.kinds()

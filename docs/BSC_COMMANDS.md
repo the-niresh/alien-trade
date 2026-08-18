@@ -1,14 +1,14 @@
-# BSC Execution Commands — TWAK CLI Reference
+# BSC Execution Commands - TWAK CLI Reference
 
 > **Purpose:** Complete reference for every TWAK CLI command the agent uses for
 > swaps, transfers, and DCA automations on BSC. Update this file whenever a new
 > command is added to the agent.
 >
 > **Testing rule:** ALL execution testing must happen from the **Alien-Trade cockpit
-> UI at http://76.13.243.12:4173** — never trigger live trades directly from
+> UI at http://76.13.243.12:4173** - never trigger live trades directly from
 > Claude Code terminal. Use the Co-Pilot "Start Trading with AI" flow or the
 > Controls panel for manual overrides. Terminal testing is only for quoting
-> (`--quote-only`) and balance checks — never `swap_execute` or `transfer` from
+> (`--quote-only`) and balance checks - never `swap_execute` or `transfer` from
 > Claude Code.
 
 ---
@@ -19,7 +19,7 @@ Only `twak swap` transactions count toward competition PnL. Eligible tokens:
 
 | Symbol | BSC Contract Address | Notes |
 |--------|---------------------|-------|
-| **ETH** | _(symbol works — no contract needed)_ | BEP-20 wrapped ETH |
+| **ETH** | _(symbol works - no contract needed)_ | BEP-20 wrapped ETH |
 | **CAKE** | `0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82` | PancakeSwap token |
 | **UNI** | `0xBf5140A22578168FD562DCcF235E5D43A02ce9B1` | Uniswap (BSC) |
 | **LINK** | `0xF8A0BF9cF54Bb92F17374d9e9A321E6a111a51bD` | Chainlink (BSC) |
@@ -47,10 +47,10 @@ export TWAK_WALLET_PASSWORD="<password from .env.local>"
 ### Quote (simulate, no execution)
 
 ```bash
-# Buy ETH with USDT — by symbol (works for ETH only)
+# Buy ETH with USDT - by symbol (works for ETH only)
 twak swap USDT ETH --usd 4 --chain bsc --slippage 3 --quote-only --json
 
-# Buy CAKE with USDT — must use contract address
+# Buy CAKE with USDT - must use contract address
 twak swap USDT 0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82 --usd 4 --chain bsc --slippage 3 --quote-only --json
 
 # Buy UNI
@@ -80,7 +80,7 @@ twak swap ETH USDT --usd 4 --chain bsc --slippage 3 --quote-only --json
 ### Execute Swap
 
 ```bash
-# ⚠️  MAINNET — real money. Use from cockpit UI, not terminal.
+# ⚠️  MAINNET - real money. Use from cockpit UI, not terminal.
 twak swap USDT ETH --usd 4 --chain bsc --slippage 3 --json
 ```
 
@@ -99,7 +99,7 @@ twak swap USDT ETH --usd 4 --chain bsc --slippage 3 --json
 }
 ```
 
-**Execute response (failure — TX_FAILED):**
+**Execute response (failure - TX_FAILED):**
 ```json
 { "error": "execution reverted: 0xf4059071", "errorCode": "TX_FAILED" }
 ```
@@ -121,7 +121,7 @@ different provider. Implemented in `agent/executor.py` `TwakSwapExecutor.execute
 ## 2. Token Addresses for Swaps (in TwakCli)
 
 The agent's `swap_execute` / `swap_quote` methods accept token symbols.
-For CAKE/UNI/LINK/AAVE, the symbol lookup fails — the agent must pass the
+For CAKE/UNI/LINK/AAVE, the symbol lookup fails - the agent must pass the
 contract address. Update `agent/twak_cli.py` constants:
 
 ```python
@@ -132,7 +132,7 @@ BSC_TOKEN_REGISTRY: dict[str, str] = {
     "LINK": "0xF8A0BF9cF54Bb92F17374d9e9A321E6a111a51bD",
     "AAVE": "0xfb6115445Bff7b52FeB98650C87f44907E58f802",
     "USDT": "0x55d398326f99059fF775485246999027B3197955",
-    # ETH works by symbol — no entry needed
+    # ETH works by symbol - no entry needed
 }
 
 def _resolve_token(symbol: str, chain: str = "bsc") -> str:
@@ -202,15 +202,15 @@ twak automate delete --id <automation-id> --json
 ```
 
 **These are wired in `agent/command_worker.py`** as command types:
-- `automate_add` — create DCA or limit order
-- `automate_pause` / `automate_resume` / `automate_delete` — manage by ID
+- `automate_add` - create DCA or limit order
+- `automate_pause` / `automate_resume` / `automate_delete` - manage by ID
 
 ---
 
 ## 5. Wallet & Balance
 
 ```bash
-# Check balance (safe — no execution)
+# Check balance (safe - no execution)
 twak wallet balance --chain bsc --json
 
 # Get wallet address
@@ -259,7 +259,7 @@ to force re-routing to the 0x provider, which handles approvals internally.
 ## 7. Competition Registration
 
 ```bash
-# Check competition status (safe — read-only)
+# Check competition status (safe - read-only)
 twak compete status --json
 
 # Register wallet for Track-1 (one-time, already done)
@@ -280,7 +280,7 @@ twak compete status --json                                                  # �
 twak automate list --json                                                   # ✅
 ```
 
-### Must use cockpit UI (execution — real money):
+### Must use cockpit UI (execution - real money):
 | Action | Cockpit path |
 |--------|-------------|
 | Test a swap | Co-Pilot → "Start Trading with AI" → type "buy 1 ETH" → confirm card |
@@ -305,7 +305,7 @@ twak automate list --json                                                   # �
 
 ---
 
-## 10. Agent Token Allowlist Fix (TODO — implement before Jun 21)
+## 10. Agent Token Allowlist Fix (TODO - implement before Jun 21)
 
 The agent service currently runs with `--symbol ETH` only. To trade CAKE/UNI/LINK/AAVE:
 

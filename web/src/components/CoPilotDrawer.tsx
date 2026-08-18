@@ -22,7 +22,7 @@ const SPAWN_STYLES_CONFIG = [
     label: "Conservative",
     desc: "Careful and selective",
     detail: "1.5×ATR stops · max 3% per position · 5% daily loss limit",
-    goal: "Protect capital and grow steadily — tight stops, small positions, no chasing",
+    goal: "Protect capital and grow steadily - tight stops, small positions, no chasing",
   },
   {
     id: "balanced",
@@ -38,7 +38,7 @@ const SPAWN_STYLES_CONFIG = [
     label: "Aggressive",
     desc: "Active and fast",
     detail: "3×ATR stops · max 10% per position · trend-following with full targets",
-    goal: "Maximize trend capture — wider stops, larger positions, hold for full moves",
+    goal: "Maximize trend capture - wider stops, larger positions, hold for full moves",
   },
   {
     id: "moonshot",
@@ -57,10 +57,10 @@ const SPAWN_NAME_SUGGESTIONS: Record<string, string[]> = {
   moonshot: ["Moon Hunter", "Alpha Seeker", "Gem Finder", "Diamond Hands"],
 };
 
-// Opening line of the guided spawn wizard. Single source of truth — referenced
+// Opening line of the guided spawn wizard. Single source of truth - referenced
 // by every entry point that starts a spawn (quick-action card, "+ New", picker).
 const SPAWN_INTRO =
-  "Let's spin up a new agent. It'll trade on your behalf — starting in **paper mode** until you take it live.\n\nWhat style of trader should it be?";
+  "Let's spin up a new agent. It'll trade on your behalf - starting in **paper mode** until you take it live.\n\nWhat style of trader should it be?";
 
 const QUICK_ACTIONS = [
   {
@@ -231,7 +231,7 @@ function ThinkingIndicator() {
         />
       </div>
 
-      {/* Neural activity dots — alternating green / cyan */}
+      {/* Neural activity dots - alternating green / cyan */}
       <div className="flex items-center gap-[5px]">
         {(
           [
@@ -260,7 +260,7 @@ function ThinkingIndicator() {
   );
 }
 
-// Shared markdown renderers — hoisted so they aren't re-created on every render.
+// Shared markdown renderers - hoisted so they aren't re-created on every render.
 const MARKDOWN_COMPONENTS = {
   h1: ({ children }: { children?: React.ReactNode }) => <p className="text-[13px] font-bold mb-1" style={{ color: "var(--cyan)" }}>{children}</p>,
   h2: ({ children }: { children?: React.ReactNode }) => <p className="text-[12px] font-bold mb-1" style={{ color: "var(--cyan)" }}>{children}</p>,
@@ -312,10 +312,10 @@ function useSmoothReveal(target: string, enabled: boolean): string {
       const tgt = targetRef.current;
       const cur = displayRef.current;
       if (cur === tgt) {
-        rafRef.current = null; // caught up — stop spinning until target grows again
+        rafRef.current = null; // caught up - stop spinning until target grows again
         return;
       }
-      // Target shrank or diverged (final content replaced partial) — snap.
+      // Target shrank or diverged (final content replaced partial) - snap.
       let next: string;
       if (!tgt.startsWith(cur)) {
         next = tgt;
@@ -401,7 +401,7 @@ export function CoPilotDrawer({
 
   const threads = useQuery(api.copilot.threads) ?? [];
 
-  // Once any thread exists, always resolve to a thread — never show Default content.
+  // Once any thread exists, always resolve to a thread - never show Default content.
   // If activeThreadId is null but threads exist, fall back to the first thread.
   // If threads are empty (all deleted), show nothing (empty array).
   const displayThreadId: Id<"copilot_threads"> | null = (() => {
@@ -477,7 +477,7 @@ export function CoPilotDrawer({
     } else {
       setTimeout(() => inputRef.current?.focus(), 80);
       stickRef.current = true;
-      // Drawer content mounts/animates in — wait a tick, then jump to latest.
+      // Drawer content mounts/animates in - wait a tick, then jump to latest.
       setTimeout(() => {
         const el = scrollRef.current;
         if (el) el.scrollTop = el.scrollHeight;
@@ -485,7 +485,7 @@ export function CoPilotDrawer({
     }
   }, [isOpen]);
 
-  // True whenever Convex has an in-flight streaming message — survives close/reopen
+  // True whenever Convex has an in-flight streaming message - survives close/reopen
   const isStreaming = msgs.some((m) => m.is_streaming);
 
   // Track whether the user is pinned to the bottom; reading history releases the pin.
@@ -503,7 +503,7 @@ export function CoPilotDrawer({
 
   // While streaming, pin to bottom every frame. The text reveals smoothly
   // character-by-character (useSmoothReveal), so per-frame jumps read as a
-  // smooth scroll — unlike scrollIntoView({smooth}) which restarts and stutters
+  // smooth scroll - unlike scrollIntoView({smooth}) which restarts and stutters
   // on each network chunk.
   useEffect(() => {
     if (!isStreaming) return;
@@ -524,7 +524,7 @@ export function CoPilotDrawer({
     if (el) el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
   }, [msgs, isStreaming]);
 
-  // Sync an incoming prefill into the input. In an effect, not during render —
+  // Sync an incoming prefill into the input. In an effect, not during render -
   // calling setState in the render body forces a synchronous double-render.
   useEffect(() => {
     if (prefill && prefill !== lastPrefill) {
@@ -533,7 +533,7 @@ export function CoPilotDrawer({
     }
   }, [prefill, lastPrefill]);
 
-  // "+ New" entry point — open a fresh thread and auto-start the guided spawn flow.
+  // "+ New" entry point - open a fresh thread and auto-start the guided spawn flow.
   const [spawnKicked, setSpawnKicked] = useState(false);
   useEffect(() => {
     if (!isOpen) { setSpawnKicked(false); return; }
@@ -615,7 +615,7 @@ export function CoPilotDrawer({
 
   const handleQuickAction = (id: QuickActionId) => {
     if (id === "spawn") {
-      // Start spawn flow — guided wizard
+      // Start spawn flow - guided wizard
       void addMessage(
         withToken({
           role: "assistant",
@@ -647,7 +647,7 @@ export function CoPilotDrawer({
     await addMessage(withToken({ role: "user", content: label, sources_json: "[]", thread_id: displayThreadId ?? undefined }));
     await addMessage(withToken({
       role: "assistant",
-      content: `**${label}** — ${goal}.${detail}\n\nWhat should we call it?`,
+      content: `**${label}** - ${goal}.${detail}\n\nWhat should we call it?`,
       sources_json: "[]",
       thread_id: displayThreadId ?? undefined,
     }));
@@ -673,7 +673,7 @@ export function CoPilotDrawer({
       if (displayThreadId) void renameThread(withToken({ id: displayThreadId, title: name }));
       await addMessage(withToken({
         role: "assistant",
-        content: `✅ **${name}** is spinning up in **paper mode**${config ? ` — ${config.desc.toLowerCase()}` : ""}.\n\n${config ? `*${config.detail}*\n\n` : ""}Find it in the Agents tab. I'll start scanning and report back.`,
+        content: `✅ **${name}** is spinning up in **paper mode**${config ? ` - ${config.desc.toLowerCase()}` : ""}.\n\n${config ? `*${config.detail}*\n\n` : ""}Find it in the Agents tab. I'll start scanning and report back.`,
         sources_json: "[]",
         thread_id: displayThreadId ?? undefined,
       }));
@@ -755,7 +755,7 @@ export function CoPilotDrawer({
         <div className="relative flex flex-col h-full">
           {/* Horizontal thread tab bar */}
           <div className="flex items-center border-b border-border/40 flex-shrink-0">
-            {/* Brand dot + label — fixed left, never scrolls */}
+            {/* Brand dot + label - fixed left, never scrolls */}
             <div className="flex items-center gap-1.5 px-3 flex-shrink-0 border-r border-border/40 h-10">
               <div
                 className="w-2 h-2 rounded-full bg-purple"
@@ -771,7 +771,7 @@ export function CoPilotDrawer({
               className="flex-1 flex items-center overflow-x-auto min-w-0"
               style={{ scrollbarWidth: "none" }}
             >
-              {/* Default tab — hidden once any thread has ever been opened */}
+              {/* Default tab - hidden once any thread has ever been opened */}
               {!defaultTabHidden && (
                 <button
                   onClick={() => setActiveThreadId(null)}
@@ -827,7 +827,7 @@ export function CoPilotDrawer({
                 </div>
               ))}
 
-              {/* New thread — opens agent picker */}
+              {/* New thread - opens agent picker */}
               <button
                 onClick={openAgentPicker}
                 className="flex-shrink-0 w-9 h-10 flex items-center justify-center text-muted-fg hover:text-text hover:bg-elevated/50 transition-colors cursor-pointer border-r border-border/40"
@@ -837,7 +837,7 @@ export function CoPilotDrawer({
               </button>
             </div>
 
-            {/* Close — fixed right, never scrolls */}
+            {/* Close - fixed right, never scrolls */}
             <button
               onClick={onClose}
               className="flex-shrink-0 w-10 h-10 flex items-center justify-center text-muted-fg hover:text-text hover:bg-elevated transition-colors cursor-pointer border-l border-border/40"
@@ -847,12 +847,12 @@ export function CoPilotDrawer({
             </button>
           </div>
 
-          {/* Chat area — full width below the tab bar */}
+          {/* Chat area - full width below the tab bar */}
           <div className="flex-1 flex flex-col overflow-hidden">
-            {/* Agent picker — shown when + is clicked */}
+            {/* Agent picker - shown when + is clicked */}
             {showAgentPicker && (
               <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2">
-                <p className="font-mono text-[11px] text-muted-fg pb-1">Chat with an agent — or spawn a new one.</p>
+                <p className="font-mono text-[11px] text-muted-fg pb-1">Chat with an agent - or spawn a new one.</p>
                 <button
                   onClick={() => void beginSpawn()}
                   className="w-full text-left border border-purple/40 bg-purple/5 rounded-xl px-3 py-2.5 hover:bg-purple/10 hover:border-purple/60 transition-colors cursor-pointer"
@@ -863,7 +863,7 @@ export function CoPilotDrawer({
                     </span>
                     <div className="min-w-0">
                       <p className="font-mono text-[12px] text-text font-bold">Spawn a new agent</p>
-                      <p className="font-mono text-[10px] text-muted-fg mt-0.5">Guided setup — starts in paper mode</p>
+                      <p className="font-mono text-[10px] text-muted-fg mt-0.5">Guided setup - starts in paper mode</p>
                     </div>
                   </div>
                 </button>

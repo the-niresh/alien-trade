@@ -1,14 +1,14 @@
 """
-ClaudeClient — tier-routed LLM access for the Second Brain, with semantic cache
+ClaudeClient - tier-routed LLM access for the Second Brain, with semantic cache
 and cost telemetry baked in. Raw httpx against the Anthropic Messages API
 (`POST /v1/messages`), matching the codebase's REST-first house style.
 
-Model router (locked decision: LLM is OFF the trade hot path — this is only used
+Model router (locked decision: LLM is OFF the trade hot path - this is only used
 by reflection synthesis, AutoResearch, and the co-pilot):
 
-    T0  claude-haiku-4-5    cheapest — short structured jobs (reflection lessons)
-    T1  claude-sonnet-4-6   balanced — research synthesis, co-pilot default
-    T2  claude-opus-4-8     deepest  — only when explicitly asked
+    T0  claude-haiku-4-5    cheapest - short structured jobs (reflection lessons)
+    T1  claude-sonnet-4-6   balanced - research synthesis, co-pilot default
+    T2  claude-opus-4-8     deepest  - only when explicitly asked
 
 Token optimisation: every call is cache-checked first (ResponseCache), routed to
 the smallest adequate tier, and capped with max_tokens. Telemetry records the
@@ -20,7 +20,7 @@ OpenAI so the off-hot-path LLM layers never go dark on a 24/7 deploy. Only if ev
 configured provider fails does it degrade to the offline stub.
 
 Offline (no provider key) it returns a deterministic extractive stub so the loop,
-tests, and demo run with zero network — callers that need real synthesis check
+tests, and demo run with zero network - callers that need real synthesis check
 `result.stub`.
 """
 from __future__ import annotations
@@ -51,7 +51,7 @@ DEFAULT_TIER = "T1"
 # Used ONLY when the Anthropic call fails (API down / 5xx / network). Claude stays
 # primary; this just keeps the off-hot-path LLM layers (reflection, research,
 # co-pilot) alive when Anthropic is unreachable so the 24/7 agent never goes dark.
-# A single capable+cheap model is enough for a failover — override via
+# A single capable+cheap model is enough for a failover - override via
 # OPENAI_FALLBACK_MODEL. Tier is collapsed to this one model on the fallback path.
 OPENAI_URL = "https://api.openai.com/v1/chat/completions"
 OPENAI_FALLBACK_MODEL = "gpt-4o-mini"
@@ -92,7 +92,7 @@ class ClaudeClient:
         max_tokens: int = 512,
         schema: Optional[dict] = None,
     ) -> LLMResult:
-        """One LLM round-trip (cache → route → call). Never raises — falls back
+        """One LLM round-trip (cache → route → call). Never raises - falls back
         to a deterministic stub on any error so a Second-Brain task can't crash
         the runtime."""
         model = self.model_for(tier)
@@ -116,7 +116,7 @@ class ClaudeClient:
         try:
             text, in_tok, out_tok, used_model = self._generate(
                 model, system, prompt, max_tokens, schema)
-        except Exception as e:  # noqa: BLE001 — degrade to stub, never crash
+        except Exception as e:  # noqa: BLE001 - degrade to stub, never crash
             print(f"[llm] all providers failed: {e}")
             return _stub(prompt, system, tier, model)
         latency = time.monotonic() - t0
@@ -177,7 +177,7 @@ class ClaudeClient:
 
     def _call_openai(self, model, system, prompt, max_tokens, schema):
         """OpenAI Chat Completions fallback. Best-effort JSON when a schema is
-        requested (json_object mode) — the caller already parses defensively."""
+        requested (json_object mode) - the caller already parses defensively."""
         messages = []
         if system:
             messages.append({"role": "system", "content": system})

@@ -1,10 +1,10 @@
 """
-LedgerState — the live PnL / drawdown accountant.
+LedgerState - the live PnL / drawdown accountant.
 
 Mirrors backtest.engine fill accounting so live equity reconciles against the
 sim. Fed by REAL fills (on-chain receipts in live mode), it tracks cash,
 position, peak equity, drawdown, cumulative costs, daily loss, and consecutive
-losses — everything the dashboard and risk_state row need.
+losses - everything the dashboard and risk_state row need.
 """
 from __future__ import annotations
 

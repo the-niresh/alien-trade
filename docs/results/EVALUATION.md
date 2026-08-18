@@ -8,12 +8,12 @@ through the same `/core` strategy the live agent uses, with the full BSC cost mo
 
 - Window: `2024-12-18` → `2026-06-11` (540d_1h, 12960 bars per token)
 - Starting capital: $10,000
-- Parameter search: none — fixed presets from strategy/registry.py
+- Parameter search: none - fixed presets from strategy/registry.py
 
 ## Benchmarks over the same window
 
 Two things to beat. Buy-and-hold is the obvious one. **Cash is the one that
-matters here** — this is a long-only strategy that holds USDT by default, so
+matters here** - this is a long-only strategy that holds USDT by default, so
 switching it off is a real, available alternative that returns exactly 0%.
 
 | Benchmark | Return | Max drawdown |
@@ -25,7 +25,7 @@ switching it off is a real, available alternative that returns exactly 0%.
 | Buy and hold LINK | -72.11% | -74.68% |
 | Buy and hold AAVE | -83.04% | -84.94% |
 
-## Strategy — risk engine OFF (strategy alone)
+## Strategy - risk engine OFF (strategy alone)
 
 | Preset | Token | Trades | Return | Sharpe | Sortino | Max DD | Win rate |
 |---|---|---|---|---|---|---|---|
@@ -50,7 +50,7 @@ switching it off is a real, available alternative that returns exactly 0%.
 | defensive | LINK | 27 | -12.67% | -0.619 | -0.394 | -12.77% | 7.4% |
 | defensive | AAVE | 31 | -12.95% | -0.573 | -0.362 | -13.59% | 12.9% |
 
-## Strategy — risk engine ON
+## Strategy - risk engine ON
 
 | Preset | Token | Trades | Return | Sharpe | Sortino | Max DD | Win rate |
 |---|---|---|---|---|---|---|---|
@@ -82,7 +82,7 @@ switching it off is a real, available alternative that returns exactly 0%.
 - 5 lost the entire account (−100%): contrarian with the risk engine off.
 
 No preset is profitable on any token on the allowlist. This is not a tuning
-problem — the sign is wrong across every combination tested, so there is no
+problem - the sign is wrong across every combination tested, so there is no
 parameter set in this family worth searching for. The signals as combined here
 do not carry an edge that survives trading costs.
 
@@ -92,18 +92,18 @@ that halved. The benchmark that decides whether the agent earns its existence is
 cash, and it loses to cash everywhere.
 
 The risk engine is the part that works. It cuts the worst case from a total
-wipeout to a few percent — it cannot manufacture an edge, only limit the damage
+wipeout to a few percent - it cannot manufacture an edge, only limit the damage
 of not having one.
 
 ### Accounting integrity
 
-40 of 40 runs asked the engine for something impossible — selling more than held, or buying
+40 of 40 runs asked the engine for something impossible - selling more than held, or buying
 with cash that was not there. The engine refused and sized each fill to what was
 actually available, so nothing above is inflated by it. Before that clamp existed
 these same requests created $46,814 of cash out of nothing on a single token.
 
 The cause is a gap in the strategy interface, not a rounding error. `StrategyFn`
-receives only bars — it is never told the position or the cash. So a strategy has
+receives only bars - it is never told the position or the cash. So a strategy has
 no way to size an exit against what it actually holds, and every strategy ends up
 either shadowing the account itself or guessing. The risk engine shadows it, which
 is why its counts are small (slippage drift between its copy and the engine's); a
@@ -112,4 +112,4 @@ bare strategy guesses, which is why its counts are large.
 The durable fix is to pass the real position and cash into the strategy call, so
 there is one set of books. Until then the engine is the authority and clamps.
 
-Largest single offender: `contrarian`/UNI (risk engine off) — 1710 oversized sells, 1453 underfunded buys.
+Largest single offender: `contrarian`/UNI (risk engine off) - 1710 oversized sells, 1453 underfunded buys.

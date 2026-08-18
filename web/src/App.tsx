@@ -45,8 +45,8 @@ import type { Id } from "../../convex/_generated/dataModel";
 // is readable by everyone who loads the page, and git remembers it even after the
 // line is deleted.
 //
-// Visitors who want to look around use the read-only path instead — Convex queries
-// are open, only mutations are gated — so no shared secret is needed for that.
+// Visitors who want to look around use the read-only path instead - Convex queries
+// are open, only mutations are gated - so no shared secret is needed for that.
 
 type PairingStep = "welcome" | "pair" | "done";
 
@@ -63,7 +63,7 @@ function PairingScreen({
   const [val, setVal]         = useState("");
   const [error, setError]     = useState("");
   const [checking, setChecking] = useState(false);
-  // True once the deployment reports it has no CONTROL_TOKEN at all — control is
+  // True once the deployment reports it has no CONTROL_TOKEN at all - control is
   // switched off here on purpose, so pairing can never succeed and should say so.
   const [disabled, setDisabled] = useState(false);
   const canvasRef           = useRef<HTMLCanvasElement>(null);
@@ -155,7 +155,7 @@ function PairingScreen({
             <div className="px-6 py-5">
               <DialogHeader>
                 <DialogTitle className="text-[12px] font-bold text-muted-fg uppercase tracking-widest mb-3">
-                  Step 2 of 3 — Pair device
+                  Step 2 of 3 - Pair device
                 </DialogTitle>
               </DialogHeader>
               <div className="flex flex-col items-center mb-4 gap-2">
@@ -177,7 +177,7 @@ function PairingScreen({
               />
               <p className="font-mono text-[10px] text-muted-fg mb-2 leading-relaxed">
                 This is your own <code>CONTROL_TOKEN</code> from <code>.env.local</code>. There is
-                no shared or demo token — one in the page source would be public to everyone.
+                no shared or demo token - one in the page source would be public to everyone.
               </p>
               {error && (
                 <p className="font-mono text-[11px] text-red mb-2">{error}</p>
@@ -190,7 +190,7 @@ function PairingScreen({
                     and nothing can be changed from the internet.
                   </p>
                   <p className="text-[11.5px] text-muted-fg leading-relaxed mt-1.5">
-                    Everything is still readable — carry on read-only. To operate an agent,
+                    Everything is still readable - carry on read-only. To operate an agent,
                     run your own copy from the repo.
                   </p>
                 </div>
@@ -263,7 +263,7 @@ function ReadOnlyBanner({ onPair, onGuide }: { onPair: () => void; onGuide: () =
   return (
     <div className="flex items-center justify-center gap-3 max-sm:flex-col max-sm:gap-1 bg-yellow/10 border-b border-yellow/25 px-4 py-1.5 text-center">
       <span className="font-mono text-[11px] text-yellow tracking-[0.04em]">
-        Read-only — you can look at everything, but not change anything
+        Read-only - you can look at everything, but not change anything
       </span>
       <button
         onClick={onGuide}
@@ -314,7 +314,7 @@ export default function App() {
   const halted = config?.halted ?? false;
   const mode   = config?.trading_mode;
 
-  // Post-trade tour — fires once when trade count transitions 0→1
+  // Post-trade tour - fires once when trade count transitions 0→1
   const tradeCountRef = useRef<number | null>(null);
   useEffect(() => {
     if (trades === undefined) return;
@@ -325,7 +325,7 @@ export default function App() {
     tradeCountRef.current = count;
   }, [trades]);
 
-  // Generalized toast router — fires once per unique event _id
+  // Generalized toast router - fires once per unique event _id
   const seenEventIds = useRef<Set<string>>(new Set());
   useEffect(() => {
     if (!events) return;
@@ -358,7 +358,7 @@ export default function App() {
     return () => window.removeEventListener("keydown", handler);
   }, []);
 
-  // History routing — back/forward button support
+  // History routing - back/forward button support
   useEffect(() => {
     const handler = () => setViewState(pathToView());
     window.addEventListener("popstate", handler);

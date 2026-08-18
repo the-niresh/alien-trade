@@ -1,5 +1,5 @@
 """
-Live scorecard wiring — the loop accumulates the same shapes core/scorecard.py
+Live scorecard wiring - the loop accumulates the same shapes core/scorecard.py
 scores in sim and pushes the objective to Convex each cycle. Pins: a scorecard is
 upserted every cycle, trades are paired from real fills, and the live objective
 equals what compute_scorecard() produces from the loop's own series.
@@ -68,7 +68,7 @@ def test_trades_paired_from_real_fills():
 def test_live_objective_matches_compute_from_series():
     loop, _, _ = _run_loop()
     card = loop.build_scorecard()
-    # Re-derive straight from the loop's accumulated series — must be identical.
+    # Re-derive straight from the loop's accumulated series - must be identical.
     ref = compute_scorecard(
         loop._equity_curve, loop._trades, loop._fills, loop._initial_capital,
         timestamps=loop._equity_ts, exposure_curve=loop._exposure_curve,

@@ -4,7 +4,7 @@ Assemble the Second Brain from environment config, with offline-safe defaults.
 One place wires Vector + Redis cache + Claude + telemetry together and hands the
 runtime the two cycle-relevant pieces (mistake-avoidance + reflection writer)
 plus the async tools (co-pilot, research supervisor). If the env keys are
-absent, every component degrades to its offline fallback — nothing here forces a
+absent, every component degrades to its offline fallback - nothing here forces a
 network dependency on the trade loop.
 """
 from __future__ import annotations

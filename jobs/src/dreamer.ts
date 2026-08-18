@@ -3,7 +3,7 @@ import { logger, schedules } from "@trigger.dev/sdk/v3";
 const AGENT_URL = process.env.AGENT_URL ?? "http://localhost:8000";
 
 /**
- * Nightly Dreamer consolidation — fires at 02:00 UTC daily.
+ * Nightly Dreamer consolidation - fires at 02:00 UTC daily.
  *
  * Calls POST /dreamer on the agent server which runs Dreamer.run():
  *   1. Dedupe near-identical reflections (cosine ≥ 0.92)
@@ -11,7 +11,7 @@ const AGENT_URL = process.env.AGENT_URL ?? "http://localhost:8000";
  *   3. Age out stale research (>48 h old → stale=True in Vector)
  *   4. Write a nightly digest to Second Brain
  *
- * Advisory path — a failed run is logged but never raises.
+ * Advisory path - a failed run is logged but never raises.
  */
 export const dreamer = schedules.task({
   id: "dreamer-nightly",

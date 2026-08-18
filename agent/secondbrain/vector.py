@@ -1,19 +1,19 @@
 """
-VectorStore — the Second Brain index, over Upstash Vector's REST API.
+VectorStore - the Second Brain index, over Upstash Vector's REST API.
 
 The Upstash index was provisioned with a server-side embedding model
 (BAAI/bge-small-en-v1.5), so we send raw text to `/upsert-data` and `/query-data`
-and Upstash embeds it — no local embedding model, no extra dependency, same
+and Upstash embeds it - no local embedding model, no extra dependency, same
 house style as ConvexBridge (raw httpx REST).
 
 Offline (no URL/token) it falls back to an in-memory token-overlap index, so the
 Hermes loop, the tests, and a laptop demo all run with zero network. A
-live-but-erroring Upstash never crashes a cycle — errors are logged and treated
+live-but-erroring Upstash never crashes a cycle - errors are logged and treated
 as "no memory found" (fail-open on the read path, which only ever *relaxes* a
 block; the deterministic risk engine remains the hard floor).
 
 `kind` is stored in metadata and filtered client-side (request a larger topK,
-then keep the matching kind) — robust across Upstash metadata-filter syntax
+then keep the matching kind) - robust across Upstash metadata-filter syntax
 versions.
 """
 from __future__ import annotations
@@ -54,7 +54,7 @@ class VectorStore:
     # ── writes ─────────────────────────────────────────────────────────────────
 
     def upsert(self, id: str, text: str, metadata: Optional[dict] = None) -> bool:
-        """Upsert one record (id is the idempotency key — re-upsert overwrites)."""
+        """Upsert one record (id is the idempotency key - re-upsert overwrites)."""
         meta = dict(metadata or {})
         meta.setdefault("text", text)
         if not self.enabled:
@@ -66,7 +66,7 @@ class VectorStore:
                                  json={"id": id, "data": text, "metadata": meta})
             r.raise_for_status()
             return True
-        except Exception as e:  # noqa: BLE001 — memory must never crash a cycle
+        except Exception as e:  # noqa: BLE001 - memory must never crash a cycle
             print(f"[vector] upsert {id!r} failed: {e}")
             return False
 

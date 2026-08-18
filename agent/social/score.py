@@ -1,5 +1,5 @@
 """
-Deterministic sentiment scoring — the OFF-hot-path reducer.
+Deterministic sentiment scoring - the OFF-hot-path reducer.
 
 Posts -> a bounded `SentimentReading` per symbol. Deterministic by design: a
 lexicon mapping, weighted by source trust and recency decay. No LLM, no network,
@@ -8,7 +8,7 @@ enrichment pass can refine this asynchronously, but the NUMBER that crosses into
 the decision is always this deterministic one.
 
 The reading can only INFORM sizing inside risk caps (shrink-or-confirm), never
-enlarge it — same discipline as the Option-B forecast bridge.
+enlarge it - same discipline as the Option-B forecast bridge.
 """
 from __future__ import annotations
 

@@ -22,7 +22,7 @@ export function DocsView() {
         <h1 className="font-display text-[22px] font-bold tracking-wide text-text">What every control does</h1>
         <p className="text-[13px] text-muted-fg mt-2 leading-relaxed">
           Each row is one action the operator can take, grouped by the service that
-          carries it out — <span className="text-text">TWAK</span> signs transactions,{" "}
+          carries it out - <span className="text-text">TWAK</span> signs transactions,{" "}
           <span className="text-text">CMC</span> supplies market data,{" "}
           <span className="text-text">BNB_SDK</span> talks to the chain, and{" "}
           <span className="text-text">agent</span> is the bot itself. In read-only mode you

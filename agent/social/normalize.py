@@ -1,6 +1,6 @@
 """
 Normalise a raw post stream: dedupe, drop empties, time-filter, sort newest-first,
-and tag detected symbols. Pure functions — unit-testable, no network.
+and tag detected symbols. Pure functions - unit-testable, no network.
 """
 from __future__ import annotations
 

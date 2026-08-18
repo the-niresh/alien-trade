@@ -36,7 +36,7 @@ const autopilotState = v.object({
 
 /**
  * Read the live config (kill switch + caps). The agent calls this every cycle.
- * Returns null when not yet seeded — the agent treats that as "not halted".
+ * Returns null when not yet seeded - the agent treats that as "not halted".
  */
 export const get = query({
   args: {},
@@ -68,7 +68,7 @@ export const get = query({
 });
 
 /**
- * Cheap kill-switch check — the hot-path read every decision cycle uses.
+ * Cheap kill-switch check - the hot-path read every decision cycle uses.
  * Defaults to false (not halted) when unseeded so a missing config never
  * accidentally freezes the agent. Use `ensure` to seed before going live.
  */
@@ -143,7 +143,7 @@ export const setHalted = mutation({
 });
 
 /**
- * Trading-mode toggle — the user/judge picks testnet | paper | mainnet from the UI.
+ * Trading-mode toggle - the user/judge picks testnet | paper | mainnet from the UI.
  * Dedicated (vs `updateLimits`) so the toggle is a single obvious call and seeds the
  * singleton if it's missing. The agent reads `config.trading_mode` each cycle and
  * routes execution accordingly (testnet vs paper vs self-custody mainnet).
@@ -178,7 +178,7 @@ export const setTradingMode = mutation({
   },
 });
 
-/** Adjust risk caps live (allowed during the frozen window — caps only). */
+/** Adjust risk caps live (allowed during the frozen window - caps only). */
 export const updateLimits = mutation({
   args: {
     trading_mode: v.optional(tradingMode),
@@ -196,7 +196,7 @@ export const updateLimits = mutation({
       .query("config")
       .withIndex("by_key", (q) => q.eq("key", KEY))
       .unique();
-    if (!row) throw new Error("config not seeded — call config:ensure first");
+    if (!row) throw new Error("config not seeded - call config:ensure first");
     const patch: Record<string, unknown> = { updated_at_ms: Date.now() };
     for (const k of [
       "trading_mode",
@@ -224,7 +224,7 @@ export const setStrategy = mutation({
       .query("config")
       .withIndex("by_key", (q) => q.eq("key", KEY))
       .unique();
-    if (!row) throw new Error("config not seeded — call config:ensure first");
+    if (!row) throw new Error("config not seeded - call config:ensure first");
     await ctx.db.patch(row._id, {
       strategy_name: args.strategy_name,
       updated_at_ms: Date.now(),
@@ -244,7 +244,7 @@ export const setAutopilot = mutation({
       .query("config")
       .withIndex("by_key", (q) => q.eq("key", KEY))
       .unique();
-    if (!row) throw new Error("config not seeded — call config:ensure first");
+    if (!row) throw new Error("config not seeded - call config:ensure first");
     await ctx.db.patch(row._id, {
       autopilot: args.autopilot,
       updated_at_ms: Date.now(),

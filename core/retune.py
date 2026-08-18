@@ -4,17 +4,17 @@ Walk-forward re-tune for one eligible symbol. Reusable for the live window:
     python retune.py --symbol ETH --interval 1h --days 365            # CMC (default)
     python retune.py --symbol ETH --source binance --interval 1h      # keyless fallback
 
-Two honest, out-of-sample views (never selects on in-sample — locked decision #7):
-  1. Walk-forward OOS report — is the edge robust across rolling windows?
-  2. A single 70/30 optimise -> hold-out split — yields ONE shippable param set
+Two honest, out-of-sample views (never selects on in-sample - locked decision #7):
+  1. Walk-forward OOS report - is the edge robust across rolling windows?
+  2. A single 70/30 optimise -> hold-out split - yields ONE shippable param set
      plus its OOS scorecard (the same core/scorecard.py the live agent reports).
 
 DATA SOURCES:
-  cmc      — CMCClient (needs CMC_API_KEY); the richest field coverage. NOTE:
+  cmc      - CMCClient (needs CMC_API_KEY); the richest field coverage. NOTE:
              the historical extended fields (funding_rate/open_interest/social_score/
              net_flow) are currently STUBBED to 0.0 in cmc_client._parse_ohlcv until
              the Agent Hub derivatives/social/flow endpoints are wired.
-  binance  — public Binance spot klines (no key) enriched with real funding_rate
+  binance  - public Binance spot klines (no key) enriched with real funding_rate
              and open_interest from the Binance Futures API (fapi, also free/public).
              This gives a live S1+S2 tune. social_score/net_flow remain 0.0 until
              the CMC Pro plan is available.
@@ -57,7 +57,7 @@ def _load_bars(source: str, symbol: str, interval: str, days: int):
 
 
 def _has_orthogonal_signals(bars) -> bool:
-    """True if any bar carries non-zero funding/OI/social/flow — i.e. S2/S3/S4 have
+    """True if any bar carries non-zero funding/OI/social/flow - i.e. S2/S3/S4 have
     real data to work with (vs. an OHLCV-only feed where they're flat zeros)."""
     return any(
         b.funding_rate or b.open_interest or b.social_score or b.net_flow
@@ -79,18 +79,18 @@ def main(argv=None) -> None:
 
     try:
         bars = _load_bars(args.source, args.symbol, args.interval, args.days)
-    except Exception as e:  # noqa: BLE001 — a CLI tool should explain, not stack-trace
+    except Exception as e:  # noqa: BLE001 - a CLI tool should explain, not stack-trace
         print(f"\n  data load failed (source={args.source}, symbol={args.symbol}): "
               f"{type(e).__name__}")
         if args.source == "cmc":
-            print("  CMC historical OHLCV requires a paid plan — a free/basic key returns")
+            print("  CMC historical OHLCV requires a paid plan - a free/basic key returns")
             print("  403 on /v2/cryptocurrency/ohlcv/historical (quotes/latest still works).")
             print("  Re-run with `--source binance` for a keyless OHLCV tune, or upgrade the")
             print("  CMC plan + wire the Agent Hub funding/OI/social/flow endpoints.\n")
         return
     full_signals = _has_orthogonal_signals(bars)
     sigset = "FULL (S1-S4)" if full_signals else \
-        "S1 ONLY (funding/OI/social/flow flat — extended feed not wired)"
+        "S1 ONLY (funding/OI/social/flow flat - extended feed not wired)"
     print(f"\n  RE-TUNE  symbol={args.symbol}  source={args.source}  "
           f"interval={args.interval}  bars={len(bars)}  (~{args.days}d)")
     print(f"  signal set    : {sigset}")
@@ -134,7 +134,7 @@ def main(argv=None) -> None:
           f"profit_factor={card.profit_factor}")
     print("  ------------------------------------------------------------")
     if not full_signals:
-        print("  WARNING: S2/S3/S4 had no data (OHLCV-only feed) — this tuned S1 "
+        print("  WARNING: S2/S3/S4 had no data (OHLCV-only feed) - this tuned S1 "
               "alone.\n  Wire the CMC Agent Hub funding/OI/social/flow endpoints into "
               "cmc_client\n  (_parse_ohlcv) and re-run for the full-signal tune.\n")
     else:

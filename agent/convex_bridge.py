@@ -1,13 +1,13 @@
 """
-ConvexBridge — the agent's link to the Convex state/audit/UI bus.
+ConvexBridge - the agent's link to the Convex state/audit/UI bus.
 
 Talks to Convex via its HTTP API (POST {url}/api/query|mutation). Convex is the
 single source of live state: the kill switch lives here, and every decision /
 trade / ledger / risk-state / audit row is written here ("if it's not in Convex,
 it didn't happen").
 
-Degrades gracefully: with no CONVEX_URL the bridge runs offline — it logs each
-write to stdout and keeps them in-memory — so the loop, tests, and a laptop demo
+Degrades gracefully: with no CONVEX_URL the bridge runs offline - it logs each
+write to stdout and keeps them in-memory - so the loop, tests, and a laptop demo
 all work without a network. Network errors never crash a cycle; they're logged
 and the cycle continues (the kill-switch read fails *safe* = not halted only when
 explicitly offline; a live-but-erroring Convex is treated as halted-unknown=False
@@ -23,7 +23,7 @@ from typing import Any, Optional
 import httpx
 
 # State-changing mutations gated by the shared CONTROL_TOKEN (convex/control.ts).
-# Only these get the token injected — unguarded mutations (e.g. config:ensure)
+# Only these get the token injected - unguarded mutations (e.g. config:ensure)
 # would have Convex reject an unexpected `control_token` arg.
 _GUARDED_MUTATIONS = frozenset({
     "config:setHalted",
@@ -35,7 +35,7 @@ _GUARDED_MUTATIONS = frozenset({
     "agentControl:set",
     "thesisLedger:record",
     "agentCommands:updateStatus",
-    # Agent-written integrity state — gated so an anonymous caller with the Convex
+    # Agent-written integrity state - gated so an anonymous caller with the Convex
     # URL can't forge trades, mask the risk-state, or inject fake cockpit events.
     "trades:record",
     "riskState:update",
@@ -85,7 +85,7 @@ class ConvexBridge:
                 return body.get("value")
             print(f"[convex] {path} error: {body.get('errorMessage')}")
             return None
-        except Exception as e:  # noqa: BLE001 — Convex must never crash a trading cycle
+        except Exception as e:  # noqa: BLE001 - Convex must never crash a trading cycle
             print(f"[convex] {path} call failed: {e}")
             return None
 
@@ -151,7 +151,7 @@ class ConvexBridge:
             return
         try:
             self._call("mutation", "config:setAutopilotState", {"state": state_row})
-        except Exception:  # noqa: BLE001 — persistence is best-effort, never fatal
+        except Exception:  # noqa: BLE001 - persistence is best-effort, never fatal
             pass
 
     def get_autopilot_state(self) -> Optional[dict]:

@@ -3,7 +3,7 @@ Research agent ↔ SkillHub wiring. The AutoResearch agent pulls curated CMC ski
 reads into its context so digests are grounded in the orthogonal signals (funding
 /sentiment/regime) price can't show. Pins: the nested skill envelope is parsed to
 one compact line, offline/error/empty yields nothing, and a failing skill is
-advisory (guarded, never breaks the cycle). Hermetic — fake hub, no network.
+advisory (guarded, never breaks the cycle). Hermetic - fake hub, no network.
 """
 from __future__ import annotations
 

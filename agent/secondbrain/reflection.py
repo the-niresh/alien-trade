@@ -1,13 +1,13 @@
 """
-Hermes — the WRITE half of the self-learning loop.
+Hermes - the WRITE half of the self-learning loop.
 
 After a position closes, the loop hands us {signals, regime, side, realized_pnl}.
 We compress it into a one-line lesson, embed it under the *setup key* (so the
 read path can find it later), and store it in three places:
 
-  • Upstash Vector (kind="reflection")  — the searchable institutional memory
-  • Convex `reflections` row             — the durable, auditable record
-  • Convex `audit` log                   — "if it's not in Convex, it didn't happen"
+  • Upstash Vector (kind="reflection")  - the searchable institutional memory
+  • Convex `reflections` row             - the durable, auditable record
+  • Convex `audit` log                   - "if it's not in Convex, it didn't happen"
 
 The lesson is synthesised by the cheapest LLM tier (T0/Haiku, off the hot path);
 with no API key it falls back to a deterministic rule-based lesson, so the loop
@@ -106,7 +106,7 @@ class ReflectionWriter:
             )
             self._persist(r)
             return r
-        except Exception as e:  # noqa: BLE001 — learning must never crash a cycle
+        except Exception as e:  # noqa: BLE001 - learning must never crash a cycle
             print(f"[hermes] reflect failed: {e}")
             return None
 
@@ -144,7 +144,7 @@ class ReflectionWriter:
             if not res.stub and res.text and not _is_generic(res.text):
                 r.lesson = res.text  # upgrade the lesson in-place
                 return ""
-        except Exception:  # noqa: BLE001 — self-check must never crash reflection
+        except Exception:  # noqa: BLE001 - self-check must never crash reflection
             pass
         return "low"
 

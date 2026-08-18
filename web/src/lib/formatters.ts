@@ -1,8 +1,8 @@
 export const usd = (n?: number | null) =>
-  n == null ? "—" : n.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 2 });
+  n == null ? "-" : n.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 2 });
 
 export const pct = (n?: number | null) =>
-  n == null ? "—" : `${(n * 100).toFixed(2)}%`;
+  n == null ? "-" : `${(n * 100).toFixed(2)}%`;
 
 export const ts = (ms: number) =>
   new Date(ms).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });

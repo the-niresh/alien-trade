@@ -1,5 +1,5 @@
 """
-Event Intelligence — deterministic scoring + risk-off detection over news headlines.
+Event Intelligence - deterministic scoring + risk-off detection over news headlines.
 
 Pure-function scoring (a lexicon, not an LLM) so it is fast, free, reproducible, and
 safe on the hot path. The output is bounded:
@@ -7,7 +7,7 @@ safe on the hot path. The output is bounded:
   - sentiment      in [-1, 1]: bullish vs bearish tone (risk events drag it negative)
 
 A digest with max_severity >= risk_off_threshold flips RISK-OFF, which the risk layer
-can treat as a hard "sit out / shrink hard" — the difference between an agent that
+can treat as a hard "sit out / shrink hard" - the difference between an agent that
 sleeps through an exploit and one that steps aside. Everything is advisory and never
 raises; with no Brave key the layer is a quiet no-op (sim/live parity).
 """
@@ -63,7 +63,7 @@ _INFLECT = r"(?:s|es|ed|d|ing|ged|ging)?"
 
 
 def _has(term: str, text: str) -> bool:
-    if " " in term:                      # multi-word phrase — match verbatim
+    if " " in term:                      # multi-word phrase - match verbatim
         pat = r"\b" + re.escape(term) + r"\b"
     else:
         pat = r"\b" + re.escape(term) + _INFLECT + r"\b"

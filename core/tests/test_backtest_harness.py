@@ -1,6 +1,6 @@
 """
 Step 0 exit criterion: proves the backtest loop wires end-to-end.
-Uses a synthetic bar series — no real data needed.
+Uses a synthetic bar series - no real data needed.
 """
 import pytest
 from backtest.engine import Bar, Order, run_backtest

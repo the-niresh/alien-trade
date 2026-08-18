@@ -2,9 +2,9 @@
 8.4 Option-B forecast bridge tests.
 
 Three groups:
-  1. Pure math — decay_confidence, apply_forecast_multiplier, confidence_from_regime
-  2. Invariant — multiplier can never enlarge a position
-  3. DecisionLoop._apply_forecast — offline (sim-parity), live, stale, error-safe
+  1. Pure math - decay_confidence, apply_forecast_multiplier, confidence_from_regime
+  2. Invariant - multiplier can never enlarge a position
+  3. DecisionLoop._apply_forecast - offline (sim-parity), live, stale, error-safe
 """
 from __future__ import annotations
 

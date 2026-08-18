@@ -59,7 +59,7 @@ export function OverviewView({ onCopilot }: Props) {
             initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }}
           >
             <span className="h-2 w-2 rounded-full bg-red animate-pulse" />
-            TRADING HALTED — equity floor hit. Fund wallet or raise floor, then Resume.
+            TRADING HALTED - equity floor hit. Fund wallet or raise floor, then Resume.
           </motion.div>
         )}
         {floorWarn && (
@@ -73,7 +73,7 @@ export function OverviewView({ onCopilot }: Props) {
         )}
       </AnimatePresence>
 
-      {/* Lead with the live risk metrics — this is an operator console, not a
+      {/* Lead with the live risk metrics - this is an operator console, not a
           landing page. PnL + Drawdown are the thesis-critical pair (featured). */}
       <div className="grid grid-cols-4 gap-3 items-stretch max-[900px]:grid-cols-2">
         {ledger === undefined
@@ -86,12 +86,12 @@ export function OverviewView({ onCopilot }: Props) {
                 tone={(dd ?? 0) > 0.05 ? "negative" : (dd ?? 0) > 0 ? "warn" : "positive"}
                 sub={(dd ?? 0) > 0.05 ? "breaching" : "within cap"} />
               <StatCard label="Open Exposure" value={usd(risk?.open_exposure_usd)} unit="USD" />
-              <StatCard label="Win Rate" value={scorecard?.win_rate != null ? pct(scorecard.win_rate) : "—"} unit="hit" />
+              <StatCard label="Win Rate" value={scorecard?.win_rate != null ? pct(scorecard.win_rate) : "-"} unit="hit" />
             </>
         }
       </div>
 
-      {/* Co-Pilot entry — a slim strip below the metrics, not a hero block. */}
+      {/* Co-Pilot entry - a slim strip below the metrics, not a hero block. */}
       <StartTradingCTA onStart={onCopilot} />
 
       {/* Daily stats */}
@@ -132,7 +132,7 @@ export function OverviewView({ onCopilot }: Props) {
         </Panel>
       )}
 
-      {/* Trade history — actual fills with size, price, TX hash */}
+      {/* Trade history - actual fills with size, price, TX hash */}
       <RecentTrades />
 
       {/* Fees & gas */}

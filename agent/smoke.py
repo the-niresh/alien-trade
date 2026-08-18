@@ -1,5 +1,5 @@
 """
-Paper smoke run — drive the live DecisionLoop over real historical bars to prove
+Paper smoke run - drive the live DecisionLoop over real historical bars to prove
 the whole stack is alive: /core strategy + RiskEngine + executor + ledger + the
 Convex bus. Deterministic (ReplayFeed), so it's also the Step 7 paper-rehearsal
 entry point.

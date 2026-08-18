@@ -33,7 +33,7 @@ export function AgentDetailView({ agent, onBack, onOpenChat }: Props) {
       toast.success(label);
       if (status === "archived") onBack();
     } catch (e) {
-      toast.error(`Failed — ${String(e).includes("token") ? "pair the cockpit first" : String(e)}`);
+      toast.error(`Failed - ${String(e).includes("token") ? "pair the cockpit first" : String(e)}`);
     }
   }
 

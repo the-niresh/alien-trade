@@ -1,6 +1,6 @@
 """
 Trust Wallet Agent Kit (TWAK) client.
-REST API at tws.trustwallet.com — HMAC-SHA256 authenticated.
+REST API at tws.trustwallet.com - HMAC-SHA256 authenticated.
 
 Signing format (confirmed from developer.trustwallet.com/developer/agent-sdk/authentication):
   plaintext = "METHOD;PATH;SORTED_QUERY;ACCESS_ID;NONCE;DATE"
@@ -76,7 +76,7 @@ class TWAKClient:
         self._secret = hmac_secret or os.environ.get("TW_HMAC_SECRET", "")
         # `or` (not get's default) so a present-but-EMPTY TWAK_API_BASE in .env.local
         # falls back to the real endpoint instead of yielding a scheme-less base URL
-        # (which httpx rejects with UnsupportedProtocol — silently broke the client).
+        # (which httpx rejects with UnsupportedProtocol - silently broke the client).
         resolved = api_base or os.environ.get("TWAK_API_BASE") or TWAK_API_BASE_DEFAULT
         self._base = resolved.rstrip("/")
         self._http = httpx.Client(timeout=20.0)
@@ -187,7 +187,7 @@ def build_auth_headers(
     """
     Build TWAK HMAC-SHA256 auth headers.
     Inject nonce and date for deterministic testing.
-    query_params replaces the old 'body' arg — body is not part of the signature.
+    query_params replaces the old 'body' arg - body is not part of the signature.
     """
     sorted_query = _sort_query(query_params)
     return _build_signed_headers(method, path, sorted_query, access_id, secret, nonce, date)

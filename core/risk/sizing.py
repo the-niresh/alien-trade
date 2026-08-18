@@ -14,10 +14,10 @@ from backtest.engine import Bar
 
 # ── Defaults ──────────────────────────────────────────────────────────────────
 
-_TARGET_VOL_ANN = 0.15        # 15% annualized target vol — deliberately conservative
+_TARGET_VOL_ANN = 0.15        # 15% annualized target vol - deliberately conservative
 _ATR_LOOKBACK   = 14          # bars for realized-vol estimate
 _KELLY_CAP      = 0.25        # never use more than 25% of full Kelly
-_MIN_FRACTION   = 0.10        # floor: 10% of base — keeps signal alive in high vol
+_MIN_FRACTION   = 0.10        # floor: 10% of base - keeps signal alive in high vol
 _MAX_FRACTION   = 2.00        # ceiling: never lever beyond 2× base
 
 

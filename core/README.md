@@ -1,4 +1,4 @@
-# core — The Crown Jewel
+# core - The Crown Jewel
 
 Strategy + signals + backtest/sim engine. This is the center of gravity of the entire project.
 
@@ -15,7 +15,7 @@ core/
   risk/         Position sizing, daily-loss kill, regime gating, drawdown guard
   exec/         BNB SDK adapter (bnb.py) + TWAK signing adapter (twak.py)
   data/         CMC historical + live feed adapters, parquet cache
-  tests/        All unit + integration tests — run before every commit
+  tests/        All unit + integration tests - run before every commit
 ```
 
 ## Run tests
@@ -37,6 +37,6 @@ uv pip install -e .
 ## Invariants
 
 - Every backtest includes the full cost model (gas, slippage, fees, funding)
-- Walk-forward only — never report or optimize on in-sample numbers
-- Strategy functions are pure: `(list[Bar]) → Signal` — no side effects, no I/O
-- Sim and live share the same `Bar`, `Order`, `Fill` types — no translation layer
+- Walk-forward only - never report or optimize on in-sample numbers
+- Strategy functions are pure: `(list[Bar]) → Signal` - no side effects, no I/O
+- Sim and live share the same `Bar`, `Order`, `Fill` types - no translation layer

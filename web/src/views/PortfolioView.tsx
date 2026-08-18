@@ -21,7 +21,7 @@ export function PortfolioView() {
   const trades    = useQuery(api.trades.recent, { limit: 50 }) ?? [];
 
   const pnlVal     = ledger?.cumulative_pnl_usd ?? 0;
-  const pnlPos     = pnlVal > 0;   // strictly positive — zero is neutral
+  const pnlPos     = pnlVal > 0;   // strictly positive - zero is neutral
   const pnlNeg     = pnlVal < 0;
   const totalVal   = wallet?.total_usd ?? 0;
   const allocUsdt  = totalVal > 0 ? (wallet?.usdt ?? 0) / totalVal : 0;
@@ -202,7 +202,7 @@ export function PortfolioView() {
             <div>
               <AllocRow token="USDT" role="dry powder"    balance={wallet.usdt.toFixed(2)}    usdValue={wallet.usdt}                                       alloc={allocUsdt} color="green" warn={wallet.usdt < 1}    warnMsg="balance nearly depleted" />
               <AllocRow token="ETH"  role="open position" balance={wallet.eth.toFixed(6)}     usdValue={totalVal - (wallet.usdt) - (wallet.bnb_usd)}       alloc={allocEth}  color="cyan"  dim={wallet.eth === 0} />
-              <AllocRow token="BNB"  role="gas reserve"   balance={wallet.bnb.toFixed(4)}     usdValue={wallet.bnb_usd}                                    alloc={allocBnb}  color="yellow" warn={wallet.bnb < 0.003} warnMsg="gas low — top up!" />
+              <AllocRow token="BNB"  role="gas reserve"   balance={wallet.bnb.toFixed(4)}     usdValue={wallet.bnb_usd}                                    alloc={allocBnb}  color="yellow" warn={wallet.bnb < 0.003} warnMsg="gas low - top up!" />
               <div className="flex justify-between items-center pt-2.5 mt-1 border-t border-border/60">
                 <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-muted-fg">Total</span>
                 <span className="font-display text-[18px] font-bold text-green glow-green tabular-nums">{usd(wallet.total_usd)}</span>

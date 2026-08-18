@@ -45,7 +45,7 @@ class SocialPost:
 class SentimentReading:
     """
     The OFF-hot-path output: a bounded, timestamped sentiment feature per symbol.
-    This is the seam into the deterministic core (signal S3) — exactly like the
+    This is the seam into the deterministic core (signal S3) - exactly like the
     Option-B forecast bridge: an LLM/lexicon produces a number, the number (not
     prose) crosses into the decision, clamped and decayed. The core reads it
     point-in-time; it can only inform sizing within risk caps.

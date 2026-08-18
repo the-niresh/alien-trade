@@ -74,7 +74,7 @@ class SymbolScanner:
         threshold = self.params.entry_threshold
         qualifying = {sym: sc for sym, sc in scores.items() if sc >= threshold}
         if not qualifying:
-            log.debug("scanner: no symbol above threshold %.2f — staying in USDT", threshold)
+            log.debug("scanner: no symbol above threshold %.2f - staying in USDT", threshold)
             return None
 
         winner = max(qualifying, key=qualifying.__getitem__)

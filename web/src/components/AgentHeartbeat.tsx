@@ -56,7 +56,7 @@ export function AgentHeartbeat() {
               <span className="text-muted-fg">({elapsed(lastMs)} ago)</span>
             </span>
           ) : (
-            <span className="font-mono text-[12px] text-muted-fg">—</span>
+            <span className="font-mono text-[12px] text-muted-fg">-</span>
           )}
         </div>
 
@@ -72,7 +72,7 @@ export function AgentHeartbeat() {
               </span>
             </span>
           ) : (
-            <span className="font-mono text-[12px] text-muted-fg">—</span>
+            <span className="font-mono text-[12px] text-muted-fg">-</span>
           )}
         </div>
 

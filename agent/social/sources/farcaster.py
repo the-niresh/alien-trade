@@ -1,5 +1,5 @@
 """
-Farcaster adapter — crypto-native, open, agent-friendly, no credentials.
+Farcaster adapter - crypto-native, open, agent-friendly, no credentials.
 
 Reads a user's recent casts via the public Warpcast API:
   1. username -> fid   (GET /v2/user-by-username)

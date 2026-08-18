@@ -1,4 +1,4 @@
-"""TelegramBot — unit tests (send-only + polling + buttons)."""
+"""TelegramBot - unit tests (send-only + polling + buttons)."""
 from __future__ import annotations
 
 import json

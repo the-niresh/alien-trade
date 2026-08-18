@@ -27,10 +27,10 @@ export function StatCard({ label, value, tone = "neutral", sub, unit, featured =
       "panel relative overflow-hidden flex flex-col justify-between",
       featured ? "p-5 min-h-[136px]" : "p-4 min-h-[108px]",
     )}>
-      {/* Diagonal tone wash — fills bottom-left corner */}
+      {/* Diagonal tone wash - fills bottom-left corner */}
       <span className={cn("absolute inset-0 pointer-events-none rounded-xl", t.wash)} />
 
-      {/* Left accent bar — full height, gradient fade */}
+      {/* Left accent bar - full height, gradient fade */}
       <span
         className="absolute left-0 top-0 bottom-0 w-[3px] rounded-r-full"
         style={{

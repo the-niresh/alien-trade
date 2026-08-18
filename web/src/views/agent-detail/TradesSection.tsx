@@ -44,7 +44,7 @@ function SpawnedApprovals({ agent }: { agent: DetailAgent }) {
   const mine = pending.filter((p) => p.agent_id === agent.id);
   return (
     <div className="flex flex-col gap-3">
-      <p className="font-mono text-[10px] text-muted-fg/60 uppercase tracking-widest">Assistant agents propose trades — they don't execute directly.</p>
+      <p className="font-mono text-[10px] text-muted-fg/60 uppercase tracking-widest">Assistant agents propose trades - they don't execute directly.</p>
       {mine.length === 0 ? <Empty text="No pending trade proposals." /> : mine.map((p) => (
         <div key={p._id} className="panel p-3 font-mono text-[11px] text-text">{p.kind}: {p.payload}</div>
       ))}

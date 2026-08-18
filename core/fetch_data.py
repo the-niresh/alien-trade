@@ -3,7 +3,7 @@ Download the price history the evaluation needs.
 
     cd core && .venv/bin/python -m fetch_data
 
-No API key required — Binance klines, funding and open interest are public endpoints,
+No API key required - Binance klines, funding and open interest are public endpoints,
 and the Fear & Greed index comes from alternative.me. Roughly 1.5 MB per token, written
 to `core/data/parquet/`, which is gitignored: history is reproducible from source, so
 committing a binary snapshot of it would only add weight and drift.
@@ -37,7 +37,7 @@ def main(argv=None) -> None:
     args = ap.parse_args(argv)
 
     print(f"Fetching {args.days}d of {args.interval} bars for "
-          f"{', '.join(args.symbols)} — no API key needed.\n")
+          f"{', '.join(args.symbols)} - no API key needed.\n")
 
     with BinanceClient() as client:
         for symbol in args.symbols:

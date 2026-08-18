@@ -96,7 +96,7 @@ export function TrackersView() {
   const [search, setSearch] = useState("");
   const [addInput, setAddInput] = useState("");
 
-  // KOL My List — persisted in Convex social_sources
+  // KOL My List - persisted in Convex social_sources
   const sources = useQuery(api.social.getSources);
   const addSourceMut = useMutation(api.social.addSource);
   const removeSourceMut = useMutation(api.social.removeSource);
@@ -259,7 +259,7 @@ export function TrackersView() {
       {/* ─── WALLET TAB ─── */}
       {tab === "wallet" && (
         <div className="space-y-3">
-          {/* Agent wallet banner — enhanced */}
+          {/* Agent wallet banner - enhanced */}
           <div className="panel relative overflow-hidden">
             {/* Corner atmosphere glow */}
             <div
@@ -313,7 +313,7 @@ export function TrackersView() {
                     </span>
                   </div>
 
-                  {/* Token cards — 3 col with per-token glow */}
+                  {/* Token cards - 3 col with per-token glow */}
                   <div className="grid grid-cols-3 gap-2">
                     {([
                       { label: "USDT", value: walletState.usdt.toFixed(2),  color: "green",  note: "stablecoin" },
@@ -419,7 +419,7 @@ export function TrackersView() {
           {/* Gas notice */}
           <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-yellow/5 border border-yellow/15 font-mono text-[10px] text-muted-fg">
             <Zap className="w-3.5 h-3.5 text-yellow flex-shrink-0" />
-            <span>Scoring tokens: <span className="text-text">ETH · CAKE · UNI · LINK · AAVE</span> — BNB is gas only.</span>
+            <span>Scoring tokens: <span className="text-text">ETH · CAKE · UNI · LINK · AAVE</span> - BNB is gas only.</span>
           </div>
 
           {/* ─── ADD WALLET MODAL ─── */}
@@ -635,7 +635,7 @@ export function TrackersView() {
                     {/* Rank */}
                     <span className="font-mono text-[9px] text-muted-fg/40 tabular-nums">{i + 1}</span>
 
-                    {/* Handle — links to X/Twitter profile */}
+                    {/* Handle - links to X/Twitter profile */}
                     <a
                       href={xProfileUrl(k.handle)}
                       target="_blank"
@@ -731,8 +731,8 @@ export function TrackersView() {
                   <div className="px-3 pb-3 space-y-1.5">
                     {[
                       { icon: <BarChart2 className="w-3 h-3" />, label: "Listener reach", value: `${(myKols.reduce((a, k) => a + k.numListeners, 0) / 1000).toFixed(0)}k`, color: "cyan" },
-                      { icon: <Zap className="w-3 h-3" />, label: "Avg influence", value: myKols.length ? Math.round(myKols.reduce((a, k) => a + k.influence, 0) / myKols.length).toLocaleString() : "—", color: "yellow" },
-                      { icon: <TrendingUp className="w-3 h-3" />, label: "Top handle", value: myKols[0] ? `@${myKols[0].handle.slice(0, 12)}` : "—", color: "green" },
+                      { icon: <Zap className="w-3 h-3" />, label: "Avg influence", value: myKols.length ? Math.round(myKols.reduce((a, k) => a + k.influence, 0) / myKols.length).toLocaleString() : "-", color: "yellow" },
+                      { icon: <TrendingUp className="w-3 h-3" />, label: "Top handle", value: myKols[0] ? `@${myKols[0].handle.slice(0, 12)}` : "-", color: "green" },
                     ].map(({ icon, label, value, color }) => (
                       <div key={label} className="flex items-center gap-2 py-1">
                         <span style={{ color: `var(--${color})` }} className="flex-shrink-0">{icon}</span>
@@ -783,7 +783,7 @@ export function TrackersView() {
       {/* ─── ACTIVITY TAB ─── */}
       {tab === "activity" && (
         <>
-          {/* Ongoing — open positions */}
+          {/* Ongoing - open positions */}
           <Panel
             label="Ongoing Trades"
             tick="green"
@@ -806,7 +806,7 @@ export function TrackersView() {
             ) : typedPositions.length === 0 ? (
               <div className="flex items-center gap-2 py-3 font-mono text-[11px] text-muted-fg">
                 <span className="animate-pulse text-green">▮</span>
-                0 active positions — monitoring for entries
+                0 active positions - monitoring for entries
               </div>
             ) : (
               <div className="space-y-2">

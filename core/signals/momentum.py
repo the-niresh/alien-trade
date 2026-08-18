@@ -41,7 +41,7 @@ def momentum_signal(
         if base > 0:
             roc_score = (closes[-1] - base) / base
 
-    # ATR normalization — 1 ATR of signal = 0.5 raw score → clips to ±1 at 2 ATRs
+    # ATR normalization - 1 ATR of signal = 0.5 raw score → clips to ±1 at 2 ATRs
     atr_pct = _atr_pct(history[-30:] if n >= 30 else history)
     if atr_pct < 1e-8:
         return 0.0

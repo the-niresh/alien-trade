@@ -11,7 +11,7 @@ import { ConvertPanel } from "./ConvertPanel";
 type Tab = "deposit" | "buy" | "convert";
 
 export function DepositView() {
-  // getAddress reads from Convex row first, falls back to WALLET_ADDRESS env var —
+  // getAddress reads from Convex row first, falls back to WALLET_ADDRESS env var -
   // so Deposit works immediately without waiting for an agent cycle to write the address
   const address = useQuery(api.walletState.getAddress) ?? "";
   const [tab, setTab]       = useState<Tab>("deposit");
@@ -68,7 +68,7 @@ export function DepositView() {
             <div className="space-y-4">
               <p className="font-mono text-[11px] text-muted-fg">
                 Send USDT (BEP-20) or BNB directly to this address.{" "}
-                <span className="text-yellow font-bold">BSC chain only — do not send from Ethereum mainnet.</span>
+                <span className="text-yellow font-bold">BSC chain only - do not send from Ethereum mainnet.</span>
               </p>
               <div className="flex justify-center">
                 <canvas ref={canvasRef} className="rounded-xl" />
@@ -88,7 +88,7 @@ export function DepositView() {
                   <span>USDT (BEP-20)</span><span className="text-text">Trading capital</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span>BNB</span><span className="text-yellow">Gas — keep ≥ 0.005</span>
+                  <span>BNB</span><span className="text-yellow">Gas - keep ≥ 0.005</span>
                 </div>
               </div>
             </div>

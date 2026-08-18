@@ -1,4 +1,4 @@
-"""Event Intelligence — deterministic scoring + risk-off + alert wiring (offline)."""
+"""Event Intelligence - deterministic scoring + risk-off + alert wiring (offline)."""
 from __future__ import annotations
 
 from agent.intel.brave_client import BraveSearchClient, NewsItem

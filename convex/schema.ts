@@ -53,13 +53,13 @@ export default defineSchema({
     .index("by_setup", ["setup_key"])
     .index("by_ts", ["ts_ms"]),
 
-  // Co-pilot chat thread — persists the human↔agent conversation across devices.
+  // Co-pilot chat thread - persists the human↔agent conversation across devices.
   copilot_messages: defineTable({
     role: v.union(v.literal("user"), v.literal("assistant")),
     content: v.string(),
     sources_json: v.string(),   // JSON array of {id, kind, score, text} hits
     ts_ms: v.number(),
-    // Phase 3 additions — optional for backward compat with existing rows
+    // Phase 3 additions - optional for backward compat with existing rows
     thread_id:       v.optional(v.id("copilot_threads")),
     partial_content: v.optional(v.string()),
     is_streaming:    v.optional(v.boolean()),
@@ -98,7 +98,7 @@ export default defineSchema({
   })
     .index("by_timestamp", ["timestamp_ms"]),
 
-  // Full audit log — every agent action, immutable append-only
+  // Full audit log - every agent action, immutable append-only
   audit: defineTable({
     timestamp_ms: v.number(),
     event_type: v.string(),          // "decision" | "trade" | "reflection" | "risk_veto" | "kill_switch" | "error"
@@ -109,7 +109,7 @@ export default defineSchema({
     .index("by_event_type", ["event_type"])
     .index("by_timestamp", ["timestamp_ms"]),
 
-  // Live agent config + kill switch — UI writes here, agent reads each cycle
+  // Live agent config + kill switch - UI writes here, agent reads each cycle
   config: defineTable({
     key: v.string(),                 // singleton key e.g. "global"
     halted: v.boolean(),             // kill switch
@@ -120,11 +120,11 @@ export default defineSchema({
     token_allowlist: v.array(v.string()),
     equity_floor: v.optional(v.number()),   // halt if portfolio drops below this USD value (0 = disabled)
     rug_check_enabled:  v.optional(v.boolean()),   // pre-trade rug-check gate via TWAK (default true)
-    rug_risk_threshold: v.optional(v.number()),    // 0–100, block swap if score >= threshold (default 75)
+    rug_risk_threshold: v.optional(v.number()),    // 0-100, block swap if score >= threshold (default 75)
     x402_budget_usd:    v.optional(v.number()),    // per-cycle x402 spend cap
     // Strategy pick from the registry (momentum|contrarian|balanced|defensive)
     strategy_name: v.optional(v.string()),
-    // Autopilot capital manager — user-set targets (cockpit). enabled=false -> off.
+    // Autopilot capital manager - user-set targets (cockpit). enabled=false -> off.
     autopilot: v.optional(v.object({
       enabled: v.boolean(),
       profit_target_pct: v.optional(v.number()),
@@ -136,7 +136,7 @@ export default defineSchema({
       daily_profit_target_pct: v.optional(v.number()),
       loss_cooldown_hours: v.optional(v.number()),
     })),
-    // Persisted autopilot ratchet (protected floor etc.) — survives restarts.
+    // Persisted autopilot ratchet (protected floor etc.) - survives restarts.
     autopilot_state: v.optional(v.object({
       protected_floor: v.number(),
       cycle_start_equity: v.number(),
@@ -150,7 +150,7 @@ export default defineSchema({
   })
     .index("by_key", ["key"]),
 
-  // Live risk state — agent updates each cycle; UI reads for dashboard
+  // Live risk state - agent updates each cycle; UI reads for dashboard
   risk_state: defineTable({
     key: v.string(),                 // singleton key e.g. "global"
     daily_loss_usd: v.number(),
@@ -162,7 +162,7 @@ export default defineSchema({
   })
     .index("by_key", ["key"]),
 
-  // Signal snapshots per cycle — for debugging + regime analysis
+  // Signal snapshots per cycle - for debugging + regime analysis
   signals: defineTable({
     cycle_id: v.string(),
     symbol: v.string(),
@@ -181,7 +181,7 @@ export default defineSchema({
     .index("by_cycle", ["cycle_id"])
     .index("by_symbol_time", ["symbol", "timestamp_ms"]),
 
-  // Social layer — the user's curated watchlist of traders/channels to watch.
+  // Social layer - the user's curated watchlist of traders/channels to watch.
   // USER-writable (the "add your list" surface); the agent only reads it.
   social_sources: defineTable({
     platform: v.union(
@@ -221,9 +221,9 @@ export default defineSchema({
   })
     .index("by_symbol", ["symbol"]),
 
-  // ── Agent team layer (STEP 8) — contracts mirrored in agent/graph/contracts.py ──
+  // ── Agent team layer (STEP 8) - contracts mirrored in agent/graph/contracts.py ──
 
-  // Agent Activity Channel: append-only trace stream — the "glass cockpit" the
+  // Agent Activity Channel: append-only trace stream - the "glass cockpit" the
   // PWA subscribes to (read-only). The marketing surface AND the human-readable
   // audit log, same data. Headline is template-rendered from structured fields
   // (cheap, deterministic, zero hot-path latency). `detail` is a JSON blob like
@@ -258,11 +258,11 @@ export default defineSchema({
   })
     .index("by_symbol", ["symbol"]),
 
-  // Live scorecard singleton — the agent's GOAL made measurable (docs/GOAL.md).
+  // Live scorecard singleton - the agent's GOAL made measurable (docs/GOAL.md).
   // Computed in core/scorecard.py (sim AND live share it, locked decision #2) and
   // upserted each cycle / at window close. The glass cockpit reads this for the
   // headline "how are we doing against the objective" panel. Nullable lines are
-  // genuinely absent in sim (no timestamps/exposure) — never faked. `operational`
+  // genuinely absent in sim (no timestamps/exposure) - never faked. `operational`
   // and `rule_adherence` are JSON blobs (like `audit.payload`) carrying the
   // autonomy + constraint-compliance facts the runtime knows.
   scorecard: defineTable({
@@ -304,7 +304,7 @@ export default defineSchema({
   })
     .index("by_key", ["key"]),
 
-  // Forecast calibration: one row per closed trade — entry-time confidence snapshot
+  // Forecast calibration: one row per closed trade - entry-time confidence snapshot
   // + realized PnL. Dreamer buckets these nightly to score forecast quality.
   forecast_calibration: defineTable({
     cycle_id: v.string(),
@@ -317,7 +317,7 @@ export default defineSchema({
     .index("by_symbol", ["symbol"])
     .index("by_ts", ["ts_ms"]),
 
-  // The single user-writable control doc — three graduated stops (§7). The PWA
+  // The single user-writable control doc - three graduated stops (§7). The PWA
   // is the ONLY writer; the supervisor + DecisionLoop are reactive readers.
   // `trading_halted` mirrors `config.halted` (the Tier-0 kill switch); the other
   // flags only quiet the Tier-1 advisory team and never touch trading.
@@ -332,7 +332,7 @@ export default defineSchema({
   })
     .index("by_key", ["key"]),
 
-  // Operator command queue — imperative TWAK-signed actions dispatched from the cockpit.
+  // Operator command queue - imperative TWAK-signed actions dispatched from the cockpit.
   // UI enqueues (token-gated); the agent command worker drains and executes.
   agent_commands: defineTable({
     command_type: v.string(),
@@ -351,7 +351,7 @@ export default defineSchema({
     .index("by_status",    ["status"])
     .index("by_queued_at", ["queued_at_ms"]),
 
-  // Co-pilot thread index — each named conversation.
+  // Co-pilot thread index - each named conversation.
   copilot_threads: defineTable({
     title:          v.string(),
     created_ms:     v.number(),
@@ -386,7 +386,7 @@ export default defineSchema({
     .index("by_agent",   ["agent_id"])
     .index("by_started", ["started_ms"]),
 
-  // Deterministic market/trade watches — the agent loop evaluates these each cycle
+  // Deterministic market/trade watches - the agent loop evaluates these each cycle
   // with a cheap predicate (no LLM) and edge-fires alerts. See agent/watches.py.
   watches: defineTable({
     kind:          v.string(),   // price | regime | drawdown | equity
@@ -420,7 +420,7 @@ export default defineSchema({
   })
     .index("by_endpoint", ["endpoint"]),
 
-  // Sponsor telemetry — every CMC/TWAK/BNB_SDK call the agent makes.
+  // Sponsor telemetry - every CMC/TWAK/BNB_SDK call the agent makes.
   // Fire-and-forget appends from agent/sponsor_telemetry.py; UI reads for Intelligence tab.
   sponsor_calls: defineTable({
     sponsor:    v.union(v.literal("CMC"), v.literal("TWAK"), v.literal("BNB_SDK")),
@@ -437,7 +437,7 @@ export default defineSchema({
     .index("by_ts",      ["ts_ms"])
     .index("by_sponsor", ["sponsor"]),
 
-  // Live positions singleton — agent writes each cycle; cockpit reads for the
+  // Live positions singleton - agent writes each cycle; cockpit reads for the
   // holdings panel. One row per symbol, keyed by symbol string. Flat = quantity 0.
   positions: defineTable({
     symbol: v.string(),
@@ -452,7 +452,7 @@ export default defineSchema({
     .index("by_symbol", ["symbol"]),
 
   // Thesis ledger + trial registry (AWAKE_SPRINT §4.4/§4.6). Every thesis the loop
-  // distills/tests is logged here — for multiplicity accounting (DSR) and the cockpit
+  // distills/tests is logged here - for multiplicity accounting (DSR) and the cockpit
   // "science in public" feed. status: untested | validated | FALSIFIED. asset_results
   // is a JSON blob {asset: {objective, ...}}; source is the exact citation.
   price_ticks: defineTable({
@@ -477,7 +477,7 @@ export default defineSchema({
     .index("by_status", ["status"])
     .index("by_ts", ["ts_ms"]),
 
-  // Live wallet balances — agent writes each cycle; cockpit reads for balance panel
+  // Live wallet balances - agent writes each cycle; cockpit reads for balance panel
   wallet_state: defineTable({
     address:   v.optional(v.string()),
     usdt: v.number(),

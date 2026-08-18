@@ -73,7 +73,7 @@ function Stage({
 }
 
 function fmt(v: number | null | undefined, decimals = 3): string {
-  if (v == null) return "—";
+  if (v == null) return "-";
   return v.toFixed(decimals);
 }
 
@@ -91,7 +91,7 @@ export function PipelineView() {
   const [forceRunning, setForceRunning] = useState(false);
 
   const ageMs  = decision ? Date.now() - decision.timestamp_ms : null;
-  const ageSec = ageMs != null ? (ageMs / 1000).toFixed(0) : "—";
+  const ageSec = ageMs != null ? (ageMs / 1000).toFixed(0) : "-";
 
   return (
     <div className="max-w-[680px] mx-auto space-y-4">
@@ -142,7 +142,7 @@ export function PipelineView() {
           title="Market Data"
           badge={signal ? "pass" : "stale"}
           rows={[
-            { label: "Symbol",   value: signal?.symbol ?? "—" },
+            { label: "Symbol",   value: signal?.symbol ?? "-" },
             { label: "EMA fast", value: fmt(signal?.momentum_ema_fast) },
             { label: "EMA slow", value: fmt(signal?.momentum_ema_slow) },
             { label: "ATR",      value: fmt(signal?.momentum_atr) },
@@ -167,12 +167,12 @@ export function PipelineView() {
           title="Regime Detection"
           badge={decision?.regime ? "pass" : "stale"}
           rows={[
-            { label: "Regime",  value: decision?.regime ?? "—" },
-            { label: "Verdict", value: decision?.risk_verdict ?? "—" },
+            { label: "Regime",  value: decision?.regime ?? "-" },
+            { label: "Verdict", value: decision?.risk_verdict ?? "-" },
           ]}
         />
 
-        {/* Stage 4 — Risk Check (inline editable) */}
+        {/* Stage 4 - Risk Check (inline editable) */}
         <div className="flex gap-4 items-start">
           <div className="flex flex-col items-center gap-1 flex-shrink-0">
             <div className="w-7 h-7 rounded-full border border-border flex items-center justify-center font-mono text-[11px] text-muted-fg">4</div>
@@ -210,7 +210,7 @@ export function PipelineView() {
                     onClick={() => { setEditingField("drawdown"); setEditValue(riskState ? (riskState.current_drawdown_pct * 100).toFixed(1) : ""); }}
                   >
                     <span className="font-mono text-[12px] text-text tabular-nums">
-                      {riskState ? `${(riskState.current_drawdown_pct * 100).toFixed(1)}%` : "—"}
+                      {riskState ? `${(riskState.current_drawdown_pct * 100).toFixed(1)}%` : "-"}
                     </span>
                     <Pencil className="w-2.5 h-2.5 text-muted-fg/0 group-hover:text-muted-fg/60 transition-colors" />
                   </button>
@@ -243,7 +243,7 @@ export function PipelineView() {
                     onClick={() => { setEditingField("daily_loss"); setEditValue(riskState ? riskState.daily_loss_usd.toFixed(2) : ""); }}
                   >
                     <span className="font-mono text-[12px] text-text tabular-nums">
-                      {riskState ? usd(riskState.daily_loss_usd) : "—"}
+                      {riskState ? usd(riskState.daily_loss_usd) : "-"}
                     </span>
                     <Pencil className="w-2.5 h-2.5 text-muted-fg/0 group-hover:text-muted-fg/60 transition-colors" />
                   </button>
@@ -253,7 +253,7 @@ export function PipelineView() {
               {/* Read-only: Exposure */}
               <div className="flex items-baseline justify-between gap-2">
                 <span className="font-mono text-[11px] text-muted-fg">Exposure</span>
-                <span className="font-mono text-[12px] text-text tabular-nums">{riskState ? usd(riskState.open_exposure_usd) : "—"}</span>
+                <span className="font-mono text-[12px] text-text tabular-nums">{riskState ? usd(riskState.open_exposure_usd) : "-"}</span>
               </div>
 
               {/* Read-only: Circuit breaker */}
@@ -273,8 +273,8 @@ export function PipelineView() {
           badge={decision?.trade_id ? "pass" : decision ? "running" : "stale"}
           isLast
           rows={[
-            { label: "Target size", value: decision ? usd(decision.final_size_usd) : "—" },
-            { label: "Reason",      value: decision?.risk_reason ?? "—" },
+            { label: "Target size", value: decision ? usd(decision.final_size_usd) : "-" },
+            { label: "Reason",      value: decision?.risk_reason ?? "-" },
           ]}
         />
       </div>

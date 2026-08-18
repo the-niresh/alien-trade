@@ -1,5 +1,5 @@
 """
-8.7 — TWAK native x402 provider tests.
+8.7 - TWAK native x402 provider tests.
 
 Verifies the "both sides of x402" provider module:
   - Route config is correct (price, network, scheme, payTo)
@@ -62,7 +62,7 @@ class TestRouteConfig:
         assert r2[f"POST {PROTECTED_PATH}"]["accepts"]["payTo"] == "0xBBB"
 
 
-# ── register() — no-op paths ─────────────────────────────────────────────────
+# ── register() - no-op paths ─────────────────────────────────────────────────
 
 class TestRegisterNoOp:
     def test_no_wallet_returns_false(self, monkeypatch):
@@ -121,7 +121,7 @@ class TestRegisterNoOp:
             pass  # Hard to inject directly; covered by the no-op path tests above
 
 
-# ── register() — happy path ───────────────────────────────────────────────────
+# ── register() - happy path ───────────────────────────────────────────────────
 
 class TestRegisterHappyPath:
     def test_register_calls_add_middleware(self, monkeypatch):

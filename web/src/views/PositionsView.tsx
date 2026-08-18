@@ -44,7 +44,7 @@ export function PositionsView() {
           <div className="space-y-2">
             <h2 className="font-display text-[19px] font-bold tracking-wide">Scanning the market</h2>
             <p className="text-[14px] text-muted-fg max-w-xs leading-relaxed">
-              Flat — no open positions. The agent is waiting for a high-conviction setup before deploying capital.
+              Flat - no open positions. The agent is waiting for a high-conviction setup before deploying capital.
             </p>
             <p className="font-mono text-[11px] text-green/70 tracking-[0.16em] uppercase pt-1">
               <span className="animate-pulse">▮</span> standing by

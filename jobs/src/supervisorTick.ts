@@ -4,11 +4,11 @@ const AGENT_URL = process.env.AGENT_URL ?? "http://localhost:8000";
 const AGENT_SYMBOL = process.env.AGENT_SYMBOL ?? "ETH";
 
 /**
- * Periodic supervisor tick — drives the Researcher node on a 2-hour cadence.
+ * Periodic supervisor tick - drives the Researcher node on a 2-hour cadence.
  *
  * The LangGraph supervisor routes kind=research_tick to the ResearchAgent, which
  * identifies regime anomalies / social spikes / OI divergence, synthesises a
- * digest via CMC Skills, and stores it in the Second Brain. Advisory path only —
+ * digest via CMC Skills, and stores it in the Second Brain. Advisory path only -
  * a failed tick is logged but never raises (non-critical, must not alert on-call).
  */
 export const supervisorTick = schedules.task({
@@ -34,7 +34,7 @@ export const supervisorTick = schedules.task({
       result = { ok: false, reason: String(err) };
     }
     logger.info("supervisor tick", { scheduledAt: payload.timestamp, ...result });
-    // Return result but do NOT throw on failure — advisory path.
+    // Return result but do NOT throw on failure - advisory path.
     return result;
   },
 });

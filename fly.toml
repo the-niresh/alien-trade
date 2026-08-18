@@ -1,4 +1,4 @@
-# Alien-Trade agent — Fly.io deployment config
+# Alien-Trade agent - Fly.io deployment config
 # Deploy: fly launch --name alien-trade-agent
 #         fly secrets set CMC_API_KEY=... CONVEX_URL=... (etc.)
 #         fly deploy

@@ -1,6 +1,6 @@
 """
 OOS guard: stops must not worsen out-of-sample max-drawdown. Anti-overfitting
-rule (locked decision #7) — we assert on OOS, never select params on in-sample.
+rule (locked decision #7) - we assert on OOS, never select params on in-sample.
 """
 import pytest
 from backtest.engine import Bar, Order, run_backtest

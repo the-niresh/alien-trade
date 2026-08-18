@@ -1,4 +1,4 @@
-# web — Dashboard PWA ✅ (Step 5 scaffold)
+# web - Dashboard PWA ✅ (Step 5 scaffold)
 
 React + Vite + `vite-plugin-pwa` (manifest + service worker → installs on a phone
 home screen via the terminal QR, no app store). Convex is the real-time bridge.
@@ -12,7 +12,7 @@ home screen via the terminal QR, no app store). Convex is the real-time bridge.
 ## Planned (later phases)
 
 - PnL/drawdown time-series chart, signal attribution view
-- Risk cap editor, Co-pilot chat (grounded in Second Brain — Step 6)
+- Risk cap editor, Co-pilot chat (grounded in Second Brain - Step 6)
 - shadcn/ui + Tailwind polish pass
 
 ## Setup
@@ -32,4 +32,4 @@ bun install
 bun dev
 ```
 
-Built in Step 5 (Jun 15–18).
+Built in Step 5 (Jun 15-18).

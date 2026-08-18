@@ -74,7 +74,7 @@ export function TradingChart({ ticks, trades = [], height = 480 }: Props) {
       if (chartData.length === 0 || sec > chartData[chartData.length - 1].time) {
         chartData.push({ time: sec, value: t.price });
       } else if (sec === chartData[chartData.length - 1].time) {
-        chartData[chartData.length - 1].value = t.price; // same second — keep latest
+        chartData[chartData.length - 1].value = t.price; // same second - keep latest
       }
       // sec < prev.time: skip (clock skew / restart artifact)
     }

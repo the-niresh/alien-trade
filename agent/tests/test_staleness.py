@@ -1,5 +1,5 @@
 """
-8.11 — Degraded-mode observability: DecisionLoop._check_staleness emits RiskGuard
+8.11 - Degraded-mode observability: DecisionLoop._check_staleness emits RiskGuard
 observation events when forecast or sentiment signals go stale, and clears them on
 recovery.
 """
@@ -125,7 +125,7 @@ def test_recovery_emits_recovered_event():
 # ── no signal data (offline / None) ──────────────────────────────────────────
 
 def test_no_forecast_state_does_not_emit():
-    """None from bridge means signal is absent, not stale — don't alarm."""
+    """None from bridge means signal is absent, not stale - don't alarm."""
     loop, bridge, bar = _make_loop(forecast_ts=None)
     loop._check_staleness(bar, "cyc-3")
     bridge.emit_event.assert_not_called()

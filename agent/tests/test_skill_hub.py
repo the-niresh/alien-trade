@@ -3,7 +3,7 @@ CMC Skill Hub two-tier loader. Pins: curated param-builders match each skill's
 schema (window formats / enums), curated dispatch resolves the right unique_name,
 dynamic find_skill/execute_skill route through the transport, offline-first
 returns explicit markers (never fabricated results), and SSE/payload parsing.
-No live network — a fake transport records calls and returns canned payloads.
+No live network - a fake transport records calls and returns canned payloads.
 """
 from __future__ import annotations
 

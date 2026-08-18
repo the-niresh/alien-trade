@@ -2,7 +2,7 @@
 Lightweight setup_scorer chain tick for the live loop.
 
 Fires every CHAIN_EVERY_N cycles in a background thread (off the hot path).
-Does NOT require SECOND_BRAIN=1 or upstash — uses a StubSupervisor that:
+Does NOT require SECOND_BRAIN=1 or upstash - uses a StubSupervisor that:
   Researcher  → real CMC price snapshot via bridge.get_price_tick data
   Historian   → "no upstash" stub (shows the chain hop without querying vector)
   CoPilot     → short summary built from researcher output
@@ -27,10 +27,10 @@ _scorer_lock = threading.Lock()
 
 
 class _StubSupervisor:
-    """Minimal supervisor shim for run_chain() — no LangGraph/upstash needed.
+    """Minimal supervisor shim for run_chain() - no LangGraph/upstash needed.
 
     Each node returns a state dict with the keys run_chain() reads:
-    answer / analysis / lesson — depending on _OUTPUT_KEYS.
+    answer / analysis / lesson - depending on _OUTPUT_KEYS.
     """
 
     def __init__(self, bridge, symbol: str) -> None:
@@ -58,7 +58,7 @@ class _StubSupervisor:
             }
         # CoPilot synthesis
         return {
-            "answer": f"CoPilot: based on current {sym} conditions — monitor. Regime check pending.",
+            "answer": f"CoPilot: based on current {sym} conditions - monitor. Regime check pending.",
             "events": [],
         }
 
@@ -112,7 +112,7 @@ def fire_setup_scorer(bridge, symbol: str, cycle_id: str) -> None:
                 summary=result.get("summary", "")[:400],
                 tool_calls=result.get("tool_calls", []),
             )
-        except Exception as exc:  # noqa: BLE001 — background thread, never crash loop
+        except Exception as exc:  # noqa: BLE001 - background thread, never crash loop
             log.debug("loop_chain: fire_setup_scorer failed: %s", exc)
 
     t = threading.Thread(target=_run, daemon=True, name="setup-scorer-chain")

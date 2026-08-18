@@ -1,6 +1,6 @@
 """Live key-validation probes for the onboarding wizard.
 
-Each probe returns a structured ProbeResult and NEVER raises — the TUI renders
+Each probe returns a structured ProbeResult and NEVER raises - the TUI renders
 red/green per field from `ok`, and shows `detail` on failure. Timeouts are short
 so a wrong key fails fast instead of stalling the wizard. The `base` arg exists so
 tests can point at a dead address without touching real services.
@@ -32,7 +32,7 @@ def probe_convex(url: str, *, timeout: float = _TIMEOUT) -> ProbeResult:
         if r.status_code == 200 and r.json().get("status") == "success":
             return ProbeResult(True, "reachable")
         return ProbeResult(False, f"HTTP {r.status_code}")
-    except Exception as e:  # noqa: BLE001 — probes never raise
+    except Exception as e:  # noqa: BLE001 - probes never raise
         return ProbeResult(False, str(e) or "connection failed")
 
 

@@ -1,5 +1,5 @@
 """
-Terminal QR — render the hosted PWA URL as an ASCII QR after onboarding so the
+Terminal QR - render the hosted PWA URL as an ASCII QR after onboarding so the
 operator can scan it and open the mobile dashboard instantly (no app store).
 
 URL resolution order:

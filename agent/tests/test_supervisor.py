@@ -2,11 +2,11 @@
 LangGraph supervisor (2-node scaffold). Pins: single-entry routing (user→co_pilot,
 history-intent→historian, events→historian), each node emits exactly one AgentEvent
 to the channel, the Pause-Agents control short-circuits Tier-1 nodes without running
-them, and historian summarises Vector recall. Hermetic — fake Second Brain + bridge.
+them, and historian summarises Vector recall. Hermetic - fake Second Brain + bridge.
 """
 from __future__ import annotations
 import pytest
-pytest.importorskip("langgraph", reason="langgraph not installed — skip supervisor tests")
+pytest.importorskip("langgraph", reason="langgraph not installed - skip supervisor tests")
 
 from types import SimpleNamespace
 

@@ -1,4 +1,4 @@
-"""8.13 — Tier-1 self-eval rubrics: Researcher / Co-pilot / Reflector."""
+"""8.13 - Tier-1 self-eval rubrics: Researcher / Co-pilot / Reflector."""
 from __future__ import annotations
 from unittest.mock import MagicMock, call
 

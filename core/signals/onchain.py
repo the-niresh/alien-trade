@@ -33,7 +33,7 @@ def flow_signal(history: list[Bar], lookback: int = 14) -> float:
     std = float(arr.std())
 
     if std < 1e-8:
-        return 0.0   # no variation in flow — uninformative
+        return 0.0   # no variation in flow - uninformative
 
     # z-score: how unusual is today's flow relative to recent history?
     z = (arr[-1] - mean) / std

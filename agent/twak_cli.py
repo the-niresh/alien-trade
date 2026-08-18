@@ -50,7 +50,7 @@ class TwakSwapResult:
     raw: dict
 
 
-# BSC tokens that `twak swap` does NOT resolve by symbol — must use contract addresses.
+# BSC tokens that `twak swap` does NOT resolve by symbol - must use contract addresses.
 # ETH works by symbol; everything else on BSC requires the 0x... address.
 _BSC_TOKEN_REGISTRY: dict[str, str] = {
     "CAKE":  "0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82",
@@ -134,7 +134,7 @@ class TwakCli:
                 if data is not None:
                     # Detect explicit error responses (e.g. TX_FAILED, execution reverted).
                     # The Windows libuv quirk (nonzero exit but valid result JSON) only
-                    # applies to SUCCESS responses — those never have "error"/"errorCode".
+                    # applies to SUCCESS responses - those never have "error"/"errorCode".
                     if proc.returncode != 0 and ("error" in data or "errorCode" in data):
                         code = data.get("errorCode", "")
                         msg  = data.get("error", "swap error")
@@ -202,7 +202,7 @@ class TwakCli:
 
     def compete_register(self) -> dict:
         """Register this wallet on-chain (`twak compete register`).
-        Operator-run ONCE before the trading window opens (Jun 22) — resolves the
+        Operator-run ONCE before the trading window opens (Jun 22) - resolves the
         agent wallet + submits the registration tx to the registry contract.
         Late entries are rejected, so this must happen during the build window."""
         return self._run("compete", "register", "--json")

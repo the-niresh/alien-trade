@@ -51,7 +51,7 @@ export function AppShell({
       />
       <AgentTicker />
       <div className="flex flex-1 overflow-hidden">
-        {/* Sidebar — hidden on mobile */}
+        {/* Sidebar - hidden on mobile */}
         <div className="hidden sm:flex">
           <SideNav
             active={activeView}
@@ -66,11 +66,11 @@ export function AppShell({
           {children}
         </main>
       </div>
-      {/* Kill switch FAB — mobile only, floats above the bottom nav */}
+      {/* Kill switch FAB - mobile only, floats above the bottom nav */}
       <div className="fixed bottom-[60px] right-6 sm:hidden z-30">
         <KillSwitch halted={halted} onToggle={onKillToggle} size="md" />
       </div>
-      {/* Bottom nav — mobile only */}
+      {/* Bottom nav - mobile only */}
       <div className="flex sm:hidden">
         <BottomNav
           active={activeView}

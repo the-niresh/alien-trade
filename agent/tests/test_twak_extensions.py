@@ -1,4 +1,4 @@
-"""Tests for TwakCli extensions — all TWAK calls are mocked."""
+"""Tests for TwakCli extensions - all TWAK calls are mocked."""
 from __future__ import annotations
 import json
 from unittest.mock import patch, MagicMock

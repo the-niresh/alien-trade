@@ -1,4 +1,4 @@
-"""Thesis evaluation harness (AWAKE_SPRINT §4.3/§4.4) — the throughput lever.
+"""Thesis evaluation harness (AWAKE_SPRINT §4.3/§4.4) - the throughput lever.
 
 Turns a distilled thesis card's `proposed_rule` (a DSL dict) into a per-asset
 out-of-sample scorecard across the eligible universe `{ETH,CAKE,UNI,LINK,AAVE}`,
@@ -16,12 +16,12 @@ Methodology (anti-data-snooping, §4.4):
     trial registry (THESIS_LEDGER) + the Deflated Sharpe gate (n_trials) + a final
     untouched holdout scored EXACTLY ONCE on survivors (holdout.use_once()).
   - Keep gate: a thesis is VALIDATED only if its dev objective beats `threshold`
-    (default 0.0 — "beat sitting in cash", the bar established 2026-06-11) on
+    (default 0.0 - "beat sitting in cash", the bar established 2026-06-11) on
     >= `min_beat` of 5 assets.
 
 Sizing is fixed-notional (default $1000 on $10k capital), identical to the committed
 baseline strategy (core/strategy/combined.py) and faithful to the agent's real
-fixed-size `twak swap` execution — so dev objectives are directly comparable to the
+fixed-size `twak swap` execution - so dev objectives are directly comparable to the
 documented v2 numbers AND to the 0.0 cash bar.
 """
 from __future__ import annotations
@@ -69,7 +69,7 @@ def _bars_to_df(bars: list[Bar]) -> pd.DataFrame:
 
 def _positions(rule: dict, bars: list[Bar]) -> np.ndarray:
     """Compile the DSL rule and return its 0/1 long/flat position series over `bars`.
-    Causal by construction (the DSL only uses past-looking indicators) — see the
+    Causal by construction (the DSL only uses past-looking indicators) - see the
     no-lookahead test."""
     if not bars:
         return np.zeros(0, dtype=int)
@@ -132,7 +132,7 @@ def evaluate_on_bars(rule: dict, bars: list[Bar], *, asset: str = "ASSET",
                      positions: Optional[np.ndarray] = None) -> AssetResult:
     """Score a rule on one contiguous bar series with the real BSC cost model.
 
-    `positions`, if given, is used instead of recomputing — this lets a holdout slice
+    `positions`, if given, is used instead of recomputing - this lets a holdout slice
     inherit the warmed-up indicator state from the full series."""
     pos = _positions(rule, bars) if positions is None else np.asarray(positions).astype(int)
     strat = rule_to_strategy(pos, size_usd=size_usd, symbol=asset)
@@ -176,8 +176,8 @@ def evaluate_thesis(rule: dict, *, bars_by_asset: Optional[dict[str, list[Bar]]]
                     initial_capital: float = _DEFAULT_CAPITAL,
                     holdout_days: int = _DEFAULT_HOLDOUT_DAYS,
                     bars_per_day: int = _BARS_PER_DAY_1H) -> ThesisEval:
-    """Evaluate a DSL rule across the eligible universe at OOS, then — only if it clears
-    the keep gate — score the untouched holdout once and compute the Deflated Sharpe.
+    """Evaluate a DSL rule across the eligible universe at OOS, then - only if it clears
+    the keep gate - score the untouched holdout once and compute the Deflated Sharpe.
 
     bars_by_asset: inject bars for offline tests; otherwise load from parquet.
     """
@@ -254,8 +254,8 @@ def format_ledger_row(thesis_id: str, claim: str, source: str, ev: ThesisEval) -
     """Render one Markdown trial-registry row for docs/THESIS_LEDGER.md (§4.4
     multiplicity accounting). One line, pipe-delimited, matching LEDGER_HEADER."""
     objs = "/".join(f"{r.objective:+.3f}" for r in ev.per_asset)
-    hold = f"{ev.holdout['objective']:+.3f}" if ev.holdout else "—"
-    dsr = f"{ev.deflated_sharpe:.3f}" if ev.deflated_sharpe is not None else "—"
+    hold = f"{ev.holdout['objective']:+.3f}" if ev.holdout else "-"
+    dsr = f"{ev.deflated_sharpe:.3f}" if ev.deflated_sharpe is not None else "-"
     claim = claim.replace("|", "/").replace("\n", " ")
     source = source.replace("|", "/").replace("\n", " ")
     return (f"| {thesis_id} | {claim} | {source} | {ev.verdict} | "

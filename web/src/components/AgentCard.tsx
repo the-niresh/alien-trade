@@ -125,12 +125,12 @@ export function AgentCard({ def, lastEvent }: Props) {
       }}
       onClick={() => setExpanded((v) => !v)}
     >
-      {/* Agent colour ambient wash — top right */}
+      {/* Agent colour ambient wash - top right */}
       <span
         className="absolute -right-6 -top-6 h-28 w-28 rounded-full pointer-events-none transition-opacity duration-300 group-hover:opacity-20"
         style={{ background: def.color, filter: "blur(28px)", opacity: 0.07 }}
       />
-      {/* Second glow — bottom left */}
+      {/* Second glow - bottom left */}
       <span
         className="absolute -left-4 -bottom-4 h-16 w-16 rounded-full pointer-events-none opacity-0 group-hover:opacity-10 transition-opacity duration-300"
         style={{ background: def.color, filter: "blur(20px)" }}
@@ -184,7 +184,7 @@ export function AgentCard({ def, lastEvent }: Props) {
         className="rounded-lg bg-bg/60 px-3 py-2.5 relative overflow-hidden"
         style={{ border: `1px solid color-mix(in oklab, ${kindColor} 18%, var(--border))` }}
       >
-        {/* kind accent — left edge */}
+        {/* kind accent - left edge */}
         <span
           className="absolute left-0 top-0 bottom-0 w-[2.5px] rounded-r-sm"
           style={{ background: kindColor, opacity: 0.7 }}
@@ -210,7 +210,7 @@ export function AgentCard({ def, lastEvent }: Props) {
         )}
       </div>
 
-      {/* Tool chips — expand on click */}
+      {/* Tool chips - expand on click */}
       <AnimatePresence>
         {expanded && (
           <motion.div

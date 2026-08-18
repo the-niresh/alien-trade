@@ -11,7 +11,7 @@ co-pilot both read these digests later.
 This is the supervisor → sub-agent pattern (locked decision #4 / #6). It is
 implemented in plain, testable Python so it runs offline; the same shape drops
 onto a LangGraph supervisor when that lands. The sub-agent makes NO trade
-decision — it only researches and writes memory.
+decision - it only researches and writes memory.
 
 Run:  core/.venv/Scripts/python.exe -m agent.secondbrain.research --symbol BNB
 """
@@ -68,20 +68,20 @@ class ResearchAgent:
             recent = detect_regime(history[-15:]).value
             if recent != regime:
                 qs.append(f"Regime anomaly: {self.symbol} shifted {regime}→{recent} "
-                          f"recently — distribution top, or healthy consolidation?")
+                          f"recently - distribution top, or healthy consolidation?")
             last = history[-1]
             # Extended CMC fields (social/OI) wire in via cmc_client; act on them
             # when non-zero so the digest is data-driven, not boilerplate.
             if abs(last.social_score) > 0.0:
                 qs.append(f"Social attention on {self.symbol} is spiking "
-                          f"(score {last.social_score:.2f}) — sentiment-led move or noise?")
+                          f"(score {last.social_score:.2f}) - sentiment-led move or noise?")
             if last.open_interest > 0.0 and last.net_flow != 0.0:
                 qs.append(f"{self.symbol} OI/flow divergence (OI {last.open_interest:.0f}, "
-                          f"flow {last.net_flow:.0f}) — accumulation or a crowded trade?")
+                          f"flow {last.net_flow:.0f}) - accumulation or a crowded trade?")
         return qs
 
     def gather_context(self, history: list[Bar]) -> str:
-        """Pull live CMC context + recent price action (guarded — works offline)."""
+        """Pull live CMC context + recent price action (guarded - works offline)."""
         lines = []
         try:
             from data.cmc_client import CMCClient
@@ -89,7 +89,7 @@ class ResearchAgent:
                 q = cmc.fetch_quote_live(self.symbol)
             lines.append(f"CMC live: ${q['price']:.2f}, 24h {q['percent_change_24h']:+.2f}%, "
                          f"vol ${q['volume_24h']:,.0f}")
-        except Exception as e:  # noqa: BLE001 — CMC optional; bars are enough
+        except Exception as e:  # noqa: BLE001 - CMC optional; bars are enough
             lines.append(f"CMC live unavailable ({e}); using recent bars only.")
         if history:
             closes = [b.close for b in history[-10:]]
@@ -100,7 +100,7 @@ class ResearchAgent:
 
     def _skill_evidence(self) -> list[str]:
         """Curated CMC skill reads (funding regime, sentiment, market regime) as
-        compact one-liners. Each call is guarded — a skill failing is advisory and
+        compact one-liners. Each call is guarded - a skill failing is advisory and
         must never break a research cycle (failure-matrix). Empty when offline."""
         if self.skills is None or not self.skills.enabled:
             return []
@@ -109,7 +109,7 @@ class ResearchAgent:
         for key in self.skill_keys:
             try:
                 brief = _skill_brief(key, self.skills.run_curated(key, ctx))
-            except Exception:  # noqa: BLE001 — advisory only
+            except Exception:  # noqa: BLE001 - advisory only
                 brief = ""
             if brief:
                 out.append(brief)
@@ -117,14 +117,14 @@ class ResearchAgent:
 
     def synthesise(self, question: str, context: str) -> tuple[str, bool]:
         """Returns (findings_text, low_confidence). low_confidence=True when the
-        rubric self-check fails twice. Offline → (text, False) — parity preserved."""
+        rubric self-check fails twice. Offline → (text, False) - parity preserved."""
         prompt = f"Question: {question}\n\nMarket context:\n{context}\n\nDigest:"
         text = self.llm.complete(prompt, system=_DIGEST_SYSTEM, tier="T1", max_tokens=300).text
         if not self.llm.enabled:
             return text, False
         if self._check_rubric(question, text):
             return text, False
-        # Retry once — same prompt, same context (idempotent for caching)
+        # Retry once - same prompt, same context (idempotent for caching)
         text2 = self.llm.complete(prompt, system=_DIGEST_SYSTEM, tier="T1", max_tokens=300).text
         if self._check_rubric(question, text2):
             return text2, False
@@ -141,7 +141,7 @@ class ResearchAgent:
             res = self.llm.complete(rubric_prompt, system=_RUBRIC_SYSTEM,
                                     tier="T0", max_tokens=5)
             return res.text.strip().upper().startswith("YES")
-        except Exception:  # noqa: BLE001 — rubric failure → pass (fail-open)
+        except Exception:  # noqa: BLE001 - rubric failure → pass (fail-open)
             return True
 
 
@@ -151,14 +151,14 @@ class ResearchSupervisor:
     llm: ClaudeClient
     symbol: str = "BNB"
     skills: Optional[SkillHub] = None
-    bridge: Optional[object] = None   # ConvexBridge — for per-symbol forecast writes
+    bridge: Optional[object] = None   # ConvexBridge - for per-symbol forecast writes
 
     def run_cycle(self, history: Optional[list[Bar]] = None, *,
                   symbols: Optional[list[str]] = None,
                   max_questions: int = 3) -> list[ResearchDigest]:
         """AutoResearch cycle for one or more symbols.
 
-        Single-symbol (default): `run_cycle(history)` — backward-compatible.
+        Single-symbol (default): `run_cycle(history)` - backward-compatible.
         Multi-symbol fan-out: `run_cycle(symbols=[...])` runs each symbol
         concurrently via ThreadPoolExecutor(max_workers=3) so one slow CMC call
         doesn't block the others. Each symbol stores its own digest set and
@@ -175,7 +175,7 @@ class ResearchSupervisor:
             for fut in as_completed(futs):
                 try:
                     all_digests.extend(fut.result())
-                except Exception as e:  # noqa: BLE001 — per-symbol failure is advisory
+                except Exception as e:  # noqa: BLE001 - per-symbol failure is advisory
                     print(f"[research] fan-out failed for a symbol: {e}")
         return all_digests
 
@@ -221,7 +221,7 @@ class ResearchSupervisor:
             fs = ForecastState(symbol=symbol, confidence=conf,
                                reason=reason, ttl_ms=DEFAULT_FORECAST_TTL_MS)
             self.bridge.set_forecast_state(fs)
-        except Exception:  # noqa: BLE001 — advisory; never crash research
+        except Exception:  # noqa: BLE001 - advisory; never crash research
             pass
 
     def _fetch_history(self, symbol: Optional[str] = None) -> list[Bar]:
@@ -264,7 +264,7 @@ def main(argv: list[str] | None = None) -> None:
         pass
     load_dotenv(Path(__file__).resolve().parents[2] / ".env.local")
 
-    ap = argparse.ArgumentParser(description="Karpathy AutoResearch — one cycle")
+    ap = argparse.ArgumentParser(description="Karpathy AutoResearch - one cycle")
     ap.add_argument("--symbol", default="BNB")
     args = ap.parse_args(argv)
 

@@ -100,7 +100,7 @@ export function MarketsView({ symbol: propSymbol, onSymbolChange }: Props = {}) 
           <h1 className="font-display text-[22px] font-bold tracking-wide text-text">Markets</h1>
         </div>
 
-        {/* Current price + change — prominent display */}
+        {/* Current price + change - prominent display */}
         {currentPrice !== null && (
           <div className="text-right">
             <div className={cn(
@@ -124,7 +124,7 @@ export function MarketsView({ symbol: propSymbol, onSymbolChange }: Props = {}) 
         )}
         {fallbackLoading && (
           <div className="font-display text-[28px] font-bold text-muted-fg animate-pulse">
-            —
+            -
           </div>
         )}
       </div>

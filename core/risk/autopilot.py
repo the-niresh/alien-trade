@@ -1,21 +1,21 @@
 """
-Autopilot capital manager — the discipline layer (deterministic, off the LLM path).
+Autopilot capital manager - the discipline layer (deterministic, off the LLM path).
 
 The agent's edge is not a magic signal; it is ruthless, emotionless discipline:
 take profit at the target, protect banked capital forever, refuse to redeploy into
 a bad market, and quit for the day when ahead. Every rule here is pure arithmetic so
-sim and live behave identically (locked decision #2) — the same way guardrails.py and
+sim and live behave identically (locked decision #2) - the same way guardrails.py and
 forecast.py are shared.
 
 Six behaviours, all optional and independently configurable:
-  1. Profit-Lock + Capital Ratchet — hit the target -> flatten to stable, bank it.
+  1. Profit-Lock + Capital Ratchet - hit the target -> flatten to stable, bank it.
      The protected floor ONLY EVER RISES; the agent never re-risks banked capital.
-  2. Auto-Recycle gate — after banking, redeploy only when regime + forecast are
+  2. Auto-Recycle gate - after banking, redeploy only when regime + forecast are
      favourable (not a blind re-entry). This is the "knows when to stop" valve.
-  3. Trailing Give-Back — exit if price retraces X% from its peak since entry.
-  4. Daily Profit Target — up X% today -> stop for the day (mirror of daily-loss halt).
-  5. Cooldown-after-loss — pause N hours after a losing close (kills revenge trading).
-  6. Sizing off (equity - protected_floor) — see deployable_capital().
+  3. Trailing Give-Back - exit if price retraces X% from its peak since entry.
+  4. Daily Profit Target - up X% today -> stop for the day (mirror of daily-loss halt).
+  5. Cooldown-after-loss - pause N hours after a losing close (kills revenge trading).
+  6. Sizing off (equity - protected_floor) - see deployable_capital().
 
 Invariants (tested in test_autopilot.py):
   - protected_floor is monotone non-decreasing (ratchet can never lower it).
@@ -31,11 +31,11 @@ from enum import Enum
 
 
 class AutopilotAction(str, Enum):
-    HOLD = "hold"                # no intervention — normal strategy proceeds
+    HOLD = "hold"                # no intervention - normal strategy proceeds
     BANK = "bank"                # take profit: flatten to stable, ratchet the floor
     TRAIL_EXIT = "trail_exit"    # trailing give-back exit (lock gains before reversal)
-    HALT_DAY = "halt_day"        # daily profit target hit — stop trading for the day
-    BLOCK_ENTRY = "block_entry"  # recycle gate / cooldown — stay in cash this cycle
+    HALT_DAY = "halt_day"        # daily profit target hit - stop trading for the day
+    BLOCK_ENTRY = "block_entry"  # recycle gate / cooldown - stay in cash this cycle
 
 
 @dataclass(frozen=True)
@@ -60,7 +60,7 @@ class AutopilotConfig:
 @dataclass
 class AutopilotState:
     """Mutable, persisted in Convex `risk_state`. Carries the ratchet + cycle marks."""
-    protected_floor: float = 0.0          # banked capital — never re-risked; only rises
+    protected_floor: float = 0.0          # banked capital - never re-risked; only rises
     cycle_start_equity: float = 0.0       # equity when the current deployment began
     peak_equity: float = 0.0              # peak since cycle start (trailing reference)
     day_start_equity: float = 0.0         # equity at the start of the calendar day
@@ -85,7 +85,7 @@ def deployable_capital(equity: float, state: AutopilotState) -> float:
 
 
 def start_cycle(state: AutopilotState, equity: float) -> AutopilotState:
-    """Mark the start of a fresh deployment — anchors the cycle PnL + trailing peak."""
+    """Mark the start of a fresh deployment - anchors the cycle PnL + trailing peak."""
     return replace(state, cycle_start_equity=equity, peak_equity=equity)
 
 
@@ -122,7 +122,7 @@ def evaluate(
     if equity > state.peak_equity:
         state = replace(state, peak_equity=equity)
 
-    # ── 4. Daily profit target — bank the day, stop trading until tomorrow ───────
+    # ── 4. Daily profit target - bank the day, stop trading until tomorrow ───────
     if config.daily_profit_target_pct is not None and state.day_start_equity > 0:
         day_gain_pct = (equity - state.day_start_equity) / state.day_start_equity
         if day_gain_pct >= config.daily_profit_target_pct:
@@ -130,11 +130,11 @@ def evaluate(
                 AutopilotAction.HALT_DAY,
                 replace(state, halted_for_day=True),
                 f"daily profit target +{config.daily_profit_target_pct:.0%} reached "
-                f"(+{day_gain_pct:.2%}) — banking the day",
+                f"(+{day_gain_pct:.2%}) - banking the day",
             )
     if state.halted_for_day:
         return AutopilotDecision(AutopilotAction.HALT_DAY, state,
-                                 "already banked for the day — flat until tomorrow")
+                                 "already banked for the day - flat until tomorrow")
 
     if in_position:
         gain = equity - state.cycle_start_equity
@@ -151,21 +151,21 @@ def evaluate(
             return AutopilotDecision(
                 AutopilotAction.BANK,
                 replace(state, protected_floor=new_floor),
-                f"profit target hit (+{gain_pct:.2%} / +{gain:.2f}) — securing, "
+                f"profit target hit (+{gain_pct:.2%} / +{gain:.2f}) - securing, "
                 f"floor -> {new_floor:.2f}",
                 banked=added,
             )
 
-        # ── 3. Trailing give-back — lock gains before a reversal eats them ──────
+        # ── 3. Trailing give-back - lock gains before a reversal eats them ──────
         if (config.trailing_giveback_pct is not None
                 and state.peak_equity > state.cycle_start_equity > 0):
             retrace = (state.peak_equity - equity) / state.peak_equity
             if retrace >= config.trailing_giveback_pct:
                 return AutopilotDecision(
                     AutopilotAction.TRAIL_EXIT, state,
-                    f"trailing give-back {retrace:.2%} from peak — locking gains",
+                    f"trailing give-back {retrace:.2%} from peak - locking gains",
                 )
-        return AutopilotDecision(AutopilotAction.HOLD, state, "in position — targets not met")
+        return AutopilotDecision(AutopilotAction.HOLD, state, "in position - targets not met")
 
     # ── Flat: decide whether a fresh deployment is allowed ─────────────────────
     # 5. Cooldown after a loss
@@ -174,15 +174,15 @@ def evaluate(
         state = replace(state, cooldown_until_ms=cooldown_until)
     if now_ms < state.cooldown_until_ms:
         return AutopilotDecision(AutopilotAction.BLOCK_ENTRY, state,
-                                 "cooldown after a losing trade — sitting out")
-    # 2. Recycle gate — don't redeploy into a bad/uncertain market
+                                 "cooldown after a losing trade - sitting out")
+    # 2. Recycle gate - don't redeploy into a bad/uncertain market
     if regime in config.recycle_blocked_regimes:
         return AutopilotDecision(AutopilotAction.BLOCK_ENTRY, state,
-                                 f"recycle blocked in {regime} regime — staying in cash")
+                                 f"recycle blocked in {regime} regime - staying in cash")
     if forecast_confidence < config.min_recycle_confidence:
         return AutopilotDecision(
             AutopilotAction.BLOCK_ENTRY, state,
-            f"recycle blocked — forecast confidence {forecast_confidence:.2f} "
+            f"recycle blocked - forecast confidence {forecast_confidence:.2f} "
             f"< {config.min_recycle_confidence:.2f}",
         )
     return AutopilotDecision(AutopilotAction.HOLD, state, "clear to deploy")

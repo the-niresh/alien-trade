@@ -2,9 +2,9 @@
 8.2 Social S3 bridge tests.
 
 Groups:
-  1. _inject_sentiment — offline noop, injects score, zero-score noop, error-safe
-  2. Parity invariant — bridge None (sim) → history unchanged
-  3. Loop integration — score_breakdown sees injected social_score
+  1. _inject_sentiment - offline noop, injects score, zero-score noop, error-safe
+  2. Parity invariant - bridge None (sim) → history unchanged
+  3. Loop integration - score_breakdown sees injected social_score
 """
 from __future__ import annotations
 
@@ -97,7 +97,7 @@ def test_inject_error_safe():
 
 def test_parity_sim_social_score_zero():
     """When bridge is offline (sim), injected history keeps social_score=0.0
-    — identical to what the backtest sees from historical parquet data."""
+    - identical to what the backtest sees from historical parquet data."""
     loop, _ = _make_loop(None)
     history = [_bar(social_score=0.0)] * 5
     result = loop._inject_sentiment(history, history[-1])

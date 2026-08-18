@@ -1,5 +1,5 @@
 """
-Runtime wiring — assemble feed + core strategy + executor + Convex bridge into a
+Runtime wiring - assemble feed + core strategy + executor + Convex bridge into a
 DecisionLoop from an AgentConfig. Factory functions keep the loop testable and
 keep the sim/live parity invariant front-and-centre: the live strategy is built
 by the SAME `make_strategy` + `RiskEngine` the backtest uses.
@@ -90,7 +90,7 @@ def build_loop(cfg: AgentConfig, *, feed=None, dry_run: bool = False,
     _sponsor_telemetry.set_sink(bridge.emit_sponsor_call)
     sb = build_second_brain(cfg, bridge)
     # Lets the loop swap executors live when the UI toggles config.trading_mode
-    # (only while flat — see DecisionLoop._sync_trading_mode). Same builder used
+    # (only while flat - see DecisionLoop._sync_trading_mode). Same builder used
     # at boot, so a toggled mode is wired exactly like a launched one.
     from agent.notify import TelegramBot
     notifier = TelegramBot(bridge=bridge)
@@ -123,7 +123,7 @@ def build_loop(cfg: AgentConfig, *, feed=None, dry_run: bool = False,
     )
     loop.second_brain = sb   # co-pilot / research / telemetry access (may be None)
 
-    # Autonomous-agent mesh wiring (off the scored hot path — locked decision #1).
+    # Autonomous-agent mesh wiring (off the scored hot path - locked decision #1).
     # The scheduled spawned-agent tick in DecisionLoop calls
     #   run_agent(twak=self.twak, skills=self.skills, client=self.anthropic_client)
     # and _explain_watch reads self.anthropic_client. These attrs are ONLY set
@@ -155,7 +155,7 @@ def build_loop(cfg: AgentConfig, *, feed=None, dry_run: bool = False,
 
 def build_replay_loop(cfg: AgentConfig, bars, *, warmup: int = 0, dry_run: bool = False,
                       recover: bool = False) -> DecisionLoop:
-    """Deterministic loop over a fixed bar list — paper rehearsal & parity checks."""
+    """Deterministic loop over a fixed bar list - paper rehearsal & parity checks."""
     return build_loop(cfg, feed=ReplayFeed(bars, warmup=warmup), dry_run=dry_run, recover=recover)
 
 

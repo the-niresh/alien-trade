@@ -1,9 +1,9 @@
 """
-Scorecard tests — the agent's goal made measurable.
+Scorecard tests - the agent's goal made measurable.
 Covers: objective formula, the added lines (drawdown duration, daily consistency,
 profit factor / expectancy, cost ratio, exposure efficiency), graceful degradation
 when timestamps / exposure are absent, and that sim and live score identically.
-All synthetic — no network.
+All synthetic - no network.
 """
 from __future__ import annotations
 

@@ -105,7 +105,7 @@ export function PositionCard({ position }: { position: Position }) {
         {queued ? (
           <div className="flex items-center gap-1.5 font-mono text-[10px] text-yellow">
             <Loader2 className="w-3 h-3 animate-spin" />
-            Close order queued — agent will execute next cycle
+            Close order queued - agent will execute next cycle
           </div>
         ) : confirm ? (
           <div className="flex items-center gap-2">

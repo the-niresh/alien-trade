@@ -3,7 +3,7 @@ One-command walk-forward report (closes the Step 2 'deterministic + seeded, one
 command reproduces a full report from a clean clone' item).
 
 Honest by construction: out-of-sample only, full BSC cost model, regime-sliced.
-Deterministic — fixed parquet history + a deterministic grid optimiser, so the
+Deterministic - fixed parquet history + a deterministic grid optimiser, so the
 same clone always prints the same numbers.
 
     cd core && .venv/Scripts/python.exe -m report                  # BNB, risk engine on

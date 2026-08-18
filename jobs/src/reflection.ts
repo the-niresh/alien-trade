@@ -3,7 +3,7 @@ import { logger, task } from "@trigger.dev/sdk/v3";
 /**
  * Post-trade reflection job (Hermes loop seam). Fired after each trade closes.
  *
- * Step 6 status: the Hermes write-path is IMPLEMENTED in the Python runtime —
+ * Step 6 status: the Hermes write-path is IMPLEMENTED in the Python runtime -
  * `agent/secondbrain/reflection.py::ReflectionWriter` builds {signals, regime,
  * outcome, lesson}, embeds it under the setup key in Upstash Vector, and writes
  * the Convex `reflections` row, fired in-process by the decision loop on a

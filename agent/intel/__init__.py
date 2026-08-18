@@ -1,9 +1,9 @@
 """
-Event Intelligence — the agent's real-time awareness of "what just happened".
+Event Intelligence - the agent's real-time awareness of "what just happened".
 
 Trading is event-driven: a hack, depeg, ETF approval, or regulator headline can move
 a market overnight or in seconds. This layer turns news into (a) a hard RISK-OFF
-signal when something dangerous breaks, and (b) a bounded sentiment nudge — both
+signal when something dangerous breaks, and (b) a bounded sentiment nudge - both
 bounded, point-in-time, off the LLM hot path, exactly like the social/forecast seams.
 
 It is a *source of intelligence*: a proprietary, continuously-updated event stream the

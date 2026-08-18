@@ -1,8 +1,8 @@
-"""ThesisCard — the strict schema boundary on distillation output (AWAKE_SPRINT §4.2).
+"""ThesisCard - the strict schema boundary on distillation output (AWAKE_SPRINT §4.2).
 
 A thesis card is DATA, never instructions. The pydantic model rejects anything that
 doesn't match the shape, and `proposed_rule` must COMPILE against the DSL (strategy.dsl)
-— so a card can only ever express the whitelisted indicator grammar, never arbitrary
+- so a card can only ever express the whitelisted indicator grammar, never arbitrary
 code. This is the typed half of the prompt-injection containment (CSO #3).
 """
 from __future__ import annotations

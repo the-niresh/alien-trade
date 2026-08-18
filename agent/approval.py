@@ -1,7 +1,7 @@
 """Telegram approval gate for the headless ralph loop (AWAKE_SPRINT §6.3).
 
 When the loop needs to touch a file outside docs/FROZEN_ALLOWLIST.txt it raises an
-AT-REQ via the **alien-trade** bot (agent/notify.py TelegramBot — NEVER the claude-code
+AT-REQ via the **alien-trade** bot (agent/notify.py TelegramBot - NEVER the claude-code
 Telegram plugin; that is a hard rule). The operator replies "approve AT-REQ-n" (or a
 bare "yes" for the latest). re_ping_if_stale resends every 30 min while pending.
 

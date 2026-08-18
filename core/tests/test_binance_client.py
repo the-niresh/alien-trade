@@ -1,5 +1,5 @@
 """
-Binance klines client — unit + integration tests.
+Binance klines client - unit + integration tests.
 Pulls 2 years of OHLCV for BNB/BTC/ETH. Results cache to core/data/parquet/.
 """
 from __future__ import annotations
@@ -24,7 +24,7 @@ class TestBinanceClient:
         assert df.shape == (0, 10)
 
     def test_schema_matches_cmc(self):
-        """Both clients must produce identical column sets — backtest is indifferent."""
+        """Both clients must produce identical column sets - backtest is indifferent."""
         from data.binance_client import _parse_klines
         from data.cmc_client import _parse_ohlcv
         binance_cols = set(_parse_klines([]).columns)
@@ -46,7 +46,7 @@ class TestBinanceClient:
         """
         Integration: pull 2 years of daily OHLCV for BNB, BTC, ETH.
         This is the historical dataset that feeds the backtest engine.
-        Results are cached to core/data/parquet/ — only re-fetches on force_refresh.
+        Results are cached to core/data/parquet/ - only re-fetches on force_refresh.
         """
         from data.binance_client import BinanceClient
         with BinanceClient() as client:

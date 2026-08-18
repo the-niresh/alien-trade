@@ -9,7 +9,7 @@ const outcome = v.union(
 
 /**
  * Hermes self-learning: record one post-trade reflection. Idempotent on
- * (trade_id, cycle_id) — a retry of the same reflection patches the lesson/vector
+ * (trade_id, cycle_id) - a retry of the same reflection patches the lesson/vector
  * id rather than writing a duplicate, so the audit trail stays one-per-trade.
  */
 export const record = mutation({

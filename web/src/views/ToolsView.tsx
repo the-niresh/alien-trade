@@ -48,7 +48,7 @@ export function ToolsView({ controlToken }: Props) {
               return (
                 <div key={p._id} className="panel p-3 flex items-center justify-between gap-3">
                   <span className="font-mono text-[11px] text-text truncate">
-                    {cmd.command_type ?? "trade"} — {cmd.params?.to ?? ""}
+                    {cmd.command_type ?? "trade"} - {cmd.params?.to ?? ""}
                   </span>
                   <div className="flex gap-2 flex-shrink-0">
                     <button

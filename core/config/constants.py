@@ -16,7 +16,7 @@ BSC_TESTNET_CHAIN_ID = 97
 BSC_MAINNET_RPC  = "https://bsc-dataseed.binance.org/"
 BSC_TESTNET_RPC  = "https://data-seed-prebsc-2-s2.binance.org:8545"
 
-# ── BNB Agent SDK — network presets (mirrors bnbagent.config.NETWORKS) ───────
+# ── BNB Agent SDK - network presets (mirrors bnbagent.config.NETWORKS) ───────
 # Source: https://github.com/bnb-chain/bnbagent-sdk/blob/main/bnbagent/config.py
 # All registration txs on testnet are gas-free via the MegaFuel paymaster.
 
@@ -52,7 +52,7 @@ PANCAKE_ROUTER: dict[str, str] = {
 }
 
 PANCAKE_FEE_TIERS = (100, 500, 2500, 10000)   # 0.01 / 0.05 / 0.25 / 1 %
-PANCAKE_DEFAULT_FEE = 2500                      # 0.25 % — most liquid BNB pairs
+PANCAKE_DEFAULT_FEE = 2500                      # 0.25 % - most liquid BNB pairs
 
 # exactInputSingle(ExactInputSingleParams) selector
 PANCAKE_EXACT_INPUT_SINGLE_SEL = bytes.fromhex("414bf389")
@@ -85,11 +85,11 @@ CMC_BASE_URL = "https://pro-api.coinmarketcap.com"
 
 # CMC integer IDs for the trading universe
 CMC_SYMBOL_IDS: dict[str, int] = {
-    "BNB":  1839,   # gas + reference only — never traded (see TOKEN_ALLOWLIST)
-    "BTC":  1,      # reference only — never traded (see TOKEN_ALLOWLIST)
+    "BNB":  1839,   # gas + reference only - never traded (see TOKEN_ALLOWLIST)
+    "BTC":  1,      # reference only - never traded (see TOKEN_ALLOWLIST)
     "ETH":  1027,
     "USDT": 825,
-    # Tested trading allowlist — see risk.guardrails.TOKEN_ALLOWLIST for why
+    # Tested trading allowlist - see risk.guardrails.TOKEN_ALLOWLIST for why
     "CAKE":  7186,
     "UNI":   7083,
     "LINK":  1975,
@@ -105,12 +105,12 @@ CMC_SYMBOL_IDS: dict[str, int] = {
 BINANCE_BASE_URL = "https://api.binance.com"
 
 BINANCE_SYMBOL_PAIRS: dict[str, str] = {
-    "BNB":  "BNBUSDT",   # gas + reference only — never traded
+    "BNB":  "BNBUSDT",   # gas + reference only - never traded
     "WBNB": "BNBUSDT",
-    "BTC":  "BTCUSDT",   # reference only — never traded
+    "BTC":  "BTCUSDT",   # reference only - never traded
     "BTCB": "BTCUSDT",
     "ETH":  "ETHUSDT",
-    # Tested trading allowlist — see risk.guardrails.TOKEN_ALLOWLIST for why
+    # Tested trading allowlist - see risk.guardrails.TOKEN_ALLOWLIST for why
     "CAKE":  "CAKEUSDT",
     "UNI":   "UNIUSDT",
     "LINK":  "LINKUSDT",
@@ -128,7 +128,7 @@ BINANCE_INTERVAL_MAP: dict[str, str] = {
     "15m":   "15m",
 }
 
-# Binance Futures (fapi) — free public endpoints for S2 signal enrichment.
+# Binance Futures (fapi) - free public endpoints for S2 signal enrichment.
 # CAKE omitted: the token is on BNB Chain and lacks a liquid Binance perp.
 BINANCE_FUTURES_BASE_URL = "https://fapi.binance.com"
 BINANCE_FUTURES_PAIRS: dict[str, str] = {
@@ -144,7 +144,7 @@ BINANCE_FUTURES_PAIRS: dict[str, str] = {
     "FET":   "FETUSDT",
 }
 
-# Fear & Greed Index (alternative.me) — free, no key, full daily history back to
+# Fear & Greed Index (alternative.me) - free, no key, full daily history back to
 # 2018. Market-wide crypto sentiment; used as the free historical S3 source until
 # CMC Agent Hub social data is available. Same series applies to every symbol.
 FEAR_GREED_BASE_URL = "https://api.alternative.me"
@@ -154,7 +154,7 @@ FEAR_GREED_BASE_URL = "https://api.alternative.me"
 
 TWAK_API_BASE_DEFAULT = "https://tws.trustwallet.com"
 
-# Amber aggregator — swap routing (source: developer.trustwallet.com)
+# Amber aggregator - swap routing (source: developer.trustwallet.com)
 TWAK_AMBER_ROUTE_PATH   = "/amber-api/v1/route"
 TWAK_AMBER_STEP_PATH    = "/amber-api/v1/route/step"
 TWAK_AMBER_DOMAINS_PATH = "/amber-api/v1/domains"
@@ -163,7 +163,7 @@ TWAK_AMBER_DOMAINS_PATH = "/amber-api/v1/domains"
 TWAK_PRICES_PATH   = "/v2/market/tickers"
 TWAK_LISTINGS_PATH = "/v1/assets/listings"
 
-# Amber domain key for BSC (NOT "smartchain" — must be "bsc")
+# Amber domain key for BSC (NOT "smartchain" - must be "bsc")
 TWAK_BSC_DOMAIN = "bsc"
 
 # EVM native token placeholder used by Amber API

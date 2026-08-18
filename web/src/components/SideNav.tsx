@@ -24,7 +24,7 @@ type Props = {
 };
 
 // `onAgentOpen` / `onSpawnAgent` stay on Props because AppShell passes them, but the
-// rail never wired them to anything — they are accepted and dropped. Left in place
+// rail never wired them to anything - they are accepted and dropped. Left in place
 // rather than removed from the interface so the caller keeps compiling; if the rail is
 // meant to open an agent, that is the hook to use.
 export function SideNav({ active, onSelect, onCopilot, onTour }: Props) {

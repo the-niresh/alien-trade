@@ -1,5 +1,5 @@
 """
-AgentConfig — single typed config object for the live runtime.
+AgentConfig - single typed config object for the live runtime.
 
 Loads from .env.local (already loaded by core modules) with sane defaults.
 The strategy + risk params come straight from /core so sim and live are
@@ -54,7 +54,7 @@ def _autopilot_from_env() -> AutopilotConfig:
 
 @dataclass
 class AgentConfig:
-    # Market — must be in risk.guardrails.TOKEN_ALLOWLIST (BNB/BTC/BTCB are never traded).
+    # Market - must be in risk.guardrails.TOKEN_ALLOWLIST (BNB/BTC/BTCB are never traded).
     symbol: str = "ETH"
     bar_interval: str = "1h"          # decision cadence (matches STRATEGY.md)
     history_bars: int = 200           # rolling window handed to the strategy
@@ -74,7 +74,7 @@ class AgentConfig:
     # Loop cadence (seconds between cycles when running live/forever)
     cycle_seconds: int = 3600
 
-    # Minimum-activity mode: force >= 1 trade/day. OFF by default — a forced trade
+    # Minimum-activity mode: force >= 1 trade/day. OFF by default - a forced trade
     # has no signal behind it and makes a live run diverge from the backtest. Enable
     # only if an external rule requires it (ACTIVITY_FLOOR=1 or --activity-floor).
     enforce_activity_floor: bool = field(
@@ -89,7 +89,7 @@ class AgentConfig:
     # PWA URL rendered as a terminal QR on startup
     pwa_url: str = field(default_factory=lambda: os.environ.get("PWA_URL", ""))
 
-    # Second Brain (Step 6 — Hermes + AutoResearch + co-pilot). Off the hot path.
+    # Second Brain (Step 6 - Hermes + AutoResearch + co-pilot). Off the hot path.
     # Disable with SECOND_BRAIN=0. When on but Upstash/Anthropic keys are absent,
     # every component degrades to its offline fallback (no network dependency).
     second_brain_enabled: bool = field(

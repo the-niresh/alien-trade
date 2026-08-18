@@ -1,5 +1,5 @@
 """
-RSS / Atom adapter — the zero-credential, never-bans, build-it-today source.
+RSS / Atom adapter - the zero-credential, never-bans, build-it-today source.
 
 Most crypto news sites and many traders expose an RSS/Atom feed. `handle` is the
 feed URL. Parsing is stdlib (no feedparser dep) and tolerant of both RSS 2.0 and
@@ -71,7 +71,7 @@ def parse_feed(text: str, *, handle: str, weight: float = 1.0, limit: int = 50) 
         link = (item.findtext("link") or "").strip()
         guid = (item.findtext("guid") or link or title).strip()
         ts = _to_ms(item.findtext("pubDate"))
-        body = title if not desc else (f"{title} — {desc}" if title else desc)
+        body = title if not desc else (f"{title} - {desc}" if title else desc)
         if not body:
             continue
         posts.append(SocialPost(
@@ -89,7 +89,7 @@ def parse_feed(text: str, *, handle: str, weight: float = 1.0, limit: int = 50) 
         link = (link_el.get("href") if link_el is not None else "") or ""
         ident = (entry.findtext(f"{_ATOM}id") or link or title).strip()
         ts = _to_ms(entry.findtext(f"{_ATOM}updated") or entry.findtext(f"{_ATOM}published"))
-        body = title if not summary else (f"{title} — {summary}" if title else summary)
+        body = title if not summary else (f"{title} - {summary}" if title else summary)
         if not body:
             continue
         posts.append(SocialPost(

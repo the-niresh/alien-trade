@@ -5,12 +5,12 @@ The deterministic watch checker (agent/watches.py) works fine on the loop's
 per-cycle price (bar.close). This module is the *latency upgrade* from the design
 doc: a Binance WebSocket stream that pushes price in ~ms, held in a thread-safe
 cache. When enabled and fresh, the loop's watch snapshot uses it instead of the
-hourly bar — so a price watch trips in seconds, not at the next cycle. Still zero
+hourly bar - so a price watch trips in seconds, not at the next cycle. Still zero
 LLM, still off the scored trade cadence (locked decision #6).
 
 Safety: this is OFF by default. The live loop only consumes it if a stream is
 explicitly attached (PRICE_STREAM=1 at runtime). With no stream attached, every
-caller degrades to the existing per-cycle price — nothing changes. Binance WS is
+caller degrades to the existing per-cycle price - nothing changes. Binance WS is
 its own streaming protocol (not JSON-RPC); the on-chain eth_subscribe path is a
 separate, endpoint-gated follow-on (see docs/AGENTS_MONITOR_DESIGN.md §8).
 """
@@ -20,7 +20,7 @@ import threading
 import time
 from typing import Optional
 
-try:  # async WS client — present in this venv; absence simply keeps the feed off.
+try:  # async WS client - present in this venv; absence simply keeps the feed off.
     import websockets  # noqa: F401
     _HAS_WS = True
 except Exception:  # noqa: BLE001
@@ -38,7 +38,7 @@ def base_token(symbol: str) -> str:
 
 
 class PriceCache:
-    """Thread-safe latest-price store with staleness. Pure (no network) — unit tested."""
+    """Thread-safe latest-price store with staleness. Pure (no network) - unit tested."""
 
     def __init__(self) -> None:
         self._d: dict[str, tuple[float, float]] = {}
@@ -85,14 +85,14 @@ class BinancePriceStream:
     def stop(self) -> None:
         self._stop.set()
 
-    def _run(self) -> None:  # pragma: no cover — network loop, exercised live not in unit tests
+    def _run(self) -> None:  # pragma: no cover - network loop, exercised live not in unit tests
         import asyncio
         try:
             asyncio.run(self._loop())
-        except Exception:  # noqa: BLE001 — a dead feed must never raise into the process
+        except Exception:  # noqa: BLE001 - a dead feed must never raise into the process
             pass
 
-    async def _loop(self) -> None:  # pragma: no cover — network loop
+    async def _loop(self) -> None:  # pragma: no cover - network loop
         import json
         import websockets
 
@@ -109,7 +109,7 @@ class BinancePriceStream:
                         sym, price = data.get("s", ""), data.get("c")
                         if sym and price is not None:
                             self.cache.update(sym, price)
-            except Exception:  # noqa: BLE001 — reconnect with capped backoff
+            except Exception:  # noqa: BLE001 - reconnect with capped backoff
                 if self._stop.is_set():
                     break
                 time.sleep(min(backoff, 30.0))

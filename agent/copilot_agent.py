@@ -1,9 +1,9 @@
 """
 Live-read co-pilot tool-loop.
 
-A bounded Anthropic tool-use loop that fetches LIVE data on demand —
+A bounded Anthropic tool-use loop that fetches LIVE data on demand -
 wallet, price, token risk, trending, CMC market skills, and agent
-state/history — by wrapping functions that already exist (TwakCli,
+state/history - by wrapping functions that already exist (TwakCli,
 SkillHub, ConvexBridge). Runs in-process on the VPS, next to its tools.
 
 READ-ONLY: no tool here ever changes state. Writes (trades) stay on the
@@ -25,7 +25,7 @@ TOOLS: list[dict] = [
             "or 'agent:<id>' to delegate to an existing agent). `trigger` sets cadence: "
             "{\"kind\":\"schedule\", \"spec\":\"1h\"|\"4h\"|\"24h\"}. `mode` defaults to "
             "\"paper\" (observes and notifies, never trades); pass \"live\" ONLY if the "
-            "operator explicitly says so — a live agent can place real on-chain trades that "
+            "operator explicitly says so - a live agent can place real on-chain trades that "
             "spend real funds. ONLY call this when the operator explicitly asks to create or "
             "run a new agent, and confirm goal + allowed_tools first. Returns "
             "{created, mode, id}."
@@ -52,7 +52,7 @@ TOOLS: list[dict] = [
             "(not a bare symbol). Use before discussing buying an unfamiliar token, or "
             "whenever the operator asks 'is X safe / a scam / a rug'. Returns TWAK's risk "
             "verdict and contract red-flags. For price use get_price; for market data or "
-            "sentiment use cmc_market_skill — this tool only judges contract safety."
+            "sentiment use cmc_market_skill - this tool only judges contract safety."
         ),
         "input_schema": {
             "type": "object",
@@ -69,7 +69,7 @@ TOOLS: list[dict] = [
             "moves. Pass a natural-language `query`; it runs the single best-matching CMC "
             "skill and returns its result. Use get_price for a simple current price and "
             "get_trending for movers; use this for anything deeper. May return "
-            "{\"status\":\"offline\"} if the skill hub is disabled — if so, say so and offer "
+            "{\"status\":\"offline\"} if the skill hub is disabled - if so, say so and offer "
             "an alternative."
         ),
         "input_schema": {
@@ -125,7 +125,7 @@ TOOLS: list[dict] = [
             "Live on-chain holdings and USD values for the agent's self-custody TWAK wallet, "
             "across chains. Use for balance / holdings / 'how much do I have' questions and "
             "to ground any claim about available capital. Returns per-asset balances and USD "
-            "values. Read-only — it never moves funds."
+            "values. Read-only - it never moves funds."
         ),
         "input_schema": {"type": "object", "properties": {}},
     },
@@ -137,7 +137,7 @@ def execute_tool(name: str, args: dict, *, twak, skills, bridge) -> str:
     Never raises: any failure is returned as an {"error": ...} marker."""
     try:
         result = _dispatch_tool(name, args or {}, twak=twak, skills=skills, bridge=bridge)
-    except Exception as exc:  # noqa: BLE001 — advisory only, never break the loop
+    except Exception as exc:  # noqa: BLE001 - advisory only, never break the loop
         return json.dumps({"error": str(exc)[:300]})
     return json.dumps(result, default=str)
 
@@ -190,14 +190,14 @@ def _dispatch_tool(name: str, args: dict, *, twak, skills, bridge) -> Any:
 MAX_TOOL_TURNS = 5
 
 SYSTEM = """\
-You are the Alien-Trade Co-Pilot — an assistant embedded inside an autonomous BSC trading agent. You explain and observe; you never execute trades yourself.
+You are the Alien-Trade Co-Pilot - an assistant embedded inside an autonomous BSC trading agent. You explain and observe; you never execute trades yourself.
 
 ## How Alien-Trade works
-- Self-custody BSC trading agent. It trades a fixed allowlist — ETH, CAKE, UNI, LINK, AAVE — spot only, on PancakeSwap via Trust Wallet Agent Kit (TWAK). Keys never touch code or logs.
+- Self-custody BSC trading agent. It trades a fixed allowlist - ETH, CAKE, UNI, LINK, AAVE - spot only, on PancakeSwap via Trust Wallet Agent Kit (TWAK). Keys never touch code or logs.
 - The allowlist is a risk control, not a preference: these are the only tokens the strategy was tested on, and they are liquid enough that the cost model holds. The agent will not trade anything outside it.
 - A deterministic Python engine (NOT an LLM) makes every buy/sell decision. It runs once per hour.
 - Contrarian strategy on the Fear & Greed index, combined with momentum (S1), funding/OI (S2), sentiment (S3), and on-chain flow (S4).
-- Optimization target: Sortino ratio with low drawdown — risk-adjusted, not raw return.
+- Optimization target: Sortino ratio with low drawdown - risk-adjusted, not raw return.
 
 ## When does the agent place a trade? (use this to answer precisely)
 Each hourly cycle, the engine fires a trade only if ALL gates pass, in order:
@@ -205,14 +205,14 @@ Each hourly cycle, the engine fires a trade only if ALL gates pass, in order:
 2. Regime is tradeable (it holds through CHOP / extreme conditions).
 3. A signal crosses its threshold (e.g. F&G contrarian trigger + momentum confirm).
 4. Risk gates pass (drawdown cap, position sizing, token risk).
-5. The next cycle boundary arrives — it acts at the top of the next hour, not instantly.
+5. The next cycle boundary arrives - it acts at the top of the next hour, not instantly.
 If any gate fails, it HOLDS and waits for the next cycle. To answer "when/why did it (not) trade," call get_agent_state and read regime + risk_verdict + risk_reason from the recent decisions.
 
 ## Handling "place a trade / buy now / sell now"
-You cannot fire a trade by hand — and that's by design: the engine times entries to protect drawdown. So:
+You cannot fire a trade by hand - and that's by design: the engine times entries to protect drawdown. So:
 - Explain the gating chain above and what the agent is currently waiting on (ground it with get_agent_state).
 - Offer relevant live context: current price, trending tokens, regime, or the last few decisions.
-- If the operator wants to change behavior, point them to cockpit halt/resume — the next cycle fires at the top of the next hour.
+- If the operator wants to change behavior, point them to cockpit halt/resume - the next cycle fires at the top of the next hour.
 
 ## Spawning agents (create_agent)
 Only spawn when the operator explicitly asks to create or run a new agent.
@@ -227,7 +227,7 @@ Only spawn when the operator explicitly asks to create or run a new agent.
 - rug / safety / contract risk -> check_token_risk
 - OHLCV, funding/OI, social sentiment, on-chain flow, open market questions -> cmc_market_skill
 - "how am I doing", PnL, drawdown, why/when it traded, regime, halted -> get_agent_state
-Always ground claims in tool output. If a tool errors or returns nothing, say so and offer an alternative. Only surface PnL / drawdown / equity when the operator explicitly asks about performance — don't volunteer it.
+Always ground claims in tool output. If a tool errors or returns nothing, say so and offer an alternative. Only surface PnL / drawdown / equity when the operator explicitly asks about performance - don't volunteer it.
 
 ## Style
 - Lead with the mechanism or what IS possible; state any limitation plainly AFTER the explanation. Be direct, never evasive.
@@ -238,7 +238,7 @@ Q: "When will the agent place a trade?"
 A: "It evaluates once an hour and trades only when every gate passes: not halted -> tradeable regime -> a signal crosses threshold -> risk gates pass -> top of the next hour. Right now [from get_agent_state] it's in a {regime} regime and last cycle the risk verdict was {verdict} ({reason}), so it's holding. Want me to check the live price or the last few decisions?"
 
 Q: "Buy CAKE right now."
-A: "The engine times entries to protect drawdown, so trades fire on the hourly cycle rather than on demand — that's what keeps the Sortino target intact. CAKE is currently {get_price}. Last decision: {regime}/{verdict}. If you want it to act sooner you can resume/adjust from the cockpit and the next cycle runs at the top of the hour. Want the risk check on CAKE first?"
+A: "The engine times entries to protect drawdown, so trades fire on the hourly cycle rather than on demand - that's what keeps the Sortino target intact. CAKE is currently {get_price}. Last decision: {regime}/{verdict}. If you want it to act sooner you can resume/adjust from the cockpit and the next cycle runs at the top of the hour. Want the risk check on CAKE first?"
 """
 
 
@@ -282,5 +282,5 @@ def run_read_loop(
         getattr(b, "text", "") for b in resp.content if getattr(b, "type", None) == "text"
     ).strip()
     if not answer:
-        answer = "_(no answer produced — tool budget exhausted)_"
+        answer = "_(no answer produced - tool budget exhausted)_"
     return {"answer": answer, "grounded": bool(sources), "sources": sources}

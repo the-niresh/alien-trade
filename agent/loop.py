@@ -1,5 +1,5 @@
 """
-DecisionLoop — the live trading heart.
+DecisionLoop - the live trading heart.
 
 Per cycle, identical in shape to one bar of the backtest:
     feed → kill-switch check → SAME /core risk-wrapped strategy → mistake-avoidance
@@ -7,7 +7,7 @@ Per cycle, identical in shape to one bar of the backtest:
 
 The strategy callable IS the sim's strategy (RiskEngine-wrapped core). Because
 the loop hands it the same point-in-time history the sim does, the live decision
-is provably the sim's decision — that's the sim/live parity invariant.
+is provably the sim's decision - that's the sim/live parity invariant.
 
 Every cycle writes exactly one decision row (idempotent on cycle_id) so the audit
 trail is complete: "if it's not in Convex, it didn't happen."
@@ -86,7 +86,7 @@ class DecisionLoop:
         self.mode = mode
         self.notifier = notifier
         # Live mode toggle (the UI writes config.trading_mode). When a factory is
-        # supplied, the loop swaps its executor to match the toggle each cycle —
+        # supplied, the loop swaps its executor to match the toggle each cycle -
         # but only while FLAT (an open position must close under the mode it was
         # opened in). None → mode is fixed at the boot value (no live switching).
         self.executor_factory = executor_factory
@@ -160,7 +160,7 @@ class DecisionLoop:
         self._autopilot_state = AutopilotState()
         self._block_entry = False           # set by the recycle gate / cooldown
         self._current_setup_key = ""        # regime+dominant-signal, for human feedback
-        # Live USDT balance cache — updated in _finalise, used in _cap_to_deployable.
+        # Live USDT balance cache - updated in _finalise, used in _cap_to_deployable.
         # Starts at inf so the first cycle isn't blocked before we've fetched the balance.
         self._cached_usdt_balance: float = float("inf")
         self._cached_eth_balance: float = 0.0
@@ -189,7 +189,7 @@ class DecisionLoop:
                         halted_for_day=bool(saved.get("halted_for_day", False)),
                         cooldown_until_ms=int(saved.get("cooldown_until_ms", 0)),
                     )
-            except Exception:  # noqa: BLE001 — fresh state is a safe fallback
+            except Exception:  # noqa: BLE001 - fresh state is a safe fallback
                 pass
 
     # ── notify helper (Telegram 8.9) ─────────────────────────────────────────
@@ -258,7 +258,7 @@ class DecisionLoop:
         self._sync_autopilot_config()
 
         # Social S3 bridge: inject live sentiment into the last bar (point-in-time,
-        # live-only overlay — offline/sim bridge returns None → history unchanged).
+        # live-only overlay - offline/sim bridge returns None → history unchanged).
         history = self._inject_sentiment(history, bar)
         regime = detect_regime(history)
         breakdown = score_breakdown(history, self.params)
@@ -268,7 +268,7 @@ class DecisionLoop:
         from risk.feedback import setup_key as _setup_key
         self._current_setup_key = _setup_key(regime.value, signals)
 
-        # 8.11 — emit RiskGuard observation when advisory signals go stale
+        # 8.11 - emit RiskGuard observation when advisory signals go stale
         self._check_staleness(bar, cycle_id)
 
         # ── Equity floor: halt if capital fell below user-set minimum ───────
@@ -314,7 +314,7 @@ class DecisionLoop:
                               f"@ ${stop_exit['price']:.2f} (stop ${stop_exit['stop']:.2f})"),
                     cycle_id=cycle_id, detail=stop_exit,
                 ))
-            except Exception:  # noqa: BLE001 — channel write must never crash the loop
+            except Exception:  # noqa: BLE001 - channel write must never crash the loop
                 pass
 
         verdict, reason, execution, trade_id, final_size = "block", "no signal / risk veto", None, None, 0.0
@@ -322,7 +322,7 @@ class DecisionLoop:
         if order is not None and self._block_entry and order.side == "buy":
             # Recycle gate / cooldown: a fresh long is suppressed, but exits proceed.
             order = None
-            verdict, reason = "block", "autopilot: recycle gate / cooldown — staying in cash"
+            verdict, reason = "block", "autopilot: recycle gate / cooldown - staying in cash"
 
         if order is not None:
             order = self._cap_to_deployable(order, bar, cycle_id)
@@ -418,13 +418,13 @@ class DecisionLoop:
                         agent="Watcher", kind=KIND_OBSERVATION,
                         headline=f"WATCH: {headline}", cycle_id=cycle_id, detail=res,
                     ))
-                except Exception:  # noqa: BLE001 — channel write must not crash the cycle
+                except Exception:  # noqa: BLE001 - channel write must not crash the cycle
                     pass
                 why = self._explain_watch(headline)
                 self._notify(f"🔔 {headline}" + (f"\n{why}" if why else ""))
 
             process_watches(watches, snapshot, fire_cb=_fire, state_cb=_state)
-        except Exception:  # noqa: BLE001 — monitoring must never break trading
+        except Exception:  # noqa: BLE001 - monitoring must never break trading
             pass
 
     def _explain_watch(self, headline: str) -> str:
@@ -444,13 +444,13 @@ class DecisionLoop:
             )
             return "".join(getattr(b, "text", "") for b in resp.content
                            if getattr(b, "type", None) == "text").strip()
-        except Exception:  # noqa: BLE001 — explanation is best-effort
+        except Exception:  # noqa: BLE001 - explanation is best-effort
             return ""
 
     # ── live mode toggle ─────────────────────────────────────────────────────
 
     def _sync_trading_mode(self, bar: Bar, cycle_id: str) -> None:
-        """Read the UI's trading-mode toggle and swap the executor to match — but
+        """Read the UI's trading-mode toggle and swap the executor to match - but
         only while flat. Switching paper↔mainnet moves real funds, so a position
         opened under one mode must close under that same mode; while a position is
         open the switch is DEFERRED (audited once) and applied the first flat cycle.
@@ -464,21 +464,21 @@ class DecisionLoop:
 
         open_exposure = self.ledger.open_exposure(bar.close)
         if open_exposure > self._exposure_epsilon:
-            # Position open — defer. Audit only when the deferred target changes,
+            # Position open - defer. Audit only when the deferred target changes,
             # so a long-held position doesn't spam the audit log every cycle.
             if self._pending_mode != desired:
                 self._pending_mode = desired
                 self.bridge.audit("mode_switch_deferred", cycle_id, {
                     "from": self.mode, "to": desired,
                     "open_exposure_usd": round(open_exposure, 2),
-                    "reason": "position open — switch applies once flat",
+                    "reason": "position open - switch applies once flat",
                 }, "warn")
             return
 
         # Flat → safe to switch. Rebuild the executor for the new mode.
         try:
             new_executor = self.executor_factory(desired)
-        except Exception as e:  # noqa: BLE001 — a bad rebuild must not crash the cycle
+        except Exception as e:  # noqa: BLE001 - a bad rebuild must not crash the cycle
             self.bridge.audit("error", cycle_id, {
                 "error": str(e), "error_type": type(e).__name__,
                 "reason": f"executor rebuild for mode {desired!r} failed; staying on {self.mode!r}",
@@ -522,7 +522,7 @@ class DecisionLoop:
                 cycle_id=cycle_id,
                 detail={"equity_usd": equity, "floor_usd": floor, "halt": result.halt},
             ))
-        except Exception:  # noqa: BLE001 — channel write must never crash the loop
+        except Exception:  # noqa: BLE001 - channel write must never crash the loop
             pass
         if result.halt:
             def _resume_trading():
@@ -538,10 +538,10 @@ class DecisionLoop:
             self._halted_by_floor = True
             self.bridge.set_halted(True)
             return True
-        # warn path — plain notification, no action buttons
+        # warn path - plain notification, no action buttons
         self._notify(
             f"WARNING: Portfolio ${equity:.2f} approaching floor ${floor:.2f}"
-            f" — consider adding capital or tightening caps."
+            f" - consider adding capital or tightening caps."
         )
         return False
 
@@ -549,7 +549,7 @@ class DecisionLoop:
 
     def _check_sustained_failure(self, bar: Bar, cycle_id: str) -> None:
         """Warn at 2h and auto-halt at 4h if execution has been continuously
-        failing (FAILED status, not regime blocks). Never raises — observability
+        failing (FAILED status, not regime blocks). Never raises - observability
         must not crash a cycle. No-op when no failure streak is active."""
         if self._first_exec_failure_ms is None:
             return
@@ -574,12 +574,12 @@ class DecisionLoop:
                     symbol=self.symbol,
                     mode=self.mode,
                 )
-            except Exception:  # noqa: BLE001 — manager must never crash the loop
+            except Exception:  # noqa: BLE001 - manager must never crash the loop
                 pass
         if elapsed_ms >= self._SUSTAINED_HALT_MS:
             self._notify(
                 f"AUTO-HALT: swap execution failed for "
-                f"{elapsed_ms / 3_600_000:.1f}h — halting to prevent "
+                f"{elapsed_ms / 3_600_000:.1f}h - halting to prevent "
                 f"further failed attempts. Resume from cockpit or Telegram."
             )
             self.bridge.set_halted(True)
@@ -611,7 +611,7 @@ class DecisionLoop:
                 f"Max DD: {self._daily_max_dd:.2%}  Trades: {self._trades_today}\n"
                 f"Rule adherence: {adherence:.1%}"
             )
-        except Exception:  # noqa: BLE001 — summary must never crash the loop
+        except Exception:  # noqa: BLE001 - summary must never crash the loop
             pass
 
     # ── activity floor ─────────────────────────────────────────────────────────
@@ -627,12 +627,12 @@ class DecisionLoop:
             return
         hour = (bar.timestamp // 3_600_000) % 24
         if hour < self.activity_deadline_hour:
-            return   # still early in the day — give the strategy room to trade
+            return   # still early in the day - give the strategy room to trade
 
         from risk.guardrails import check_guardrails, check_max_exposure, RiskConfig
         cfg = RiskConfig()
 
-        # Allowlist gate FIRST — never fire a compliance swap on a non-eligible token
+        # Allowlist gate FIRST - never fire a compliance swap on a non-eligible token
         # (e.g. BNB), which would be an unscored / ineligible trade. Applies to buys
         # AND sells: we should not be trading an off-allowlist symbol at all.
         if self.symbol not in cfg.token_allowlist:
@@ -644,7 +644,7 @@ class DecisionLoop:
         price = bar.close
         held_usd = self.ledger.open_exposure(price)
         if held_usd > self.activity_trade_usd:
-            side, size = "sell", self.activity_trade_usd      # trim — always safe
+            side, size = "sell", self.activity_trade_usd      # trim - always safe
         elif held_usd > 0.0:
             side, size = "sell", held_usd                     # close the dust
         else:
@@ -652,8 +652,8 @@ class DecisionLoop:
         if size <= 0.0:
             return
 
-        # For the OPENING (buy) path, run the full guardrail chain — daily-loss kill
-        # switch, circuit breaker, position/exposure caps — exactly like every other
+        # For the OPENING (buy) path, run the full guardrail chain - daily-loss kill
+        # switch, circuit breaker, position/exposure caps - exactly like every other
         # trade. Sells only trim/close, which can't breach an exposure or loss cap.
         if side == "buy":
             equity = self.ledger.mark(price)
@@ -680,7 +680,7 @@ class DecisionLoop:
         execution = self.executor.execute(order, bar, idempotency_key=f"{cycle_id}-activity")
         self.bridge.audit("activity_floor", cycle_id, {
             "side": side, "size_usd": round(size, 2), "hour": hour,
-            "reason": "no trade yet today — forcing minimal compliance swap",
+            "reason": "no trade yet today - forcing minimal compliance swap",
         }, "info")
         self._handle_execution(execution, bar, cycle_id)
 
@@ -689,7 +689,7 @@ class DecisionLoop:
     def _inject_sentiment(self, history: list[Bar], bar: Bar) -> list[Bar]:
         """Read live sentiment_state from Convex and stamp it onto history[-1].
         Returns history unchanged when offline (sim parity: social_score stays 0.0).
-        Any exception is swallowed — social is off the hot path."""
+        Any exception is swallowed - social is off the hot path."""
         try:
             ss = self.bridge.get_sentiment_state(self.symbol)
             if ss is None:
@@ -700,7 +700,7 @@ class DecisionLoop:
             import dataclasses
             patched = dataclasses.replace(history[-1], social_score=score)
             return list(history[:-1]) + [patched]
-        except Exception:  # noqa: BLE001 — social is advisory; never crash a cycle
+        except Exception:  # noqa: BLE001 - social is advisory; never crash a cycle
             return history
 
     # ── 8.11 degraded-mode observability ─────────────────────────────────────
@@ -708,7 +708,7 @@ class DecisionLoop:
     def _check_staleness(self, bar: Bar, cycle_id: str) -> None:
         """Emit a RiskGuard observation event each time an advisory signal goes stale
         or recovers. Staleness thresholds: forecast > 4h, sentiment > 2h.
-        Never raises — observability must not crash a cycle."""
+        Never raises - observability must not crash a cycle."""
         now_ms = bar.timestamp
         stale_now: set = set()
         try:
@@ -753,7 +753,7 @@ class DecisionLoop:
 
     def _apply_forecast(self, exec_order: Order, bar: Bar, cycle_id: str) -> Order:
         """Read the latest Researcher forecast from Convex, apply decay + shrink-only
-        multiply. A missing / stale / error forecast decays to NEUTRAL (1.0) — it
+        multiply. A missing / stale / error forecast decays to NEUTRAL (1.0) - it
         can NEVER silently block a trade (Researcher is Tier-1; failure-matrix §9.3)."""
         from risk.forecast import NEUTRAL, apply_forecast_multiplier, decay_confidence
         try:
@@ -777,12 +777,12 @@ class DecisionLoop:
                 }, "info")
             return Order(side=exec_order.side, size_usd=new_size,
                          symbol=exec_order.symbol, timestamp=exec_order.timestamp)
-        except Exception:  # noqa: BLE001 — Tier-1; must never crash a trading cycle
+        except Exception:  # noqa: BLE001 - Tier-1; must never crash a trading cycle
             return exec_order
 
     def _current_forecast_confidence(self) -> float:
         """Read the live forecast confidence (for calibration snapshot at entry).
-        Returns NEUTRAL (1.0) on any error — never blocks a trade."""
+        Returns NEUTRAL (1.0) on any error - never blocks a trade."""
         from risk.forecast import NEUTRAL
         try:
             fs = self.bridge.get_forecast_state(self.symbol)
@@ -795,7 +795,7 @@ class DecisionLoop:
     def _record_forecast_calibration(self, cycle_id: str, bar, regime: str,
                                      realized_pnl: float) -> None:
         """Write a forecast_calibration row: entry-time confidence + realized PnL.
-        Off the hot path — any failure is silently swallowed."""
+        Off the hot path - any failure is silently swallowed."""
         try:
             self.bridge.record_forecast_calibration(
                 cycle_id=cycle_id, symbol=self.symbol,
@@ -803,7 +803,7 @@ class DecisionLoop:
                 regime=regime, realized_pnl=realized_pnl,
                 ts_ms=bar.timestamp,
             )
-        except Exception:  # noqa: BLE001 — calibration is observability
+        except Exception:  # noqa: BLE001 - calibration is observability
             pass
 
     # ── autopilot capital manager ────────────────────────────────────────────
@@ -831,7 +831,7 @@ class DecisionLoop:
                 forecast_confidence=self._current_forecast_confidence(),
                 day_key=day_key, now_ms=bar.timestamp, last_close_was_loss=last_loss,
             )
-        except Exception:  # noqa: BLE001 — autopilot must never crash a trading cycle
+        except Exception:  # noqa: BLE001 - autopilot must never crash a trading cycle
             self._block_entry = False
             return None
 
@@ -871,7 +871,7 @@ class DecisionLoop:
 
     def _apply_kol_signal(self, bar: "Bar", cycle_id: str):
         """When enabled, turn a high-conviction eligible KOL reading into a scored
-        order — open_long while flat, reduce while held — gated by check_guardrails.
+        order - open_long while flat, reduce while held - gated by check_guardrails.
         Disabled/offline → None (sim parity). Never raises (Tier-1, off hot path)."""
         if not getattr(self, "kol_enabled", False):
             return None
@@ -942,7 +942,7 @@ class DecisionLoop:
             return self._finalise(
                 cycle_id, bar, "", verdict, f"kol: {intent.reason}", order, execution,
                 0.0, order.size_usd, trade_id, {}, {}, halted=False)
-        except Exception as e:  # noqa: BLE001 — Tier-1; must never crash a cycle
+        except Exception as e:  # noqa: BLE001 - Tier-1; must never crash a cycle
             try:
                 self.bridge.audit("error", cycle_id,
                                   {"error": str(e), "source": "kol_overlay"}, "error")
@@ -973,7 +973,7 @@ class DecisionLoop:
                 daily_profit_target_pct=raw.get("daily_profit_target_pct"),
                 loss_cooldown_hours=float(raw.get("loss_cooldown_hours") or 0.0),
             )
-        except Exception:  # noqa: BLE001 — a bad cockpit value must not crash the loop
+        except Exception:  # noqa: BLE001 - a bad cockpit value must not crash the loop
             pass
 
     _MIN_TRADE_USD: float = 0.05   # below this, BSC DEX fees eat the trade
@@ -1000,7 +1000,7 @@ class DecisionLoop:
                 return None
             size = min(size, cap)
 
-        # 2. Live wallet balance cap — auto-size to what USDT is actually available.
+        # 2. Live wallet balance cap - auto-size to what USDT is actually available.
         #    Prevents silent TWAK failures when the static position size exceeds balance.
         usdt_avail = self._cached_usdt_balance
         if usdt_avail != float("inf"):          # inf = not yet fetched, skip cap
@@ -1043,7 +1043,7 @@ class DecisionLoop:
                 return Order(side=order.side, size_usd=order.size_usd * (1.0 - fb.size_penalty),
                              symbol=order.symbol, timestamp=order.timestamp), ""
             return order, ""
-        except Exception:  # noqa: BLE001 — feedback is advisory; never crash a cycle
+        except Exception:  # noqa: BLE001 - feedback is advisory; never crash a cycle
             return order, ""
 
     def _persist_autopilot_state(self) -> None:
@@ -1058,7 +1058,7 @@ class DecisionLoop:
                 "halted_for_day": s.halted_for_day,
                 "cooldown_until_ms": s.cooldown_until_ms,
             })
-        except Exception:  # noqa: BLE001 — persistence is best-effort
+        except Exception:  # noqa: BLE001 - persistence is best-effort
             pass
 
     def _emit_autopilot(self, decision, bar: Bar, cycle_id: str, equity: float) -> None:
@@ -1135,14 +1135,14 @@ class DecisionLoop:
                               "fill_price": execution.fill.fill_price, "tx_hash": execution.tx_hash,
                               "realized_pnl": realized}, "info")
             # ── Immediate trade alert (Telegram) ────────────────────────────
-            # Fire the moment the fill is confirmed — users must not wait for the
+            # Fire the moment the fill is confirmed - users must not wait for the
             # next cycle log line to know a trade happened.
             side_emoji = "🟢" if execution.order.side == "buy" else "🔴"
             tx_url = (f"https://bscscan.com/tx/{execution.tx_hash}"
                       if execution.tx_hash else "")
             pnl_str = (f"  PnL: ${realized:+.2f}" if execution.order.side == "sell" else "")
             alert = (
-                f"{side_emoji} TRADE FILLED — {execution.order.side.upper()} "
+                f"{side_emoji} TRADE FILLED - {execution.order.side.upper()} "
                 f"{execution.order.symbol}\n"
                 f"  Size: ${execution.order.size_usd:.2f}  @  ${execution.fill.fill_price:,.2f}\n"
                 f"  Mode: {self.mode}{pnl_str}\n"
@@ -1151,7 +1151,7 @@ class DecisionLoop:
             self._notify(alert)
 
             # Hermes write-side: a sell closes/reduces a position → reflect on the
-            # realized outcome. (Buys open positions — no outcome to learn yet.)
+            # realized outcome. (Buys open positions - no outcome to learn yet.)
             if (self.reflection_writer is not None
                     and execution.order.side == "sell" and breakdown is not None):
                 self.reflection_writer.reflect(
@@ -1164,7 +1164,7 @@ class DecisionLoop:
         if execution.status == DUPLICATE:
             return "block", execution.reason, None
         if execution.status == REJECTED:
-            # A guardrail correctly blocked a trade — this is the system working,
+            # A guardrail correctly blocked a trade - this is the system working,
             # not a rule violation (scorecard rule-adherence counts it as such).
             self._blocks_fired += 1
             self.bridge.audit("risk_veto", cycle_id, {"reason": execution.reason}, "warn")
@@ -1180,7 +1180,7 @@ class DecisionLoop:
                     f"Last error: {execution.reason}\n"
                     f"Order: {execution.order.side.upper()} "
                     f"${execution.order.size_usd:.2f} {execution.order.symbol}\n"
-                    f"Mode: {self.mode} — check wallet balance and TWAK status."
+                    f"Mode: {self.mode} - check wallet balance and TWAK status."
                 )
                 self._consecutive_exec_failures = 0   # reset so we don't spam
             return "block", execution.reason, None
@@ -1320,7 +1320,7 @@ class DecisionLoop:
                 )
                 self._position_reconciled = True
                 self._notify(
-                    f"⚡ POSITION RECONCILED — external close detected\n"
+                    f"⚡ POSITION RECONCILED - external close detected\n"
                     f"  Ledger held {_ledger_units:.6f} {_sym_token} "
                     f"(on-chain: {_on_chain_held:.6f})\n"
                     f"  Est. exit @ ${_exit_price:,.2f}  |  PnL: ${_realized:+.2f}\n"
@@ -1396,10 +1396,10 @@ class DecisionLoop:
 
     def build_scorecard(self):
         """Score the run so far against the agent's goal (docs/GOAL.md). Same
-        core/scorecard.py the backtest uses — sim and live score identically."""
+        core/scorecard.py the backtest uses - sim and live score identically."""
         ops = OperationalStats(cycles_total=self._cycles_total)
         rules = RuleAdherence(
-            violations=0,   # a breach can't reach execution — guardrails block first
+            violations=0,   # a breach can't reach execution - guardrails block first
             blocks_fired=self._blocks_fired,
             kill_switch_activations=self._kill_switch_activations,
             circuit_breaker_activations=self._circuit_breaker_activations,
@@ -1412,11 +1412,11 @@ class DecisionLoop:
         )
 
     def _push_scorecard(self) -> None:
-        """Upsert the live scorecard. Pure telemetry — a failure here must never
+        """Upsert the live scorecard. Pure telemetry - a failure here must never
         crash a trading cycle, so it's fully guarded."""
         try:
             self.bridge.update_scorecard(**self.build_scorecard().as_convex_row())
-        except Exception:  # noqa: BLE001 — scorecard is observability, not the trade
+        except Exception:  # noqa: BLE001 - scorecard is observability, not the trade
             pass
 
     # ── drivers ─────────────────────────────────────────────────────────────
@@ -1437,7 +1437,7 @@ class DecisionLoop:
         """Live driver: one cycle, sleep to cadence, repeat. Ctrl-C to stop.
 
         Each cycle is wrapped so an unanticipated exception is logged (structured,
-        keyed by trace) and audited to Convex, then the loop CONTINUES — a testnet
+        keyed by trace) and audited to Convex, then the loop CONTINUES - a testnet
         shadow-run must survive the surprises it exists to surface, not die on the
         first one."""
         from agent.observability import jlog
@@ -1460,7 +1460,7 @@ class DecisionLoop:
                             best = self._scanner.best_symbol()
                             if best and best != self.symbol:
                                 self._switch_symbol(best)
-                    except Exception:  # noqa: BLE001 — never block the trade cycle
+                    except Exception:  # noqa: BLE001 - never block the trade cycle
                         pass
                 history = self.feed.next()
                 if history:
@@ -1470,7 +1470,7 @@ class DecisionLoop:
                          drawdown=round(res.drawdown_pct, 4),
                          filled=bool(res.execution and res.execution.is_fill),
                          halted=res.halted, reason=res.reason)
-                    # Neural Mesh chain trace — fire setup_scorer every N cycles
+                    # Neural Mesh chain trace - fire setup_scorer every N cycles
                     self._chain_cycle_n += 1
                     try:
                         from agent.agents.loop_chain import (
@@ -1479,9 +1479,9 @@ class DecisionLoop:
                         if self._chain_cycle_n >= CHAIN_EVERY_N_CYCLES:
                             self._chain_cycle_n = 0
                             fire_setup_scorer(self.bridge, self.symbol, res.cycle_id)
-                    except Exception:  # noqa: BLE001 — chain trace is telemetry only
+                    except Exception:  # noqa: BLE001 - chain trace is telemetry only
                         pass
-            except Exception as e:  # noqa: BLE001 — shadow-run resilience
+            except Exception as e:  # noqa: BLE001 - shadow-run resilience
                 jlog("cycle_error", level="error",
                      error=str(e), error_type=type(e).__name__)
                 try:
@@ -1489,7 +1489,7 @@ class DecisionLoop:
                                       {"error": str(e), "error_type": type(e).__name__}, "error")
                 except Exception:  # noqa: BLE001
                     pass
-            # Spawned-agent tick — run due agents + deliver push (off scored path)
+            # Spawned-agent tick - run due agents + deliver push (off scored path)
             try:
                 from agent.agents.schedule import due_agents, deliver_push
                 from agent.agents.runner import run_agent
@@ -1507,9 +1507,9 @@ class DecisionLoop:
                         deliver_push(self.bridge,
                                      build_push_payload(_a["name"], _res["summary"], url="/agents"),
                                      vapid=_vapid)
-            except Exception:  # noqa: BLE001 — never break the loop
+            except Exception:  # noqa: BLE001 - never break the loop
                 pass
-            # Watchdog sweep — flag stalled spawned agents (off scored path)
+            # Watchdog sweep - flag stalled spawned agents (off scored path)
             try:
                 from agent.agents.watchdog import find_stalled
                 from agent.agents.registry import list_active
@@ -1518,19 +1518,19 @@ class DecisionLoop:
                 for _a in find_stalled(list_active(self.bridge), _now):
                     self.bridge.emit_event(AgentEvent(
                         agent="WalletManager", kind=KIND_CONTROL,
-                        headline=f"Agent '{_a['name']}' is stalled — no activity",
+                        headline=f"Agent '{_a['name']}' is stalled - no activity",
                         detail="{}", refs=[],
                     ))
-            except Exception:  # noqa: BLE001 — never break the loop
+            except Exception:  # noqa: BLE001 - never break the loop
                 pass
-            # Drain operator commands (convert, withdraw, etc) — off scored path.
+            # Drain operator commands (convert, withdraw, etc) - off scored path.
             # Drain up to 5 per cycle so a burst doesn't block the next cycle.
             try:
                 from agent.command_worker import run_one_command
                 for _ in range(5):
                     if not run_one_command(self.bridge):
                         break
-            except Exception:  # noqa: BLE001 — command drain must never crash the loop
+            except Exception:  # noqa: BLE001 - command drain must never crash the loop
                 pass
             time.sleep(cycle_seconds)
 

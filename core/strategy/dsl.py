@@ -1,15 +1,15 @@
-"""Declarative rule DSL (AWAKE_SPRINT §4.3) — the loop's throughput lever and the
+"""Declarative rule DSL (AWAKE_SPRINT §4.3) - the loop's throughput lever and the
 SAFE compile target for distilled thesis cards (§4.2). A thesis's `proposed_rule` is
 compiled here, NEVER eval'd: only a whitelisted grammar over known indicator
 primitives is allowed, so prompt-injected corpus text cannot run arbitrary code.
 
 Grammar: comparisons (>, <, >=, <=, ==), boolean and/or/not, arithmetic (+ - * /),
 numeric constants, and whitelisted identifiers:
-  close open high low volume        — raw columns
-  ema<N> sma<N>                      — moving averages of close, period N
-  roc / roc<N>                       — rate of change (default 10)
-  atr<N>                             — average true range (default 14)
-  funding sentiment regime          — optional columns (0.0 if absent)
+  close open high low volume        - raw columns
+  ema<N> sma<N>                      - moving averages of close, period N
+  roc / roc<N>                       - rate of change (default 10)
+  atr<N>                             - average true range (default 14)
+  funding sentiment regime          - optional columns (0.0 if absent)
 """
 from __future__ import annotations
 

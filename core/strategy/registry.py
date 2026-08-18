@@ -1,5 +1,5 @@
 """
-Strategy Registry — named, user-selectable strategies over ONE engine.
+Strategy Registry - named, user-selectable strategies over ONE engine.
 
 The product wins by giving the user customization without ever forking the trade
 logic. Every strategy here is a *preset* of StrategyParams fed to the same
@@ -7,12 +7,12 @@ combined.py engine (locked decision #2: sim and live share one code path; there 
 no "contrarian engine" vs "momentum engine", only different weights/thresholds).
 
 Strategies:
-  momentum   — trend-follower; rides confirmed uptrends. Best in trending markets.
-  contrarian — fear-buyer; the Fear & Greed signal is the backbone (buy capitulation,
+  momentum   - trend-follower; rides confirmed uptrends. Best in trending markets.
+  contrarian - fear-buyer; the Fear & Greed signal is the backbone (buy capitulation,
                trim into greed), momentum is only a filter. Best in choppy/down/fear
-               markets — which is the regime we are actually in (F&G ~ extreme fear).
-  balanced   — blends momentum + derivatives + fear; regime-aware all-rounder.
-  defensive  — cash-default; only rare, high-conviction longs. Minimises drawdown
+               markets - which is the regime we are actually in (F&G ~ extreme fear).
+  balanced   - blends momentum + derivatives + fear; regime-aware all-rounder.
+  defensive  - cash-default; only rare, high-conviction longs. Minimises drawdown
                (pairs naturally with the Autopilot capital manager).
 
 Risk profiles scale how much capital each entry risks (mapped to the RiskEngine caps
@@ -38,7 +38,7 @@ def _momentum(symbol: str) -> StrategyParams:
 def _contrarian(symbol: str) -> StrategyParams:
     # Fear & Greed is the backbone; momentum only confirms. A lower entry threshold
     # lets the agent act on capitulation, where the long-only edge actually lives.
-    # chop_gate=0.8: contrarian is DESIGNED for sideways/choppy markets — the
+    # chop_gate=0.8: contrarian is DESIGNED for sideways/choppy markets - the
     # generic 0.5 CHOP gate halves scores and prevents entries in the exact regime
     # where this strategy has its edge.
     return StrategyParams(
@@ -115,7 +115,7 @@ DEFAULT_RISK_PROFILE = "balanced"
 
 def get_strategy_params(name: str, symbol: str = "ETH") -> StrategyParams:
     """Resolve a strategy name -> StrategyParams. Unknown name falls back to the
-    default (never raises — a bad config value must not crash the live loop)."""
+    default (never raises - a bad config value must not crash the live loop)."""
     info = STRATEGIES.get((name or "").lower(), STRATEGIES[DEFAULT_STRATEGY])
     return info.factory(symbol)
 

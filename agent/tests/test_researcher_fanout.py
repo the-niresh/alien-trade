@@ -1,4 +1,4 @@
-"""8.15 — Researcher fan-out across all eligible symbols."""
+"""8.15 - Researcher fan-out across all eligible symbols."""
 from __future__ import annotations
 from unittest.mock import MagicMock, call, patch
 
@@ -162,7 +162,7 @@ def test_filter_dedupe_includes_fresh_symbols():
     bridge.get_token_allowlist.return_value = ["ETH", "CAKE", "UNI"]
     sup = Supervisor(sb, bridge=bridge)
 
-    # No prior research — all symbols should be included
+    # No prior research - all symbols should be included
     result = sup._filter_dedupe("ETH", {})
     assert "ETH" in result
     assert "CAKE" in result

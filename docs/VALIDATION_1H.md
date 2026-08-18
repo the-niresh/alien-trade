@@ -1,4 +1,4 @@
-# 1h Out-of-Sample Validation — Eligible Universe (2026-06-11)
+# 1h Out-of-Sample Validation - Eligible Universe (2026-06-11)
 
 First honest re-validation at the **traded cadence (1h)** on the **competition-eligible
 universe** `{ETH, CAKE, UNI, LINK, AAVE}`, with the full signal stack live
@@ -29,34 +29,34 @@ ETH walk-forward (73 windows) agrees: −5.70% return, Sortino −0.136, MaxDD �
    orthogonal CMC signals (S2/S3/S4)" does **not** hold: with funding + sentiment
    live at 1h, every eligible asset is still negative OOS. Adding the signals did not
    create edge.
-2. **It's structural, not a tuning miss.** 0–16% win rate at 12× turnover = a
+2. **It's structural, not a tuning miss.** 0-16% win rate at 12× turnover = a
    trend/EMA-cross flipper getting chopped to death. More grid search won't fix a
    strategy that enters on noise.
 3. **The drawdown penalty is the key.** With objective `Sortino − 2·|MaxDD|`,
-   **staying flat in cash scores 0.0 — which beats all five live strategies
+   **staying flat in cash scores 0.0 - which beats all five live strategies
    (−0.24 to −0.34).** Today, *doing nothing wins.* This is the lever, not a problem.
 4. **Where rare edge may live (regime breakdown):** CAKE/UNI show positive Sortino in
    clean *trend* regimes (0.18 / 0.35); AAVE is strongly positive in *crash*
-   recovery (1.07, tiny sample). The signal isn't "always long" — it's "long only in
+   recovery (1.07, tiny sample). The signal isn't "always long" - it's "long only in
    specific regimes, cash otherwise."
 
 ## Implication for the build
 
 No amount of LLM harness, Second Brain, multi-wallet, or token optimisation matters
 while the deterministic core is negative OOS. **Strategy redesign is the gating
-work.** Recommended archetype: **cash-default, regime-gated, selective long** — sit
+work.** Recommended archetype: **cash-default, regime-gated, selective long** - sit
 in USDT (zero drawdown) and deploy only on high-conviction regime setups, satisfying
 the ≥1 trade/day activity floor with minimal neutral trades. Turn the drawdown
 penalty from the enemy into the moat.
 
-## Redesign v1 — cash-default trend filter (2026-06-12)
+## Redesign v1 - cash-default trend filter (2026-06-12)
 
 Added a single principled knob: a **long-EMA trend filter** (`trend_filter_period=100`,
 ≈4 days on 1h, NOT optimizer-swept). The book only holds long while `close > EMA100`;
 below it, capital force-exits to USDT (zero drawdown). Cash is now the default state.
 Files: `core/strategy/combined.py`, `core/signals/momentum.py::ema_value`.
 
-Walk-forward OOS (73 windows) — baseline → redesign, every metric improved on every asset:
+Walk-forward OOS (73 windows) - baseline → redesign, every metric improved on every asset:
 
 | Asset | Return | Sortino | MaxDD (scoring weapon) | Turnover |
 |-------|--------|---------|------------------------|----------|
@@ -68,19 +68,19 @@ Walk-forward OOS (73 windows) — baseline → redesign, every metric improved o
 
 **Outcome:** the bleeding is stopped and drawdown ~halved across the board. This is the
 predicted result of cash-default discipline in a hostile long-only universe: from
-"clearly losing" to "≈flat with shallow drawdown" — a large objective improvement under
+"clearly losing" to "≈flat with shallow drawdown" - a large objective improvement under
 `Sortino − 2·|MaxDD|`. It does **not yet generate positive alpha** (Sortino ≈ 0); the
 single recent 70/30 hold-out window is still mildly negative because the last ~160 days
 were broadly hostile to long-only alts and a few breakout entries failed.
 
-## Redesign v2 — rising-trend entry filter (2026-06-12)
+## Redesign v2 - rising-trend entry filter (2026-06-12)
 
 Added an **asymmetric** entry-quality gate (`trend_slope_lookback=12`, not swept): ENTER
 only when price is above a *rising* EMA100 (cuts failed breakouts above a flat/rolling
 trend); HOLD as long as price stays above EMA100 (lenient exit → no churn). Files:
 `core/strategy/combined.py`.
 
-Walk-forward OOS (73 windows) — v1 → v2:
+Walk-forward OOS (73 windows) - v1 → v2:
 
 | Asset | Return | Sortino | MaxDD | Fills | Objective (Sortino−2·DD) |
 |-------|--------|---------|-------|-------|--------------------------|
@@ -91,32 +91,32 @@ Walk-forward OOS (73 windows) — v1 → v2:
 | AAVE | −1.96% → **−1.83%** | −0.044 → −0.044 | −3.56% → **−3.31%** | 55 → 46 | −0.115 → **−0.110** |
 
 **Outcome:** fills down on all 5; objective improved on 4/5 (LINK the lone regression).
-A modest net win that lowers turnover and tightens drawdown — but NOT a jump to positive
+A modest net win that lowers turnover and tightens drawdown - but NOT a jump to positive
 alpha. Per-asset entry tuning has reached diminishing returns. Verdict: **keep v2.**
 
-### Next lever — cross-sectional rotation (not yet done)
+### Next lever - cross-sectional rotation (not yet done)
 The single-symbol harness forces us to judge each weak alt in isolation. The real
 long-only edge is **relative strength**: hold whichever eligible asset is *strongest*
-right now, sit in USDT when none qualify. CAKE is the only consistently positive name —
+right now, sit in USDT when none qualify. CAKE is the only consistently positive name -
 a rotation book would concentrate there when it leads and avoid the dogs. Needs a
-**portfolio backtester** (current `run_backtest`/`walk_forward` are per-symbol) — a
+**portfolio backtester** (current `run_backtest`/`walk_forward` are per-symbol) - a
 bigger build than the last two tweaks.
 
-## Thesis factory — harness online + first batch (2026-06-14)
+## Thesis factory - harness online + first batch (2026-06-14)
 
 The thesis-evaluation harness (`research/evaluate.py`) is live: it compiles a thesis
 card's DSL `proposed_rule` to a long/flat position series and scores it across the
 eligible universe at 1h through the **shared `/core` engine + real BSC cost model**
-(no separate sim path — locked #2), reporting the rubric objective `sortino − 2·|maxDD|`
+(no separate sim path - locked #2), reporting the rubric objective `sortino − 2·|maxDD|`
 per asset. Keep gate = beat the **cash bar (0.0)** on ≥4/5 assets; survivors are scored
 once on a reserved ~50d holdout and must clear a Deflated Sharpe gate. 8 unit tests
 (incl. a no-lookahead causality proof) green.
 
 **Calibration:** a deep-hysteresis trend rule lands at obj ≈ −0.28, inside this doc's
-documented OOS baseline band (−0.24…−0.34) — the harness agrees with the existing
+documented OOS baseline band (−0.24…−0.34) - the harness agrees with the existing
 single-pass scorecard.
 
-**First batch (6 theses, all FALSIFIED — logged in `docs/THESIS_LEDGER.md`):**
+**First batch (6 theses, all FALSIFIED - logged in `docs/THESIS_LEDGER.md`):**
 
 | thesis | rule (entry / exit) | total fills | best dev obj | verdict |
 |--------|---------------------|-------------|--------------|---------|
@@ -125,12 +125,12 @@ single-pass scorecard.
 | T-006 | `close>ema100*1.05 and roc20>0.02` / `close<ema100*0.92` | ~156 | −0.22 (UNI) | FALSIFIED |
 
 Two reproduced findings, one new lead:
-1. **Costs dominate churn.** Single-line crossovers flip 400–800× → ≈ −0.85%/round-trip
+1. **Costs dominate churn.** Single-line crossovers flip 400-800× → ≈ −0.85%/round-trip
    × 700 ≈ −60% from costs alone. Hysteresis is mandatory (T-001→T-005 cut fills 700→118).
-2. **No long-only edge** beats cash anywhere — the alts fell ~57% near-uniformly; the
+2. **No long-only edge** beats cash anywhere - the alts fell ~57% near-uniformly; the
    λ=2 drawdown penalty makes cash (0.0) the wall.
-3. **New:** T-006 shows *positive Sortino on ETH (+0.038) & CAKE (+0.008)* with 19 fills —
-   a faint real entry edge — but is FALSIFIED by a −14.7% open drawdown. **The binding
+3. **New:** T-006 shows *positive Sortino on ETH (+0.038) & CAKE (+0.008)* with 19 fills -
+   a faint real entry edge - but is FALSIFIED by a −14.7% open drawdown. **The binding
    constraint is exit/drawdown control, not entry signal.** Next theses target ATR/stop
    exits and regime-gated entries, not new entry signals.
 

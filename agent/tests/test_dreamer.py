@@ -1,4 +1,4 @@
-"""Dreamer nightly consolidation — unit tests."""
+"""Dreamer nightly consolidation - unit tests."""
 from __future__ import annotations
 import time
 from unittest.mock import MagicMock, patch
@@ -51,7 +51,7 @@ def test_dedupe_below_threshold_keeps_both():
         _reflection(0, "avoid chop entries", -10),
         _reflection(1, "sell early in trend up", 20),
     ])
-    # Similarity returns 0.0 (low) — no dedup
+    # Similarity returns 0.0 (low) - no dedup
     d.vector.query.return_value = []
     result = d.run()
     assert result.reflections_deduped == 0
@@ -64,7 +64,7 @@ def test_dedupe_above_threshold_removes_lower_pnl():
                              text=lesson, metadata={})
     d = _make_dreamer(reflections=[
         _reflection(0, lesson, -10),   # lower |PnL|
-        _reflection(1, lesson, -30),   # higher |PnL| — keep this one
+        _reflection(1, lesson, -30),   # higher |PnL| - keep this one
     ])
     # Vector query returns the second lesson as a near-duplicate
     d.vector.query.return_value = [high_sim_hit]
@@ -108,8 +108,8 @@ def test_forecast_summary_empty_ok():
 
 def test_age_stale_research_marks_old_docs():
     now_ms = int(time.time() * 1000)
-    old_ts = now_ms - 50 * 3_600_000   # 50h ago — past the 48h threshold
-    fresh_ts = now_ms - 1 * 3_600_000   # 1h ago — should NOT be aged
+    old_ts = now_ms - 50 * 3_600_000   # 50h ago - past the 48h threshold
+    fresh_ts = now_ms - 1 * 3_600_000   # 1h ago - should NOT be aged
 
     old_hit = MemoryHit(
         id="research-old", score=0.9, text="old digest",

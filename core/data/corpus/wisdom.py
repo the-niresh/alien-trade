@@ -1,7 +1,7 @@
 """Wisdom-corpus fetchers + the prompt-injection boundary (AWAKE_SPRINT §4.1/§4.2).
 
 Curated trader transcripts + written material. The SOURCE_ALLOWLIST is a frozen
-constant — NOTHING self-expanding. `distill_ready` wraps untrusted corpus text in
+constant - NOTHING self-expanding. `distill_ready` wraps untrusted corpus text in
 explicit delimiters so the distillation prompt treats it as DATA, never instructions
 (the mechanical half of CSO #3; the strict pydantic schema in research/distill.py is
 the other half).
@@ -10,11 +10,11 @@ from __future__ import annotations
 
 # Curated, frozen source set. Add by editing this constant in a reviewed commit only.
 SOURCE_ALLOWLIST = frozenset({
-    # YouTube channels (trader interviews / education) — by channel handle
+    # YouTube channels (trader interviews / education) - by channel handle
     "youtube:@RealVisionFinance",
     "youtube:@chatwithtraders",
     "youtube:@UCwQ_d6dQUiB1Bv8r2nQh6Bg",  # example channel id form
-    # Written material — by domain
+    # Written material - by domain
     "web:reminiscencesofastockoperator",
     "web:macro-ops.com",
     "web:mrzepczynski.blogspot.com",
@@ -42,7 +42,7 @@ def fetch_transcript(source: str, video_id: str) -> str:
 
         parts = YouTubeTranscriptApi.get_transcript(video_id)
         return " ".join(p["text"] for p in parts)
-    except Exception as e:  # noqa: BLE001 — caller logs; corpus fetch is best-effort
+    except Exception as e:  # noqa: BLE001 - caller logs; corpus fetch is best-effort
         return f""  # empty → the loop skips this doc (logged upstream); {e} not raised
 
 

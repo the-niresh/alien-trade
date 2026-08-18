@@ -370,7 +370,7 @@ function ConvertTab() {
             <p className="font-mono text-[11px] text-text leading-relaxed">
               Converting <span className="font-bold text-yellow">{amtNum} {from}</span>
               {" "}(~${usdValue.toFixed(2)}) into <span className="font-bold text-yellow">{to}</span>
-              {gaining > 0 && <> — expected ~{gaining.toFixed(6)} {to}</>}.
+              {gaining > 0 && <> - expected ~{gaining.toFixed(6)} {to}</>}.
             </p>
           </div>
           <p className="font-mono text-[10px] text-muted-fg">
@@ -378,7 +378,7 @@ function ConvertTab() {
           </p>
           {rateAge > 60 && (
             <p className="font-mono text-[10px] text-yellow">
-              Rate fetched {Math.floor(rateAge / 60)}m {rateAge % 60}s ago — price may have shifted.
+              Rate fetched {Math.floor(rateAge / 60)}m {rateAge % 60}s ago - price may have shifted.
             </p>
           )}
           {error && <p className="font-mono text-[11px] text-red">{error}</p>}
@@ -416,7 +416,7 @@ function ConvertTab() {
             <TokenPill value={from} onChange={pickFrom} />
           </div>
           <p className="font-mono text-[11px] text-muted-fg">
-            {fromPrice > 0 ? `($${usdValue.toFixed(2)})` : "(—)"}
+            {fromPrice > 0 ? `($${usdValue.toFixed(2)})` : "(-)"}
           </p>
         </div>
 
@@ -461,7 +461,7 @@ function ConvertTab() {
 }
 
 // ── Deposit QR ───────────────────────────────────────────────────────────────
-// Separate component so useEffect fires after THIS element mounts — the ref is
+// Separate component so useEffect fires after THIS element mounts - the ref is
 // always set by the time the effect runs, avoiding the portal timing race.
 
 function DepositQR({ address }: { address: string }) {
@@ -549,7 +549,7 @@ export function FundingDialog({ open, onClose, initialTab = "deposit" }: Props) 
                 <div className="space-y-4">
                   <p className="font-mono text-[11px] text-muted-fg">
                     Send USDT (BEP-20) or BNB directly to this address.{" "}
-                    <span className="text-yellow font-bold">BSC chain only — do not send from Ethereum mainnet.</span>
+                    <span className="text-yellow font-bold">BSC chain only - do not send from Ethereum mainnet.</span>
                   </p>
                   <div className="flex justify-center">
                     <DepositQR address={address} />
@@ -568,7 +568,7 @@ export function FundingDialog({ open, onClose, initialTab = "deposit" }: Props) 
                       <span>USDT (BEP-20)</span><span className="text-text">Trading capital</span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span>BNB</span><span className="text-yellow">Gas — keep ≥ 0.005</span>
+                      <span>BNB</span><span className="text-yellow">Gas - keep ≥ 0.005</span>
                     </div>
                   </div>
                 </div>

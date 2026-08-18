@@ -219,4 +219,4 @@ Slot-priority bid; the remainder is forwarded as a Jito tip.
 
 Entry priority
 
-High fires immediately; normal adds 0–200ms jitter.
+High fires immediately; normal adds 0-200ms jitter.

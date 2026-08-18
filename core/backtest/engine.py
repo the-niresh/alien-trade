@@ -1,6 +1,6 @@
 """
 Event-driven backtest engine.
-Sim and live share this module — no duplicate logic anywhere.
+Sim and live share this module - no duplicate logic anywhere.
 """
 from __future__ import annotations
 
@@ -84,7 +84,7 @@ StrategyFn = Callable[[list[Bar]], Order | None]
 CostModelFn = Callable[[Order, Bar], tuple[float, float, float]]  # fee, gas, slippage
 
 
-# ── Default cost model (placeholder — replaced by BSCCostModel in production) ─
+# ── Default cost model (placeholder - replaced by BSCCostModel in production) ─
 
 def _default_cost_model(order: Order, bar: Bar) -> tuple[float, float, float]:
     fee = order.size_usd * 0.0025        # 0.25% PancakeSwap fee
@@ -105,7 +105,7 @@ def run_backtest(
 ) -> BacktestResult:
     """
     Event-driven loop: iterate bars strictly in time order.
-    Strategy sees only bars[0..i] — no look-ahead.
+    Strategy sees only bars[0..i] - no look-ahead.
 
     next_bar_open_fill=True  → order generated at bar i fills at bar i+1's open
                                 (realistic 1-bar execution latency).
@@ -200,7 +200,7 @@ def _apply_fill(
 
     A sell is capped at the position actually held. Without that cap the engine would
     credit the full requested proceeds while flooring the position at zero, which
-    creates cash out of nothing and inflates the equity curve — silently, and always
+    creates cash out of nothing and inflates the equity curve - silently, and always
     in the flattering direction.
     """
     executed_usd = order.size_usd
@@ -218,7 +218,7 @@ def _apply_fill(
     else:
         # Spot, long only, unlevered: a buy is bounded by settled cash. Without this
         # the account borrows silently, and a strategy that over-trades reports a loss
-        # deeper than 100% — which is not a bad result, it is an impossible one.
+        # deeper than 100% - which is not a bad result, it is an impossible one.
         affordable = cash - _buy_cost_floor(order, bar, cost_model, precomputed)
         if order.size_usd > affordable + 1e-9:
             result.underfunded_buys += 1

@@ -1,12 +1,12 @@
 """
 Market feed abstraction for the live loop.
 
-A feed yields a point-in-time history slice per cycle — exactly what the sim
+A feed yields a point-in-time history slice per cycle - exactly what the sim
 hands the strategy. Two implementations:
 
-  ReplayFeed     — deterministic; replays a fixed bar list one bar at a time.
+  ReplayFeed     - deterministic; replays a fixed bar list one bar at a time.
                    Used for paper rehearsal, sim-vs-live parity, and chaos tests.
-  BinanceLiveFeed — real live feed: seeds from historical bars, then re-pulls
+  BinanceLiveFeed - real live feed: seeds from historical bars, then re-pulls
                     the latest completed candles each cycle. Same source + schema
                     as the historical pull, so live bars match what the sim saw.
 
@@ -32,7 +32,7 @@ class ReplayFeed:
     """
     Replays `bars` one cycle at a time. Cycle k exposes bars[0..k] (1-indexed
     length), identically to how run_backtest calls strategy(bars[:i+1]).
-    Exhausts to None after the final bar — drives a finite, reproducible run.
+    Exhausts to None after the final bar - drives a finite, reproducible run.
     """
 
     def __init__(self, bars: list[Bar], warmup: int = 0):
@@ -56,7 +56,7 @@ class BinanceLiveFeed:
     """
     Live feed backed by Binance public klines (same source as the 2-yr history).
     Each `next()` re-pulls the most recent completed candles for the symbol.
-    Stateless between calls beyond the client — safe to retry.
+    Stateless between calls beyond the client - safe to retry.
     """
 
     def __init__(self, symbol: str, interval: str = "1h", history_bars: int = 200, client=None):

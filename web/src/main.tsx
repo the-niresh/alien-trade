@@ -1,7 +1,7 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { ConvexProvider, ConvexReactClient } from "convex/react";
-// Self-hosted fonts (bundled by Vite — offline-ready, no CDN call).
+// Self-hosted fonts (bundled by Vite - offline-ready, no CDN call).
 // Chakra Petch = HUD display (logo, hero numerals, section identity).
 // IBM Plex Mono = all data / labels / logs. Inter = body prose only.
 import "@fontsource/chakra-petch/400.css";

@@ -1,5 +1,5 @@
 """
-Inter-agent contracts — the single, versioned source of every payload that
+Inter-agent contracts - the single, versioned source of every payload that
 crosses an agent boundary, plus the failure matrix. Defined BEFORE the supervisor
 is wired (AGENT_TEAM_PLAN §9.2): "standardize output formats before building
 anything; if A outputs text and B expects JSON the handoff silently fails."
@@ -9,12 +9,12 @@ Three rules this file exists to keep:
   1. No agent emits an ad-hoc shape. If a payload crosses a boundary, its
      dataclass lives here (or is re-exported here from where it already lives).
   2. The shapes that land in Convex carry an `as_row()` whose keys match the
-     table columns in `convex/schema.ts` exactly — one write path, no drift.
+     table columns in `convex/schema.ts` exactly - one write path, no drift.
   3. The failure matrix (§9.3) is data, not prose: a Tier-1 (advisory/learning)
      agent failing must NEVER halt or distort a trade. `tier_of()` /
      `is_tier0()` make that machine-checkable.
 
-What lives where (deliberate boundary, locked decision #2 — `/core` is
+What lives where (deliberate boundary, locked decision #2 - `/core` is
 standalone and must not import `agent/`):
   - This file owns the *data shapes* the agents and Convex share.
   - The Option-B forecast *math* (decay + shrink-only clamp) lives in `core/risk/`
@@ -66,13 +66,13 @@ __all__ = [
 # ── The roster + its two tiers (AGENT_TEAM_PLAN §1) ────────────────────────────
 # Tier 0 = the deterministic trade hot path (the only tier allowed to stop a
 # trade). Tier 1 = advisory/learning (LLM, off the hot path; failing here is
-# never allowed to touch a trade — see FAILURE_MATRIX).
+# never allowed to touch a trade - see FAILURE_MATRIX).
 
 ORCHESTRATOR = "Orchestrator"
 STRATEGIST = "Strategist"
 RISK_OFFICER = "Risk Officer"
-RISK_GUARD = "RiskGuard"   # deterministic guardrail (equity floor, staleness) — emits to channel
-SCOUT = "Scout"   # X/KOL watcher — emits social-trigger events, never a Tier-0 decision
+RISK_GUARD = "RiskGuard"   # deterministic guardrail (equity floor, staleness) - emits to channel
+SCOUT = "Scout"   # X/KOL watcher - emits social-trigger events, never a Tier-0 decision
 TRADE_HANDLER = "Trade Handler"
 HISTORIAN = "Historian"
 RESEARCHER = "Researcher"
@@ -85,14 +85,14 @@ SUPERVISOR = "Supervisor"  # orchestrator endpoint failure events
 
 TIER0_AGENTS = frozenset({STRATEGIST, RISK_OFFICER, TRADE_HANDLER})
 TIER1_AGENTS = frozenset({HISTORIAN, RESEARCHER, REFLECTOR, COPILOT, DREAMER})
-# Guardrails / infrastructure agents — in AGENTS but not in either tier
+# Guardrails / infrastructure agents - in AGENTS but not in either tier
 # (they observe, enforce limits, and emit events; they don't make trade decisions)
 AGENTS = frozenset({ORCHESTRATOR, USER, SUPERVISOR, RISK_GUARD, SCOUT, WALLET_MANAGER}) | TIER0_AGENTS | TIER1_AGENTS
 
 
 def tier_of(agent: str) -> Optional[int]:
     """0 for the deterministic hot path, 1 for advisory/learning, None otherwise
-    (Orchestrator/User are neither — they route/observe, they don't trade)."""
+    (Orchestrator/User are neither - they route/observe, they don't trade)."""
     if agent in TIER0_AGENTS:
         return 0
     if agent in TIER1_AGENTS:
@@ -108,7 +108,7 @@ def is_tier0(agent: str) -> bool:
 # ── Agent Activity Channel event (the "glass cockpit" stream, §7) ──────────────
 # Append-only; the marketing surface AND the human-readable audit log, same data.
 # `headline` is template-rendered from structured fields (cheap, deterministic,
-# zero added hot-path latency — no LLM call to write a trace).
+# zero added hot-path latency - no LLM call to write a trace).
 
 KIND_OBSERVATION = "observation"  # "what I saw"   (Strategist: regime + signals)
 KIND_ANALYSIS = "analysis"        # "what I think" (Historian: 3 past losses)
@@ -158,11 +158,11 @@ class AgentEvent:
 
 # ── Option-B forecast bridge (AGENT_TEAM_PLAN §6) ──────────────────────────────
 # The ONE number the Researcher's forecast is allowed to push across the boundary
-# into the decision. It can only SHRINK size, never enlarge — same one-way valve
+# into the decision. It can only SHRINK size, never enlarge - same one-way valve
 # as the Historian's veto. The clamp + decay MATH lives in `core/risk/` (8.4) on
 # plain floats so `/core` stays standalone; this is just the carried shape.
 
-NEUTRAL_CONFIDENCE = 1.0          # "no opinion" — decays here so it can't throttle
+NEUTRAL_CONFIDENCE = 1.0          # "no opinion" - decays here so it can't throttle
 DEFAULT_FORECAST_TTL_MS = 6 * 60 * 60 * 1000  # 6h; older than this → neutral
 
 
@@ -171,7 +171,7 @@ class ForecastState:
     """The Researcher's deterministic confidence for a symbol's current setup.
 
     `confidence` ∈ [FLOOR, 1.0] is read by the Risk Officer as a size multiplier
-    (1.0 = full size, lower = shrink). A bad/stale forecast can only de-risk —
+    (1.0 = full size, lower = shrink). A bad/stale forecast can only de-risk -
     locked decisions #1/#2/#6 all hold (see plan §6). The FLOOR clamp + the
     time-decay to NEUTRAL_CONFIDENCE are applied in `core/risk/` (8.4); this row
     is what gets snapshotted so sim/live replay the exact same value.
@@ -224,7 +224,7 @@ class AgentControl:
         return row
 
 
-# ── Failure matrix (AGENT_TEAM_PLAN §9.3) — data, not prose ────────────────────
+# ── Failure matrix (AGENT_TEAM_PLAN §9.3) - data, not prose ────────────────────
 # Governing rule: a Tier-1 agent failing must NEVER halt or distort a trade. Only
 # Tier 0 may stop a cycle. Every failure is a VISIBLE agent_events row, never a
 # silent swallow.
@@ -249,25 +249,25 @@ FAILURE_MATRIX: dict[str, FailurePolicy] = {
     RESEARCHER: FailurePolicy(
         RESEARCHER,
         on_failure="log to channel; forecast_state decays to neutral (1.0)",
-        hot_path_effect="none — trades at full deterministic size",
+        hot_path_effect="none - trades at full deterministic size",
         halts_trade=False,
     ),
     HISTORIAN: FailurePolicy(
         HISTORIAN,
         on_failure="log; verdict defaults to AllowAll (no veto)",
-        hot_path_effect="none — core decision stands",
+        hot_path_effect="none - core decision stands",
         halts_trade=False,
     ),
     REFLECTOR: FailurePolicy(
         REFLECTOR,
         on_failure="log; queue lesson for retry",
-        hot_path_effect="none — off-path",
+        hot_path_effect="none - off-path",
         halts_trade=False,
     ),
     DREAMER: FailurePolicy(
         DREAMER,
         on_failure="log; queue for retry next night",
-        hot_path_effect="none — off-path",
+        hot_path_effect="none - off-path",
         halts_trade=False,
     ),
     COPILOT: FailurePolicy(
@@ -276,7 +276,7 @@ FAILURE_MATRIX: dict[str, FailurePolicy] = {
         hot_path_effect="none",
         halts_trade=False,
     ),
-    # Tier 0 — the only tier allowed to stop trading.
+    # Tier 0 - the only tier allowed to stop trading.
     STRATEGIST: FailurePolicy(
         STRATEGIST,
         on_failure="halt that cycle, write audit, flip kill-switch if needed",
@@ -304,7 +304,7 @@ def failure_policy_for(agent: str) -> FailurePolicy:
     take down the hot path before it's added to the matrix."""
     if agent in FAILURE_MATRIX:
         return FAILURE_MATRIX[agent]
-    # SUPERVISOR / ORCHESTRATOR / USER are routing agents, not trade agents —
+    # SUPERVISOR / ORCHESTRATOR / USER are routing agents, not trade agents -
     # they observe and route; they don't trade, so they can't halt trading.
     return FailurePolicy(
         agent,

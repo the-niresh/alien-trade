@@ -6,7 +6,7 @@ Verifies the self-custody execution path is ready end-to-end:
   funded -> BNB SDK can read the balance on-chain.
 
 Prints the exact next command for whatever is missing. Never handles the
-password or mnemonic — wallet creation/funding is the operator's job.
+password or mnemonic - wallet creation/funding is the operator's job.
 
     core/.venv/Scripts/python.exe -m agent.wallet            # status check
     core/.venv/Scripts/python.exe -m agent.wallet --chain bsc

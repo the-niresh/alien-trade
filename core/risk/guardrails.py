@@ -1,5 +1,5 @@
 """
-Hard guardrails — all non-negotiable code-level limits.
+Hard guardrails - all non-negotiable code-level limits.
 Every check returns a GuardrailResult so the caller knows WHY a trade was blocked.
 """
 from __future__ import annotations
@@ -49,7 +49,7 @@ class RiskConfig:
     target_vol_ann: float = 0.15            # 15% annualized target vol
     base_position_usd: float = 1_000.0      # base trade size before sizing adjustment
 
-    # ── Stop-loss (exit rules — the WS1 drawdown lever) ───────────────────────
+    # ── Stop-loss (exit rules - the WS1 drawdown lever) ───────────────────────
     atr_stop_mult: float = 2.0       # hard stop at entry - mult*ATR; 0 disables
     atr_trail_mult: float = 3.0      # trailing stop at high_water - mult*ATR; 0 disables
     atr_period: int = 14             # ATR lookback in bars
@@ -109,7 +109,7 @@ def check_max_exposure(
     vs capital; this bounds the *total* open position after adding `new_size_usd`,
     so a sequence of individually-legal buys can never pile past the cap. This is
     the max-exposure invariant the risk engine enforces on every buy. The bound
-    must be provable rather than incidental — drawdown is the metric this agent is
+    must be provable rather than incidental - drawdown is the metric this agent is
     judged on, and an incidental bound is one that fails on the path nobody tested.
     """
     if equity <= 0:
@@ -132,7 +132,7 @@ class EquityFloorCheck(NamedTuple):
 def check_equity_floor(portfolio_usd: float, floor_usd: float) -> EquityFloorCheck:
     """Capital floor guard. floor_usd=0 is a no-op (feature disabled).
     Pre-alert fires at 120% of floor so the operator has time to act.
-    Only shrinks (never grows) position — sim treats floor=0 always."""
+    Only shrinks (never grows) position - sim treats floor=0 always."""
     if floor_usd <= 0:
         return EquityFloorCheck(halt=False, warn=False, reason="")
     if portfolio_usd <= floor_usd:
@@ -150,7 +150,7 @@ def check_equity_floor(portfolio_usd: float, floor_usd: float) -> EquityFloorChe
 
 
 def check_slippage(simulated_slippage_pct: float, config: RiskConfig) -> GuardrailResult:
-    """Pre-send slippage check — called after simulate-before-send (Step 5)."""
+    """Pre-send slippage check - called after simulate-before-send (Step 5)."""
     if simulated_slippage_pct > config.max_slippage_pct:
         return GuardrailResult(False,
             f"slippage {simulated_slippage_pct:.2%} > cap {config.max_slippage_pct:.2%}")

@@ -1,7 +1,7 @@
 """Thin CLI to test one thesis and print its trial-registry row (AWAKE_SPRINT §4.4).
 
 The loop (or a human) runs this to turn a DSL rule into a reproducible THESIS_LEDGER
-row. Print-only by design — no live state is mutated; paste the row into
+row. Print-only by design - no live state is mutated; paste the row into
 docs/THESIS_LEDGER.md. All evaluation logic lives in (and is tested via)
 research/evaluate.py.
 

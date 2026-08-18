@@ -1,13 +1,13 @@
 """
-8.12 — Advisory Evaluation Harness
+8.12 - Advisory Evaluation Harness
 
 "Does the Researcher sound smart?" is the wrong question.
 The right question: does the advisory layer actually improve drawdown?
 Does it block bad entries more than good ones?
 
 This harness replays a fixed bar window twice with identical randomness:
-  Baseline  — AllowAll (no avoidance logic)
-  With SB   — a deterministic mock avoidance that blocks/shrinks based on regime
+  Baseline  - AllowAll (no avoidance logic)
+  With SB   - a deterministic mock avoidance that blocks/shrinks based on regime
 
 Three assertions mirror the judging rubric:
   1. max_drawdown(with_sb) <= max_drawdown(baseline) + 5%  (must not worsen DD)
@@ -49,7 +49,7 @@ def _trend_bars(n: int, start: float = 100.0, pct_per_bar: float = 0.005,
 
 
 def _mixed_bars(n_trend: int = 50, n_chop: int = 30, seed: int = 7) -> list[Bar]:
-    """Uptrend followed by choppy sideways — produces winning then scratch/losing entries."""
+    """Uptrend followed by choppy sideways - produces winning then scratch/losing entries."""
     rng = np.random.default_rng(seed)
     bars = []
     ts_base = 1_700_000_000_000
@@ -145,7 +145,7 @@ def _run_and_collect(loop: DecisionLoop, bars: list[Bar]) -> dict:
 # ── mocks ─────────────────────────────────────────────────────────────────────
 
 class _RegimeBlocker:
-    """Blocks BUY entries in CHOP regime — models a learned avoidance of chop losses."""
+    """Blocks BUY entries in CHOP regime - models a learned avoidance of chop losses."""
 
     def __init__(self):
         self.blocks: list[dict] = []   # record for analysis
@@ -158,7 +158,7 @@ class _RegimeBlocker:
 
 
 class _RegimeShrinker:
-    """Shrinks BUY size by 50% in CHOP — models a calibrated avoidance signal."""
+    """Shrinks BUY size by 50% in CHOP - models a calibrated avoidance signal."""
 
     def __init__(self):
         self.shrinks: list[dict] = []
@@ -222,7 +222,7 @@ class TestFalseBlockRate:
         )
 
     def test_chop_blocker_blocks_only_chop_entries(self):
-        """RegimeBlocker only fires in CHOP — every blocked trade is in the
+        """RegimeBlocker only fires in CHOP - every blocked trade is in the
         regime where momentum strategies lose most.  false_block_rate ≤ 0 on
         a well-structured sequence."""
         # This tests the STRUCTURE of the mock, not a live run

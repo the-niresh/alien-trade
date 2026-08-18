@@ -60,7 +60,7 @@
     --panel-border: oklch(12% 0 0);
     --border:       oklch(14% 0 0);
     --border-hi:    oklch(20% 0 0);
-    --green:        #34ffae;   /* signature alien green — alive / profit */
+    --green:        #34ffae;   /* signature alien green - alive / profit */
     --red:          #ff2d6e;   /* danger / halt / loss */
     --cyan:         #36d6ff;   /* data / info */
     --yellow:       #ffb627;   /* caution */
@@ -130,7 +130,7 @@
     -webkit-font-smoothing: antialiased;
   }
 
-  /* Atmosphere layer 1 — coronas (radial glows) */
+  /* Atmosphere layer 1 - coronas (radial glows) */
   body::before {
     content: "";
     position: fixed;
@@ -142,7 +142,7 @@
       radial-gradient(var(--corona-2));
   }
 
-  /* Atmosphere layer 2 — fine grid + scanlines */
+  /* Atmosphere layer 2 - fine grid + scanlines */
   body::after {
     content: "";
     position: fixed;
@@ -225,7 +225,7 @@
     -webkit-backdrop-filter: blur(12px) saturate(1.1);
   }
 
-  /* In light mode the semi-transparent chrome reveals a light page —
+  /* In light mode the semi-transparent chrome reveals a light page -
      keep it opaque so the sidebar/header read as white, not translucent */
   [data-theme="light"] .chrome {
     background: color-mix(in srgb, var(--surface) 92%, var(--elevated));
@@ -236,7 +236,7 @@
   .glow-cyan   { text-shadow: 0 0 16px color-mix(in oklab, var(--cyan)   55%, transparent); }
   .glow-yellow { text-shadow: 0 0 16px color-mix(in oklab, var(--yellow) 50%, transparent); }
 
-  /* Interactive panel — smooth hover lift + border brightening */
+  /* Interactive panel - smooth hover lift + border brightening */
   .panel-interactive {
     transition: border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
   }
@@ -255,7 +255,7 @@
 
 /* ── Preserved / new hand-rolled rules ── */
 
-/* Kill switch — conic-gradient countdown set via inline style in KillSwitch.tsx */
+/* Kill switch - conic-gradient countdown set via inline style in KillSwitch.tsx */
 .kill-switch,
 .kill-switch-hero {
   user-select: none;
@@ -334,7 +334,7 @@
 ::-webkit-scrollbar-thumb { background: var(--border-hi); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--muted); }
 
-/* LIVE badge — pulsing dot */
+/* LIVE badge - pulsing dot */
 @keyframes live-dot {
   0%, 100% { opacity: 1;   transform: scale(1); }
   50%       { opacity: 0.3; transform: scale(0.8); }
@@ -359,7 +359,7 @@
   button { min-height: 44px; }
 }
 
-/* ── driver.js tour — dark theme override ───────────────────────────────── */
+/* ── driver.js tour - dark theme override ───────────────────────────────── */
 .alien-tour-popover {
   background: oklch(5.5% 0 0) !important;
   border: 1px solid oklch(14% 0 0) !important;
@@ -412,7 +412,7 @@
   background: transparent !important;
 }
 
-/* ── driver.js tour — light theme overrides ─────────────────────────────── */
+/* ── driver.js tour - light theme overrides ─────────────────────────────── */
 [data-theme="light"] .alien-tour-popover {
   background: #ffffff !important;
   border: 1px solid var(--border) !important;
@@ -447,7 +447,7 @@
   color: var(--text) !important;
 }
 
-/* ── Logo — screen blend removes the dark background on dark surfaces ──── */
+/* ── Logo - screen blend removes the dark background on dark surfaces ──── */
 .logo-blend {
   mix-blend-mode: screen;
   border-radius: 50%;

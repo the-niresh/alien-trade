@@ -5,7 +5,7 @@ const AGENT_URL = process.env.AGENT_URL ?? "http://localhost:8000";
 /**
  * Social ingest schedule (8.2). Every 30 min: POST /social/ingest → agent runs
  * ingest(), scores sentiment, writes sentiment_state + social_posts to Convex.
- * Off the hot path — a failure here never affects trading.
+ * Off the hot path - a failure here never affects trading.
  */
 export const socialIngest = schedules.task({
   id: "social-ingest",
@@ -22,7 +22,7 @@ export const socialIngest = schedules.task({
       logger.info("social ingest done", { scheduledAt: payload.timestamp, ...body });
       return body;
     } catch (err) {
-      // Advisory — never surface as a hard error that blocks other jobs.
+      // Advisory - never surface as a hard error that blocks other jobs.
       logger.warn("social ingest failed (non-critical)", { err: String(err) });
       return { ok: false, error: String(err) };
     }

@@ -32,21 +32,21 @@ export function WalletBalance() {
         </p>
       ) : (
         <div className="flex flex-col gap-1">
-          {/* USDT — dry powder */}
+          {/* USDT - dry powder */}
           <Row
             label="USDT"
             sub="dry powder"
             value={usd(wallet.usdt)}
             tone={wallet.usdt < 1 ? "warn" : "positive"}
           />
-          {/* ETH — open position value */}
+          {/* ETH - open position value */}
           <Row
             label="ETH"
             sub={wallet.eth > 0 ? `${wallet.eth.toFixed(6)} ETH` : "none held"}
             value={wallet.eth > 0 ? usd(wallet.eth * (wallet.total_usd - wallet.usdt - wallet.bnb_usd > 0 ? (wallet.total_usd - wallet.usdt - wallet.bnb_usd) / wallet.eth : 0)) : "$0.00"}
             tone={wallet.eth > 0 ? "neutral" : "neutral"}
           />
-          {/* BNB — gas */}
+          {/* BNB - gas */}
           <Row
             label="BNB"
             sub="gas reserve"
@@ -67,7 +67,7 @@ export function WalletBalance() {
           </div>
           {wallet.bnb < 0.003 && (
             <p className="font-mono text-[10px] text-red mt-1">
-              ⚠ BNB low — add gas or swaps will fail
+              ⚠ BNB low - add gas or swaps will fail
             </p>
           )}
         </div>

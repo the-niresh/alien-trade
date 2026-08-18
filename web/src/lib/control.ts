@@ -1,12 +1,12 @@
 // Cockpit control-token store. The token is the shared secret every state-changing
 // Convex mutation validates (convex/control.ts). It arrives once via the pairing
-// deep-link (`#t=<token>` — from the onboarding QR), is persisted to localStorage,
+// deep-link (`#t=<token>` - from the onboarding QR), is persisted to localStorage,
 // then attached to every guarded mutation. Read-only queries never need it.
 const KEY = "alien_control_token";
 
 /**
  * Capture a token from the URL into localStorage, then return it.
- * Accepts both the hash form (`#t=...`, preferred — never hits server logs) and
+ * Accepts both the hash form (`#t=...`, preferred - never hits server logs) and
  * the query form (`?t=...`, robust to link processors). The secret is stripped from
  * the address bar after capture; any other params (e.g. `?readonly`) are preserved.
  */

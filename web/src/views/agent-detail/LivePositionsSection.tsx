@@ -12,7 +12,7 @@ export function LivePositionsSection({ agent }: { agent: DetailAgent }) {
 
 function PrimaryPositions() {
   const positions = useQuery(api.positions.open) ?? [];
-  if (positions.length === 0) return <div className="panel p-8 text-center font-mono text-[12px] text-muted-fg/60">Flat — no open positions.</div>;
+  if (positions.length === 0) return <div className="panel p-8 text-center font-mono text-[12px] text-muted-fg/60">Flat - no open positions.</div>;
   return (
     <div className="grid grid-cols-2 gap-3 max-sm:grid-cols-1">
       {positions.map((p) => (

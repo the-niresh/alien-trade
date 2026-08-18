@@ -4,7 +4,7 @@
 The agent must not be blank at launch. This walks the 2-year dataset and, at
 each point-in-time slice, labels the period with {regime, dominant_signal,
 outcome} and stores it in Upstash Vector (kind="institutional"). The label's
-*outcome* uses the forward return over the next `horizon` bars — look-ahead is
+*outcome* uses the forward return over the next `horizon` bars - look-ahead is
 fine here because we are labelling the **past** for memory, not making a live
 decision. The regime and signals at each slice are strictly point-in-time.
 
@@ -109,7 +109,7 @@ def main(argv: list[str] | None = None) -> None:
         url=os.environ.get("UPSTASH_VECTOR_REST_URL", ""),
         token=os.environ.get("UPSTASH_VECTOR_REST_TOKEN", ""),
     )
-    mode = "Upstash Vector" if vector.enabled else "OFFLINE (in-memory — set UPSTASH_VECTOR_* to persist)"
+    mode = "Upstash Vector" if vector.enabled else "OFFLINE (in-memory - set UPSTASH_VECTOR_* to persist)"
     symbols = [s.strip() for s in args.symbols.split(",") if s.strip()]
     print(f"\n  2-year pre-load -> {mode}\n  symbols={symbols} horizon={args.horizon} stride={args.stride}")
 

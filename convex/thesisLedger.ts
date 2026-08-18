@@ -15,7 +15,7 @@ const thesisFields = {
   ts_ms: v.number(),
 };
 
-/** Record (or update) a thesis card. Token-guarded — only the agent/loop writes. */
+/** Record (or update) a thesis card. Token-guarded - only the agent/loop writes. */
 export const record = mutation({
   args: { ...thesisFields, control_token: v.optional(v.string()) },
   returns: v.null(),

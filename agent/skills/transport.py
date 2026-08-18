@@ -1,5 +1,5 @@
 """
-CmcSkillHubTransport — minimal MCP Streamable-HTTP client for the CMC Crypto
+CmcSkillHubTransport - minimal MCP Streamable-HTTP client for the CMC Crypto
 Skill Hub, hand-rolled in raw httpx to match the codebase's REST-first house
 style (no langchain / mcp SDK). The server (mcp.coinmarketcap.com/skill-hub) is
 STATELESS: a single `tools/call` POST works with no initialize handshake and no
@@ -42,7 +42,7 @@ class CmcSkillHubTransport:
         """Invoke one MCP tool (`find_skill` | `execute_skill`) and return the
         decoded payload dict. Raises SkillHubError on transport/JSON-RPC/tool error."""
         if not self.enabled:
-            raise SkillHubError("CMC_MCP_API_KEY not set — skill hub offline")
+            raise SkillHubError("CMC_MCP_API_KEY not set - skill hub offline")
         self._id += 1
         body = {
             "jsonrpc": "2.0", "id": self._id, "method": "tools/call",

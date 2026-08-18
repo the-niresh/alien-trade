@@ -54,7 +54,7 @@ def test_succeeds_first_rung():
 
     assert report.status == FILLED
     assert report.tx_hash == "0xabc"
-    # Only one swap_execute call — no retry needed
+    # Only one swap_execute call - no retry needed
     assert twak.swap_execute.call_count == 1
 
 
@@ -104,7 +104,7 @@ def test_exhausts_all_rungs_returns_failed():
 
 
 def test_non_tx_failed_error_does_not_retry():
-    """Auth or network errors stop immediately — no retry."""
+    """Auth or network errors stop immediately - no retry."""
     twak = MagicMock()
     twak.swap_quote.return_value = _quote()
     twak.risk.return_value = {"isRug": False, "score": 0}
@@ -135,5 +135,5 @@ def test_rug_check_runs_once_across_retries():
     ex = _make_executor(twak)
     ex.execute(_order(), _bar(), "key-5")
 
-    # risk() = rug check — called once regardless of retry count
+    # risk() = rug check - called once regardless of retry count
     assert twak.risk.call_count == 1

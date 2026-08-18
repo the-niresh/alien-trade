@@ -1,5 +1,5 @@
 """
-Command worker — drains queued agent_commands from Convex and executes them.
+Command worker - drains queued agent_commands from Convex and executes them.
 Called by POST /twak/drain after each main cycle (safe: off the scored path).
 Each call processes ONE command (the oldest queued one) to keep latency bounded.
 """
@@ -20,10 +20,10 @@ log = logging.getLogger(__name__)
 MAX_CONVERT_IMPACT = 0.05  # abort a convert whose quoted price impact exceeds 5%
 CONVERT_ALLOWLIST = {"BNB", "ETH", "USDT", "CAKE", "UNI", "LINK", "AAVE"}
 
-# ERC-20 approval guardrails — never grant an unlimited allowance. An over-broad
+# ERC-20 approval guardrails - never grant an unlimited allowance. An over-broad
 # approval lets the spender drain the whole token balance later; cap it to a small
 # operating amount and only allow known router contracts as the spender.
-MAX_APPROVE_AMOUNT = 1000.0          # token units — well above any single trade size
+MAX_APPROVE_AMOUNT = 1000.0          # token units - well above any single trade size
 _UINT_MAX = "115792089237316195423570985008687907853269984665640564039457584007913129639935"
 _APPROVE_UNLIMITED_SENTINELS = {"max", "unlimited", "-1", _UINT_MAX}
 # PancakeSwap routers on BSC (V2 + SmartRouter). Lower-cased for comparison.
@@ -122,7 +122,7 @@ def _dispatch(cmd_type: str, params: dict, bridge: "ConvexBridge") -> dict:
             to_addr = params.get("to_address", "")
             amount  = float(params.get("amount", 0))
             token   = params.get("token", "USDT")
-            # Validate before calling TWAK — irreversible on-chain tx
+            # Validate before calling TWAK - irreversible on-chain tx
             if not re.match(r"^0x[0-9a-fA-F]{40}$", to_addr):
                 raise ValueError(f"invalid BSC address: {to_addr!r}")
             if amount <= 0:
@@ -155,9 +155,9 @@ def _dispatch(cmd_type: str, params: dict, bridge: "ConvexBridge") -> dict:
             if quote.price_impact_pct > MAX_CONVERT_IMPACT:
                 raise ValueError(
                     f"price impact {quote.price_impact_pct:.2%} exceeds "
-                    f"{MAX_CONVERT_IMPACT:.0%} cap — aborting convert"
+                    f"{MAX_CONVERT_IMPACT:.0%} cap - aborting convert"
                 )
-            # balance check — catch insufficient funds before broadcasting
+            # balance check - catch insufficient funds before broadcasting
             bal_data = twak.balance(chain="bsc")
             if from_token == "BNB":
                 available = float(bal_data.get("available", 0))
@@ -187,7 +187,7 @@ def _dispatch(cmd_type: str, params: dict, bridge: "ConvexBridge") -> dict:
                             _cur = float(_allow.get("allowance") or _allow.get("value") or 0)
                             if _cur == 0:
                                 twak.erc20_approve(_USDT_BSC, _router, "1000")
-                except Exception:  # noqa: BLE001 — pre-flight must not block the convert
+                except Exception:  # noqa: BLE001 - pre-flight must not block the convert
                     pass
             res = twak.swap_execute(from_token, to_token, usd=usd, chain="bsc", slippage=1.0)
             # Record in Convex so the convert shows up in Recent Trades with real gas.
@@ -227,7 +227,7 @@ def _dispatch(cmd_type: str, params: dict, bridge: "ConvexBridge") -> dict:
                 "gas_usd":          gas_usd,
             }
         if cmd_type == "force_cycle":
-            # Acknowledged — the loop runs on its fixed cadence; this unblocks the UI.
+            # Acknowledged - the loop runs on its fixed cadence; this unblocks the UI.
             return {"status": "triggered"}
         raise ValueError(f"unknown command_type: {cmd_type!r}")
     except KeyError as e:

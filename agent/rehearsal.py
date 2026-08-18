@@ -1,9 +1,9 @@
 """
-Step 7 — paper rehearsal + sim/live reconciliation + audit completeness.
+Step 7 - paper rehearsal + sim/live reconciliation + audit completeness.
 
 Runs the backtest (sim) and the live PAPER loop over the SAME real-feed window
-and proves they agree fill-for-fill and equity-for-equity — the sim/live parity
-invariant checked on the real dataset, not synthetic bars — plus audit
+and proves they agree fill-for-fill and equity-for-equity - the sim/live parity
+invariant checked on the real dataset, not synthetic bars - plus audit
 completeness (exactly one decision row per cycle). This is the multi-day
 paper-run harness: with `--source live` it pulls fresh bars from the real feed,
 and the same report surfaces any drift between what the sim expected and what
@@ -64,11 +64,11 @@ def reconcile(cfg: AgentConfig, bars) -> ReconcileReport:
     cfg.second_brain_enabled = False     # measure /core parity, not the Hermes overlay
     cost = BSCCostModel()
 
-    # Sim side — fresh RiskEngine-wrapped /core strategy.
+    # Sim side - fresh RiskEngine-wrapped /core strategy.
     sim = run_backtest(bars, build_strategy(cfg),
                        initial_capital=cfg.initial_capital, cost_model=cost)
 
-    # Live (paper) side — independent instance, same config, offline bridge.
+    # Live (paper) side - independent instance, same config, offline bridge.
     loop = build_replay_loop(cfg, bars)
     results = loop.run()
     live_fills = [r.execution.fill for r in results if r.execution and r.execution.is_fill]
@@ -119,7 +119,7 @@ def main(argv=None) -> int:
 
     cfg = AgentConfig(symbol=args.symbol)
     if not args.write_convex:
-        cfg.convex_url = ""               # offline bridge — don't pollute Convex
+        cfg.convex_url = ""               # offline bridge - don't pollute Convex
 
     bars = _load_bars(cfg, args.source, args.bars)
     print(f"\n  paper rehearsal | {args.symbol} | {len(bars)} bars | source={args.source} | "

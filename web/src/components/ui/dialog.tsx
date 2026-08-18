@@ -31,7 +31,7 @@ function DialogClose({
 
 // forwardRef: radix wraps the animated Overlay/Content in <Presence>, which
 // attaches a ref to the child. On React 18 a plain function component can't hold
-// a ref ("Function components cannot be given refs" warning) — so forward it.
+// a ref ("Function components cannot be given refs" warning) - so forward it.
 const DialogOverlay = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Overlay>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Overlay>

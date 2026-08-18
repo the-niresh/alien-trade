@@ -1,11 +1,11 @@
 """
-Human-feedback gate — the deterministic side of the human-in-the-loop.
+Human-feedback gate - the deterministic side of the human-in-the-loop.
 
 The operator supervises the live run and marks decisions good or bad from the
 cockpit (a thumbs up/down on a setup). Those labels are stored per *setup key*
 (regime + dominant signal) and consulted before the next trade on the same setup:
 enough "bad" marks block it, a single net-bad mark shrinks it. This is the human
-feedback loop the project's intelligence rests on — pure arithmetic, off the LLM
+feedback loop the project's intelligence rests on - pure arithmetic, off the LLM
 path, sim/live-shared in shape (offline → no records → ALLOW, so parity holds).
 
 Mirrors the mistake-avoidance verdict shape so the loop treats both the same way.
@@ -56,9 +56,9 @@ def evaluate_feedback(records: list[dict]) -> FeedbackVerdict:
     net = bad - good
     if net >= BLOCK_THRESHOLD:
         return FeedbackVerdict(True, 1.0,
-                               f"operator flagged this setup bad x{bad} (net {net}) — blocked")
+                               f"operator flagged this setup bad x{bad} (net {net}) - blocked")
     if net >= PENALTY_THRESHOLD:
         return FeedbackVerdict(False, PENALTY_SIZE,
-                               f"operator flagged this setup bad (net {net}) — size halved")
+                               f"operator flagged this setup bad (net {net}) - size halved")
     return FeedbackVerdict(False, 0.0,
-                           f"human feedback net {net} (good {good}/bad {bad}) — allowed")
+                           f"human feedback net {net} (good {good}/bad {bad}) - allowed")

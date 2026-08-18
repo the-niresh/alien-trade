@@ -1,5 +1,5 @@
 """
-Hourly digest — reads the live Convex state bus and pushes a compact Telegram
+Hourly digest - reads the live Convex state bus and pushes a compact Telegram
 summary so the operator gets a heartbeat every hour without watching the cockpit.
 
 Self-contained CLI, run by the alien-digest systemd timer:
@@ -10,7 +10,7 @@ Self-contained CLI, run by the alien-digest systemd timer:
 Degrades gracefully: no CONVEX_URL → reports "offline"; no TELEGRAM_BOT_TOKEN /
 TELEGRAM_CHAT_ID → prints to stdout instead of sending (never raises). It reuses
 the same ConvexBridge reads the agent writes through and the same TelegramBot the
-loop alerts through — one source of truth, one voice.
+loop alerts through - one source of truth, one voice.
 """
 from __future__ import annotations
 
@@ -77,7 +77,7 @@ def build_digest(bridge: ConvexBridge) -> str:
 
     flag = "🔴 HALTED" if halted else "🟢 live"
     sig = last.get("signals", {}) or {}
-    sig_str = "  ".join(f"{k[:3]}={_f(v):+.2f}" for k, v in sig.items()) if sig else "—"
+    sig_str = "  ".join(f"{k[:3]}={_f(v):+.2f}" for k, v in sig.items()) if sig else "-"
 
     lines = [
         f"🛸 Alien-Trade · {mode} · {flag}",
@@ -88,9 +88,9 @@ def build_digest(bridge: ConvexBridge) -> str:
         f"🎯 Objective: {_f(sc.get('objective')):.3f}   Sortino {_f(sc.get('sortino')):.2f} · Sharpe {_f(sc.get('sharpe')):.2f}",
         f"📊 Trades: {int(_f(sc.get('n_trades')))} total · win {_pct(sc.get('win_rate'))} · PF {_f(sc.get('profit_factor')):.2f}",
         f"⏱ Last hour: {n_tr} fills ({buys}B/{sells}S)   fees+gas {_usd(fees_gas)}",
-        f"🧭 Last decision: {last.get('regime', '—')} → {last.get('risk_verdict', '—')}  ({last.get('risk_reason', '—')})",
+        f"🧭 Last decision: {last.get('regime', '-')} → {last.get('risk_verdict', '-')}  ({last.get('risk_reason', '-')})",
         f"    signals: {sig_str}",
-        f"🛡 Rule-adherence: {'✅ clean' if sc.get('rule_adherence_clean', True) else '⚠️ VIOLATION'}   cycles {op.get('cycles_total', '—')}",
+        f"🛡 Rule-adherence: {'✅ clean' if sc.get('rule_adherence_clean', True) else '⚠️ VIOLATION'}   cycles {op.get('cycles_total', '-')}",
     ]
     return "\n".join(lines)
 
@@ -103,7 +103,7 @@ def main(argv: Optional[list[str]] = None) -> int:
     cfg = AgentConfig()
     bridge = ConvexBridge(url=cfg.convex_url)
     if not bridge.enabled:
-        msg = "🛸 Alien-Trade digest: Convex offline (no CONVEX_URL) — agent state unavailable."
+        msg = "🛸 Alien-Trade digest: Convex offline (no CONVEX_URL) - agent state unavailable."
     else:
         msg = build_digest(bridge)
 
@@ -113,7 +113,7 @@ def main(argv: Optional[list[str]] = None) -> int:
 
     bot = TelegramBot()
     if not bot.enabled:
-        print("[digest] TELEGRAM_BOT_TOKEN/CHAT_ID not set — printing instead:\n")
+        print("[digest] TELEGRAM_BOT_TOKEN/CHAT_ID not set - printing instead:\n")
         print(msg)
         return 0
 

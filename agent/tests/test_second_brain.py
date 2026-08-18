@@ -1,7 +1,7 @@
 """
-Step 6 — Second Brain: Hermes loop, institutional pre-load, AutoResearch,
+Step 6 - Second Brain: Hermes loop, institutional pre-load, AutoResearch,
 co-pilot, and token/cost telemetry. All tests run OFFLINE (no Upstash, no
-Anthropic key) against the in-memory fallbacks — hermetic and fast.
+Anthropic key) against the in-memory fallbacks - hermetic and fast.
 
 The load-bearing guarantees:
   • a stored reflection demonstrably changes a later decision (block / penalize)
@@ -149,7 +149,7 @@ class TestClaudeClientOffline:
         assert c.model_for("T2") == "claude-opus-4-8"
 
 
-# ── 5. Hermes WRITE — reflection ───────────────────────────────────────────────
+# ── 5. Hermes WRITE - reflection ───────────────────────────────────────────────
 
 class _FakeBridge:
     enabled = True
@@ -181,7 +181,7 @@ class TestReflectionWriter:
         assert "reinforce" in r.lesson and r.outcome_label == "win"
 
 
-# ── 6. Hermes READ — mistake-avoidance changes a later decision ────────────────
+# ── 6. Hermes READ - mistake-avoidance changes a later decision ────────────────
 
 class TestMistakeAvoidance:
     def test_repeated_losses_block_the_setup(self):
@@ -214,12 +214,12 @@ class TestMistakeAvoidance:
         assert v.block is False
 
     def test_read_path_never_calls_llm(self):
-        # avoidance holds no LLM at all — structurally cannot touch the hot path
+        # avoidance holds no LLM at all - structurally cannot touch the hot path
         ma = VectorMistakeAvoidance(vector=VectorStore(), params=StrategyParams())
         assert not hasattr(ma, "llm")
 
 
-# ── 7. Loop integration — penalty shrinks size, reflection fires on close ──────
+# ── 7. Loop integration - penalty shrinks size, reflection fires on close ──────
 
 class _PenaltyBrain:
     def check(self, history, order, regime):

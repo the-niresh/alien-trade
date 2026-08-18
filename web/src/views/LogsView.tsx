@@ -78,7 +78,7 @@ export function LogsView() {
                             onClick={() => recordFeedback({ cycle_id: d.cycle_id, setup_key: d.setup_key!, symbol: d.symbol, label: "bad" })}
                           ><ThumbsDown className="w-3.5 h-3.5" /></button>
                         </span>
-                      ) : <span className="text-border-hi">—</span>}
+                      ) : <span className="text-border-hi">-</span>}
                     </td>
                   </tr>
                 ))}

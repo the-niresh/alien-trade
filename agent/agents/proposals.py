@@ -14,7 +14,7 @@ def propose_trade(bridge, agent_id, *, command_type: str, params: dict):
 
 
 def simulate_fill(symbol: str, side: str, *, usd: float, price: float) -> dict:
-    """Paper fill — no on-chain tx."""
+    """Paper fill - no on-chain tx."""
     qty = round(usd / price, 8) if price else 0.0
     return {"symbol": symbol, "side": side, "usd": usd, "price": price,
             "qty": qty, "tx_hash": None, "mode": "paper"}

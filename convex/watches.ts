@@ -1,4 +1,4 @@
-// Market/trade watches — CRUD + the agent's edge-trigger state write.
+// Market/trade watches - CRUD + the agent's edge-trigger state write.
 // create/cancel are operator actions (token-gated); active/list are read-only;
 // setState is the agent loop persisting the armed/clear flag (ungated agent write,
 // same as agentEvents:append). The deterministic predicate lives in agent/watches.py.

@@ -18,7 +18,7 @@ const PRIMARY: DetailAgent = {
   kind: "primary",
   name: "Alien-Trade",
   status: "active",
-  goal: "Autonomous BSC spot trader — contrarian, drawdown-first.",
+  goal: "Autonomous BSC spot trader - contrarian, drawdown-first.",
 };
 
 export function AgentsView({ onAgentOpen, onNewAgent }: Props) {
@@ -85,7 +85,7 @@ export function AgentsView({ onAgentOpen, onNewAgent }: Props) {
             <span className="font-mono text-[10px] text-muted-fg/50 uppercase tracking-widest">Net PnL</span>
             <span className={cn("font-mono text-[13px] font-bold",
               pnl == null ? "text-muted-fg" : pnl >= 0 ? "text-green" : "text-red")}>
-              {pnl == null ? "—" : `${pnl >= 0 ? "+" : ""}$${pnl.toFixed(2)}`}
+              {pnl == null ? "-" : `${pnl >= 0 ? "+" : ""}$${pnl.toFixed(2)}`}
             </span>
           </div>
         </button>

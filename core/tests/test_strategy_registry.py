@@ -1,4 +1,4 @@
-"""Strategy Registry — named presets over one engine (offline)."""
+"""Strategy Registry - named presets over one engine (offline)."""
 from __future__ import annotations
 
 import pytest

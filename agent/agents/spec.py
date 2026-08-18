@@ -1,5 +1,5 @@
 """Validation for user-spawned Agent records. Validates structured input from
-the co-pilot's create_agent tool — never parses free text. Default mode is paper."""
+the co-pilot's create_agent tool - never parses free text. Default mode is paper."""
 from __future__ import annotations
 
 from agent.copilot_agent import TOOLS

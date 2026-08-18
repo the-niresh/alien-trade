@@ -1,4 +1,4 @@
-"""Autopilot capital manager — deterministic discipline-layer tests (offline)."""
+"""Autopilot capital manager - deterministic discipline-layer tests (offline)."""
 from __future__ import annotations
 
 from risk.autopilot import (
@@ -44,7 +44,7 @@ def test_bank_on_pct_target():
 
 
 def test_bank_on_abs_target_first():
-    # abs target ($5) is met before the pct target (10%) — whichever first
+    # abs target ($5) is met before the pct target (10%) - whichever first
     cfg = AutopilotConfig(enabled=True, profit_target_pct=0.10, profit_target_abs=5.0)
     d = _eval(cfg, _base_state(100.0), equity=105.0)  # +5% / +$5
     assert d.action is AutopilotAction.BANK
@@ -63,7 +63,7 @@ def test_floor_is_monotone_ratchet():
     # A smaller bank than the existing floor must NOT lower the floor.
     d = _eval(cfg, st, equity=110.0)
     assert d.action is AutopilotAction.BANK
-    assert d.state.protected_floor == 200.0   # unchanged — ratchet only rises
+    assert d.state.protected_floor == 200.0   # unchanged - ratchet only rises
     assert d.banked == 0.0
 
 

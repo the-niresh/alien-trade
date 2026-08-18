@@ -3,10 +3,10 @@ import { v } from "convex/values";
 
 const KEY = "global";
 
-// The live scorecard singleton — the agent's GOAL made measurable. Written from
+// The live scorecard singleton - the agent's GOAL made measurable. Written from
 // core/scorecard.py `Scorecard.as_convex_row()` (sim and live share that module,
 // locked decision #2), read by the glass cockpit's "objective" panel. Nullable
-// lines are genuinely absent in sim — null is honest, never faked to 0.
+// lines are genuinely absent in sim - null is honest, never faked to 0.
 const nullableNumber = v.union(v.number(), v.null());
 
 const fields = {

@@ -9,7 +9,7 @@ import type { DetailAgent } from "./types";
 
 const STRATEGIES = ["momentum", "contrarian", "balanced", "defensive"];
 const MODES = ["paper", "testnet", "mainnet"] as const;
-// The eligible market — BSC spot allowlist. These are the only tokens the agent may trade.
+// The eligible market - BSC spot allowlist. These are the only tokens the agent may trade.
 const ELIGIBLE_TOKENS = ["ETH", "CAKE", "UNI", "LINK", "AAVE"];
 
 function Section({ title, hint, children }: { title: string; hint?: string; children: React.ReactNode }) {
@@ -94,7 +94,7 @@ function PrimaryConfigure() {
       toast.success("Risk limits updated");
       setDirty(false);
     } catch (e) {
-      toast.error(`Save failed — ${String(e).includes("token") ? "pair the cockpit first" : "check token"}`);
+      toast.error(`Save failed - ${String(e).includes("token") ? "pair the cockpit first" : "check token"}`);
     } finally { setSaving(false); }
   }
 
@@ -149,7 +149,7 @@ function PrimaryConfigure() {
       }));
       toast.success("Autopilot updated");
     } catch (e) {
-      toast.error(`Save failed — ${String(e).includes("token") ? "pair the cockpit first" : "check token"}`);
+      toast.error(`Save failed - ${String(e).includes("token") ? "pair the cockpit first" : "check token"}`);
     } finally { setApSaving(false); }
   }
 
@@ -163,7 +163,7 @@ function PrimaryConfigure() {
   return (
     <div className="flex flex-col gap-4">
       {/* Sizing & Risk */}
-      <Section title="Sizing & risk — drawdown-first" hint="Hard caps the engine reads every cycle.">
+      <Section title="Sizing & risk - drawdown-first" hint="Hard caps the engine reads every cycle.">
         <div className="grid grid-cols-2 gap-3 max-sm:grid-cols-1">
           <Field label="Per-trade size (USD)" hint="Max USD per position.">
             <input className={inputCls} value={maxPos} onChange={(e) => onEdit(setMaxPos)(e.target.value)} inputMode="decimal" />
@@ -186,7 +186,7 @@ function PrimaryConfigure() {
       </Section>
 
       {/* Eligible market */}
-      <Section title="Eligible market — BSC spot" hint="The only tokens the agent may trade. Spot-long-only on PancakeSwap via TWAK.">
+      <Section title="Eligible market - BSC spot" hint="The only tokens the agent may trade. Spot-long-only on PancakeSwap via TWAK.">
         <div className="flex gap-1.5 flex-wrap">
           {ELIGIBLE_TOKENS.map((sym) => (
             <button key={sym} onClick={() => toggleToken(sym)} className={chipCls(allowlist.includes(sym), "green")}>
@@ -225,7 +225,7 @@ function PrimaryConfigure() {
       </Section>
 
       {/* Autopilot (advanced) */}
-      <Section title="Autopilot — capital manager" hint="Profit-lock, trailing giveback, and recycle gates. Most can leave defaults.">
+      <Section title="Autopilot - capital manager" hint="Profit-lock, trailing giveback, and recycle gates. Most can leave defaults.">
         <button onClick={() => setApOpen((o) => !o)}
           className="font-mono text-[11px] text-muted-fg hover:text-text self-start uppercase tracking-widest">
           {apOpen ? "▾ Hide advanced" : "▸ Show advanced"}
@@ -273,7 +273,7 @@ function SpawnedConfigure({ agent }: { agent: DetailAgent }) {
       await update({ id: agent.id, goal, trigger: { kind: "schedule", spec }, mode });
       toast.success("Agent updated");
     } catch (e) {
-      toast.error(`Save failed — ${String(e)}`);
+      toast.error(`Save failed - ${String(e)}`);
     } finally { setSaving(false); }
   }
 
@@ -305,7 +305,7 @@ function SpawnedConfigure({ agent }: { agent: DetailAgent }) {
         </button>
       </Section>
 
-      <Section title="Eligible market — BSC spot" hint="Inherited from the live trader. Agents observe the same allowlist.">
+      <Section title="Eligible market - BSC spot" hint="Inherited from the live trader. Agents observe the same allowlist.">
         <div className="flex gap-1.5 flex-wrap">
           {ELIGIBLE_TOKENS.map((sym) => (
             <span key={sym} className="font-mono text-[11px] border border-border/30 text-muted-fg rounded px-3 py-2 uppercase tracking-widest">{sym}</span>

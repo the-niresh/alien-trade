@@ -76,7 +76,7 @@ class BNBExec:
     """
     BSC execution engine.
     Wraps PancakeSwap V3 swaps with simulate-before-send discipline.
-    Signing is delegated to TWAKSigner — this class never holds private keys.
+    Signing is delegated to TWAKSigner - this class never holds private keys.
     """
 
     def __init__(self, testnet: bool = True):
@@ -105,7 +105,7 @@ class BNBExec:
     ) -> SwapSimResult:
         """
         eth_call the PancakeSwap router. Returns expected output + gas estimate.
-        Never submits a transaction — pure read.
+        Never submits a transaction - pure read.
         """
         calldata = _encode_exact_input_single(params)
 
@@ -152,7 +152,7 @@ class BNBExec:
     ) -> dict:
         """
         Build unsigned EVM tx from PancakeSwap V3 calldata (direct path / testnet fallback).
-        Prefer build_unsigned_tx_from_twak() for mainnet — better routing via TWAK Amber API.
+        Prefer build_unsigned_tx_from_twak() for mainnet - better routing via TWAK Amber API.
         """
         calldata = sim.calldata if sim else _encode_exact_input_single(params)
         gas_estimate = sim.gas_estimate if sim else 200_000
@@ -238,7 +238,7 @@ class BNBExec:
         if "error" in body:
             err = body["error"]
             if allow_revert and err.get("code") == 3:
-                return "0x"  # execution reverted — caller handles
+                return "0x"  # execution reverted - caller handles
             raise RuntimeError(f"RPC error: {err}")
         return body["result"]
 

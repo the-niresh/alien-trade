@@ -52,7 +52,7 @@ function Chip({
 }
 
 function TxLink({ hash }: { hash?: string }) {
-  if (!hash) return <span className="text-white/30 text-xs">—</span>;
+  if (!hash) return <span className="text-white/30 text-xs">-</span>;
   const short = hash.slice(0, 8) + "…" + hash.slice(-6);
   return (
     <a
@@ -342,7 +342,7 @@ export function HistoryView() {
                           ) : c.result ? (
                             <span className="text-green-400/70 truncate block">{c.result}</span>
                           ) : (
-                            <span className="text-white/20">—</span>
+                            <span className="text-white/20">-</span>
                           )}
                         </td>
                       </tr>

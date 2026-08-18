@@ -26,7 +26,7 @@ def _no_real_twak_subprocess(monkeypatch):
 
     `DecisionLoop._finalise()` takes a best-effort wallet snapshot that constructs
     a real `TwakCli()` and shells out (default subprocess timeout 120s). In the full
-    suite that call hangs on the network — fast in isolation, but stacking 60-120s
+    suite that call hangs on the network - fast in isolation, but stacking 60-120s
     stalls across every loop test. We stub the subprocess seam so any un-mocked twak
     call fails fast; the snapshot block already swallows the error ("wallet balance
     is display-only; never block the cycle"). Tests that exercise twak directly mock

@@ -8,7 +8,7 @@ import {
  *
  * The desktop rail and the mobile bottom bar used to keep separate copies of this
  * list, and they drifted: Pipeline was an Activity icon in one and a Cpu icon in the
- * other, and Trackers and Pipeline ended up sharing Activity — two rail buttons that
+ * other, and Trackers and Pipeline ended up sharing Activity - two rail buttons that
  * looked identical. Two lists of the same thing will always drift, so there is now
  * one, and `nav.test.ts` fails if any icon or label is reused.
  */
@@ -33,7 +33,7 @@ type IconComponent = React.ComponentType<{ className?: string }>;
 
 export interface ViewMeta {
   icon: IconComponent;
-  /** Rail tooltip and bottom-bar caption. Short — it sits under a 44px button. */
+  /** Rail tooltip and bottom-bar caption. Short - it sits under a 44px button. */
   label: string;
   /** One line, plain words, for anyone who has not seen this app before. */
   blurb: string;

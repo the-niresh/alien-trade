@@ -34,7 +34,7 @@ jobs:
         # optional at runtime, but `agent/graph/supervisor.py` imports langgraph at
         # module level, so without it three supervisor tests fail at collection
         # rather than skipping. Better that CI exercises that code than pretends it
-        # is not there. The social and corpus extras stay out — those imports are
+        # is not there. The social and corpus extras stay out - those imports are
         # genuinely lazy and their tests skip cleanly.
         run: |
           uv venv core/.venv
@@ -48,11 +48,11 @@ jobs:
         continue-on-error: true
         run: core/.venv/bin/ruff check core agent onboard research
 
-      - name: Ruff (syntax + undefined names — these DO fail the build)
+      - name: Ruff (syntax + undefined names - these DO fail the build)
         run: core/.venv/bin/ruff check --select E9,F63,F7,F82 core agent onboard research
 
       # Integration tests are deselected, not deleted. They need the parquet history
-      # (gitignored — fetch it with `python -m fetch_data`), live network access, or
+      # (gitignored - fetch it with `python -m fetch_data`), live network access, or
       # wallet credentials. On a CI runner all three are absent, so they would fail
       # for reasons that say nothing about the code. Everything else runs.
       - name: Tests

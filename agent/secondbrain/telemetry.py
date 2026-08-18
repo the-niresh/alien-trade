@@ -1,5 +1,5 @@
 """
-Cost telemetry — per-call {tier, in/out tokens, cost, cache_hit, latency} plus a
+Cost telemetry - per-call {tier, in/out tokens, cost, cache_hit, latency} plus a
 running "$ saved vs naive baseline".
 
 The naive baseline = every call routed to the top tier (Opus) with no cache. The
@@ -14,12 +14,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-# USD per 1M tokens — Anthropic catalog. Keep in sync with llm.MODEL_TIERS.
+# USD per 1M tokens - Anthropic catalog. Keep in sync with llm.MODEL_TIERS.
 PRICING: dict[str, tuple[float, float]] = {   # model -> (input, output)
     "claude-opus-4-8":   (5.00, 25.00),
     "claude-sonnet-4-6": (3.00, 15.00),
     "claude-haiku-4-5":  (1.00,  5.00),
-    # OpenAI fallback models (only billed when Claude is down — see llm.py)
+    # OpenAI fallback models (only billed when Claude is down - see llm.py)
     "gpt-4o-mini":       (0.15,  0.60),
     "gpt-4o":            (2.50, 10.00),
 }

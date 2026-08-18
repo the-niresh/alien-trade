@@ -29,7 +29,7 @@ from risk.stops import compute_atr, hard_stop_level, trailing_stop_level, stop_t
 class _PosTracker:
     """
     Lightweight position accounting for daily P&L.
-    Does NOT replicate the backtest engine's cost model — costs are tracked there.
+    Does NOT replicate the backtest engine's cost model - costs are tracked there.
     Used only for daily-loss threshold computation.
     """
     cash: float
@@ -113,7 +113,7 @@ class RiskEngine:
         # ── Hard + trailing ATR stop (forced exit BEFORE the inner strategy) ──
         if self._pos.units > 0.0:
             self._pos.high_water = max(self._pos.high_water, bar.high)
-            # Use prior bars for ATR — the current bar is mid-formation; prior bars give
+            # Use prior bars for ATR - the current bar is mid-formation; prior bars give
             # a stable, confirmed volatility estimate (sim/live parity preserved).
             atr = compute_atr(history[:-1] if len(history) > 1 else history, self._config.atr_period)
             hard = hard_stop_level(self._pos.avg_entry, atr, self._config.atr_stop_mult)
@@ -138,9 +138,9 @@ class RiskEngine:
         current_equity = self._pos.equity(price)
         daily_loss_pct = self._pos.daily_loss_pct(current_equity)
 
-        # ── Guardrails (pre-signal check — fail fast) ─────────────────────────
+        # ── Guardrails (pre-signal check - fail fast) ─────────────────────────
         pre_check = check_guardrails(
-            symbol="BNB",                        # placeholder — real symbol from order below
+            symbol="BNB",                        # placeholder - real symbol from order below
             size_usd=self._config.base_position_usd,
             daily_loss_pct=daily_loss_pct,
             consecutive_losses=self._pos.consecutive_losses,
@@ -161,7 +161,7 @@ class RiskEngine:
         # ── Sizing ────────────────────────────────────────────────────────────
         # Entries and exits are sized by different rules, and conflating them is a
         # correctness bug, not a style choice. Volatility targeting answers "how much
-        # should I put at risk?" — a question that only has meaning for a new position.
+        # should I put at risk?" - a question that only has meaning for a new position.
         # An exit is bounded by what is actually held; running it through the entry
         # sizer produces a sell unrelated to the position, which then either fails to
         # close it or asks to sell more than exists.
@@ -183,7 +183,7 @@ class RiskEngine:
 
             # ── Full guardrail check on final sized order ─────────────────────
             # Buys only. A guardrail that can veto an exit is a guardrail that can
-            # trap capital in a losing position — the opposite of risk control.
+            # trap capital in a losing position - the opposite of risk control.
             check = check_guardrails(
                 symbol=order.symbol,
                 size_usd=sized_usd,

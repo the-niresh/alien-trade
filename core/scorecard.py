@@ -1,5 +1,5 @@
 """
-The agent's goal, made measurable — the single scorecard that says how well the
+The agent's goal, made measurable - the single scorecard that says how well the
 agent met its objective. Sim and live share this module (locked decision #2): the
 backtest scores a BacktestResult, the live runtime scores the same shapes built
 from real fills, so "how it scores in sim" and "how it scores live" can never
@@ -17,7 +17,7 @@ constraints). The doc that defines all of this is docs/GOAL.md.
 This module only COMPUTES the market-performance lines from an equity curve +
 trades + fills. The operational lines (uptime, unattended cycles, recoveries)
 and the rule-adherence lines (violations, halts fired) are facts the runtime
-KNOWS, not things a curve can reveal — they are passed through unchanged so the
+KNOWS, not things a curve can reveal - they are passed through unchanged so the
 one card carries the whole goal in one place.
 """
 from __future__ import annotations
@@ -28,7 +28,7 @@ from typing import Optional, Sequence
 
 import numpy as np
 
-# Objective weighting — drawdown penalty. Kept in lockstep with
+# Objective weighting - drawdown penalty. Kept in lockstep with
 # core/strategy/optimizer.py (_LAMBDA); the optimizer selects params on the
 # train objective, this scores the realised one. Same lambda, same goal.
 LAMBDA = 2.0
@@ -39,7 +39,7 @@ _EPS = 1e-9
 
 @dataclass
 class OperationalStats:
-    """Autonomy facts the RUNTIME knows — it is an *autonomous* agent, so staying
+    """Autonomy facts the RUNTIME knows - it is an *autonomous* agent, so staying
     alive unattended is part of the goal, not incidental. All zero/None in sim."""
     cycles_total: int = 0
     cycles_unattended: int = 0          # ran with no manual intervention
@@ -59,7 +59,7 @@ class OperationalStats:
 class RuleAdherence:
     """Rule adherence as a binary fact + counts, against the hard guardrails in
     core/risk/guardrails.py. The agent already ENFORCES these; this RECORDS that
-    it did. `violations` must be 0 — a breach that reached execution is a failure;
+    it did. `violations` must be 0 - a breach that reached execution is a failure;
     a guardrail that correctly BLOCKED a trade is a `blocks_fired`, not a violation."""
     violations: int = 0                 # hard limits breached at execution (target: 0)
     blocks_fired: int = 0               # trades correctly blocked by a guardrail
@@ -186,7 +186,7 @@ def _max_drawdown_duration_days(
     arr: np.ndarray, timestamps: Optional[Sequence[int]]
 ) -> Optional[float]:
     """Longest time the equity spent below a prior peak before recovering it.
-    Depth (max_drawdown) says how bad; duration says how long underwater — both
+    Depth (max_drawdown) says how bad; duration says how long underwater - both
     are scored over a short live window. Returns days if timestamps are given,
     else None (step counts are not comparable across runs)."""
     if timestamps is None or len(timestamps) != len(arr) or len(arr) < 2:
@@ -200,7 +200,7 @@ def _max_drawdown_duration_days(
             longest_ms = max(longest_ms, ts[i] - peak_ts)
             peak = arr[i]
             peak_ts = ts[i]
-    # Still underwater at the end — count the open episode too.
+    # Still underwater at the end - count the open episode too.
     if arr[-1] < peak:
         longest_ms = max(longest_ms, ts[-1] - peak_ts)
     return round(longest_ms / _MS_PER_DAY, 4)
@@ -286,7 +286,7 @@ def compute_scorecard(
     """Score an equity curve + trades + fills against the agent's goal.
 
     Works identically for a BacktestResult (pass result.equity_curve / .trades /
-    .fills) and for a live window (build the same shapes from real fills) — that
+    .fills) and for a live window (build the same shapes from real fills) - that
     is the whole point of one shared module.
 
     timestamps   : unix-ms aligned 1:1 with equity_curve. Required for the
@@ -298,7 +298,7 @@ def compute_scorecard(
     """
     arr = np.asarray(list(equity_curve), dtype=float)
     if len(arr) < 2:
-        # Degenerate (no trading window yet) — return a zeroed card, not a crash.
+        # Degenerate (no trading window yet) - return a zeroed card, not a crash.
         return Scorecard(
             objective=0.0, total_return=0.0, net_pnl_usd=0.0,
             max_drawdown=0.0, max_drawdown_duration_days=None,

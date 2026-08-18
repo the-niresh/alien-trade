@@ -6,7 +6,7 @@ const label = v.union(v.literal("good"), v.literal("bad"));
 /**
  * Operator marks a setup good/bad from the cockpit (human-in-the-loop). The agent
  * consults these per setup_key before the next trade on the same setup
- * (core/risk/feedback.py). Append-only — every mark is kept for the audit trail.
+ * (core/risk/feedback.py). Append-only - every mark is kept for the audit trail.
  */
 export const record = mutation({
   args: {

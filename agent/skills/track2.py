@@ -1,5 +1,5 @@
 """
-Track-2 strategy skill — exposes the Alien-Trade multi-signal score as a
+Track-2 strategy skill - exposes the Alien-Trade multi-signal score as a
 callable CMC Skill endpoint.
 
 Input schema:  {symbol: str, lookback_bars: int = 60}
@@ -27,7 +27,7 @@ DEFAULT_LOOKBACK = 60
 MIN_LOOKBACK = 30
 MAX_LOOKBACK = 200
 
-# Skill identity — matches skill_manifest.json
+# Skill identity - matches skill_manifest.json
 SKILL_UNIQUE_NAME = "alien_trade_multi_signal_score"
 SKILL_VERSION = "1.0.0"
 

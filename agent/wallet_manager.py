@@ -1,5 +1,5 @@
 """
-Wallet Manager Agent — LLM with live tools that watches the real wallet.
+Wallet Manager Agent - LLM with live tools that watches the real wallet.
 
 Runs as a one-shot tool-use loop (Claude Haiku for cost). Called automatically
 by the sustained-failure watchdog and optionally from the hourly digest.
@@ -48,7 +48,7 @@ TOOLS: list[dict] = [
     {
         "name": "get_recent_failures",
         "description": (
-            "Read the last N audit-log rows for 'error' events — swap failures, "
+            "Read the last N audit-log rows for 'error' events - swap failures, "
             "TWAK errors, and network problems. Helps diagnose why swaps are failing."
         ),
         "input_schema": {
@@ -118,7 +118,7 @@ Key facts:
 - The agent trades ETH on BSC via TWAK (Trust Wallet Agent Kit) spot swaps
 - Capital: a small wallet (~$5 USDT + BNB for gas)
 - The paper ledger tracks what the agent THINKS it holds (may differ from reality)
-- TWAK swaps sometimes execute on-chain but return no tx hash — the agent then
+- TWAK swaps sometimes execute on-chain but return no tx hash - the agent then
   thinks the trade failed but real tokens are sitting in the wallet
 
 Your workflow:
@@ -127,12 +127,12 @@ Your workflow:
 3. Detect mismatches: real tokens held but ledger says flat, or USDT lower than expected
 4. Decide the right action and explain clearly
 5. If there is a mismatch (real ETH but ledger flat): call sell_token_to_usdt to realign
-   — this gives the agent clean USDT capital to trade with
+   - this gives the agent clean USDT capital to trade with
 6. If USDT is critically low (< $0.10): recommend the operator top up; set_agent_halted(true)
 7. If swap failures are a TWAK/network error: set_agent_halted(true) and explain
 
 Keep your final recommendation concise: what's wrong, what you did, what the operator should do.
-Never invent data — only act on what the tools return."""
+Never invent data - only act on what the tools return."""
 
 
 # ── Tool executor ─────────────────────────────────────────────────────────────
@@ -231,10 +231,10 @@ class WalletManagerTools:
 
     def _sell_token_to_usdt(self, symbol: str, amount_usd: float) -> dict:
         if not self._allow_sell:
-            return {"error": "sell not enabled — run with --fix flag or allow_sell=True"}
+            return {"error": "sell not enabled - run with --fix flag or allow_sell=True"}
         if self._mode == "paper":
             return {"simulated": True, "symbol": symbol, "amount_usd": amount_usd,
-                    "note": "paper mode — no real swap"}
+                    "note": "paper mode - no real swap"}
         try:
             quote = self._twak.swap_quote(
                 symbol, "USDT", usd=amount_usd,

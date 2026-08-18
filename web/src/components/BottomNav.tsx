@@ -52,7 +52,7 @@ export function BottomNav({ active, onSelect }: Props) {
               aria-label={tab.label}
               aria-current={isActive ? "page" : undefined}
             >
-              {/* Active indicator — full-width top bar with glow */}
+              {/* Active indicator - full-width top bar with glow */}
               {isActive && (
                 <span
                   className="absolute top-0 left-2 right-2 h-[2.5px] rounded-full bg-green"

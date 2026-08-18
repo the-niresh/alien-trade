@@ -1,7 +1,7 @@
 [project]
 name = "alien-trade-core"
 version = "0.1.0"
-description = "Strategy + signals + backtest/sim engine — shared by sim and live"
+description = "Strategy + signals + backtest/sim engine - shared by sim and live"
 requires-python = ">=3.11"
 dependencies = [
     "numpy>=1.26",
@@ -71,7 +71,7 @@ testpaths = ["tests"]
 asyncio_mode = "auto"
 markers = [
     "unit: unit test",
-    "integration: needs something the machine may not have — parquet history under core/data/parquet (gitignored), live network access, or wallet credentials from .env.local. Deselected in CI with -m 'not integration'; run locally after `python -m fetch_data`.",
+    "integration: needs something the machine may not have - parquet history under core/data/parquet (gitignored), live network access, or wallet credentials from .env.local. Deselected in CI with -m 'not integration'; run locally after `python -m fetch_data`.",
 ]
 
 [tool.ruff]

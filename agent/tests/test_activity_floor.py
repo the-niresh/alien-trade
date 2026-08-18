@@ -1,5 +1,5 @@
 """
-Activity floor — a minimum-activity rule of >= 1 trade per calendar day. When
+Activity floor - a minimum-activity rule of >= 1 trade per calendar day. When
 enabled, the loop forces ONE minimal swap late in the day if nothing has traded yet.
 These tests pin: off by default, fires only past the deadline hour with zero trades,
 skips when a real trade already happened, trims when holding (never breaches caps),
@@ -44,7 +44,7 @@ def test_off_by_default_no_forced_trade():
 
 def test_no_trade_before_deadline_hour():
     loop = _loop(enforce=True)
-    loop.run_cycle([_bar(_ms(1, 10))])   # mid-day — give the strategy room
+    loop.run_cycle([_bar(_ms(1, 10))])   # mid-day - give the strategy room
     assert loop._trades_today == 0
 
 
@@ -70,7 +70,7 @@ def test_skips_when_a_real_trade_already_happened():
 
     loop = _loop(enforce=True, strategy=buy_once)
     loop.run_cycle([_bar(_ms(1, 23))])
-    # Exactly the strategy's trade — no extra compliance swap piled on top.
+    # Exactly the strategy's trade - no extra compliance swap piled on top.
     assert loop._trades_today == 1
     assert len(loop._fills) == 1
     assert loop._fills[0].order.size_usd == 1_000.0
@@ -89,10 +89,10 @@ def test_counter_resets_each_calendar_day():
     loop = _loop(enforce=True)
     loop.run_cycle([_bar(_ms(1, 23))])   # day 1 forces a trade
     assert loop._trades_today == 1
-    loop.run_cycle([_bar(_ms(2, 5))])    # day 2, early — counter reset, no forced trade yet
+    loop.run_cycle([_bar(_ms(2, 5))])    # day 2, early - counter reset, no forced trade yet
     assert loop._activity_day == 2
     assert loop._trades_today == 0
-    loop.run_cycle([_bar(_ms(2, 23))])   # day 2, end — forces again
+    loop.run_cycle([_bar(_ms(2, 23))])   # day 2, end - forces again
     assert loop._trades_today == 1
 
 

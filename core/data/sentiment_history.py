@@ -1,5 +1,5 @@
 """
-Free historical market sentiment — the Fear & Greed Index (alternative.me).
+Free historical market sentiment - the Fear & Greed Index (alternative.me).
 
 No API key, no paid plan: full daily history back to 2018. This is the free
 historical S3 source that stands in for CMC Agent Hub social data until a paid
@@ -9,7 +9,7 @@ crypto market), so the same series enriches every symbol's bars.
 Output column: `social_score` carries the raw F&G index value in [0, 100]
 (0 = Extreme Fear, 100 = Extreme Greed). The contrarian transform into a
 [-1, 1] trading signal lives in `signals/sentiment.py` (fear_greed_signal),
-never here — this module only sources and aligns the data, point-in-time.
+never here - this module only sources and aligns the data, point-in-time.
 """
 from __future__ import annotations
 
@@ -80,7 +80,7 @@ def enrich_sentiment(df: pl.DataFrame, fg: pl.DataFrame | None = None) -> pl.Dat
 
     Point-in-time forward-fill: each bar gets the most recent F&G reading whose
     timestamp is at or before the bar's timestamp (no look-ahead). Bars earlier
-    than the first F&G reading keep social_score=0.0 (graceful — the signal
+    than the first F&G reading keep social_score=0.0 (graceful - the signal
     degrades to neutral, see sentiment_signal).
 
     `fg` may be passed in (already fetched) to avoid a network call; otherwise it

@@ -77,7 +77,7 @@ def test_agent_control_row_matches_convex_columns():
     assert C.AgentControl(stop_response_id="m1").as_row()["stop_response_id"] == "m1"
 
 
-# ── Failure matrix — the governing invariant ────────────────────────────────────
+# ── Failure matrix - the governing invariant ────────────────────────────────────
 
 def test_no_tier1_agent_can_halt_a_trade():
     for agent, policy in C.FAILURE_MATRIX.items():

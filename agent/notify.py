@@ -57,7 +57,7 @@ class TelegramBot:
             if not _warned_once:
                 log.warning(
                     "TelegramBot: TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID not set"
-                    " — alerts and commands disabled"
+                    " - alerts and commands disabled"
                 )
                 _warned_once = True
 
@@ -185,7 +185,7 @@ class TelegramBot:
             self._bridge.set_halted(True)
             return "Kill switch activated. Agent halted."
         except Exception:  # noqa: BLE001
-            return "Halt failed — bridge error."
+            return "Halt failed - bridge error."
 
     def _cmd_resume(self, _: str) -> str:
         if self._bridge is None:
@@ -194,7 +194,7 @@ class TelegramBot:
             self._bridge.set_halted(False)
             return "Kill switch cleared. Agent resuming."
         except Exception:  # noqa: BLE001
-            return "Resume failed — bridge error."
+            return "Resume failed - bridge error."
 
     def _cmd_pause(self, _: str) -> str:
         if self._bridge is None:

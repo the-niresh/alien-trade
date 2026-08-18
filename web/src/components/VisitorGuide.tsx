@@ -10,7 +10,7 @@ import { GUIDE_ANSWERS, GUIDE_FALLBACK, GUIDE_INTRO, matchGuideAnswer } from "@/
  *
  * The real Co-Pilot needs the operator's control token and spends credits per
  * question, so it cannot be handed to anonymous visitors. This is the same
- * affordance — a chat you type into — backed by fixed local answers. It says so at
+ * affordance - a chat you type into - backed by fixed local answers. It says so at
  * the top rather than implying a model is replying.
  */
 

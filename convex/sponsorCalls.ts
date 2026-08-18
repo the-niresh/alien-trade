@@ -33,13 +33,13 @@ export const append = mutation({
     if (notable) {
       let headline = "";
       if (fields.status === "error") {
-        headline = `${fields.sponsor} call failed — ${fields.endpoint}`;
+        headline = `${fields.sponsor} call failed - ${fields.endpoint}`;
       } else if (fields.kind === "swap") {
-        headline = `TWAK swap executed — ${fields.endpoint}`;
+        headline = `TWAK swap executed - ${fields.endpoint}`;
       } else if (fields.kind === "payment") {
-        headline = `CMC x402 payment $${(fields.cost_usd ?? 0).toFixed(4)} — ${fields.endpoint}`;
+        headline = `CMC x402 payment $${(fields.cost_usd ?? 0).toFixed(4)} - ${fields.endpoint}`;
       } else {
-        headline = `${fields.sponsor} x402 $${(fields.cost_usd ?? 0).toFixed(4)} — ${fields.endpoint}`;
+        headline = `${fields.sponsor} x402 $${(fields.cost_usd ?? 0).toFixed(4)} - ${fields.endpoint}`;
       }
       await ctx.db.insert("agent_events", {
         ts_ms:   fields.ts_ms,

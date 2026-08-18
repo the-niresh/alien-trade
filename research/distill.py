@@ -2,7 +2,7 @@
 
 The corpus text is wrapped in untrusted-content delimiters before being shown to the
 LLM, and the LLM's output is validated by the strict ThesisCard schema (reject on parse
-fail). The loop NEVER acts on the card's prose — only its (DSL-compiled) proposed_rule
+fail). The loop NEVER acts on the card's prose - only its (DSL-compiled) proposed_rule
 is ever executed. The `llm` callable is injectable so distillation is unit-testable
 offline and provider-agnostic.
 """
@@ -51,5 +51,5 @@ def distill(text: str, *, llm: Callable[[str], str], source: Optional[str] = Non
         obj["source"] = source
     try:
         return ThesisCard(**obj)
-    except Exception as e:  # noqa: BLE001 — surface as a single typed failure
+    except Exception as e:  # noqa: BLE001 - surface as a single typed failure
         raise DistillError(f"output failed ThesisCard validation: {e}") from e

@@ -39,14 +39,14 @@ def sentiment_signal(history: list[Bar], period: int = 7) -> float:
     if len(window_scores) >= 5:
         p90 = float(np.percentile(window_scores, 90))
         if current > p90 and roc > 0.4:
-            return -0.6   # blow-off top — contrarian
+            return -0.6   # blow-off top - contrarian
 
     # Normal: accelerating attention = bullish; collapsing attention = bearish
     # 50% increase over period → full bullish signal
     return float(np.clip(roc * 2.0, -1.0, 1.0))
 
 
-# ── Fear & Greed Index (free historical S3 — contrarian level) ────────────────
+# ── Fear & Greed Index (free historical S3 - contrarian level) ────────────────
 
 _FG_NEUTRAL = 50.0   # F&G midpoint
 _FG_SPAN = 40.0      # value 10 -> +1.0 (buy fear), value 90 -> -1.0 (fade greed)
@@ -62,7 +62,7 @@ def fear_greed_signal(history: list[Bar], smooth: int = 3) -> float:
     around neutral keeps the signal quiet when sentiment is unremarkable, so it
     only speaks at the extremes where the index actually carries information.
 
-    Returns 0.0 when F&G data is absent (all zeros) — graceful degradation,
+    Returns 0.0 when F&G data is absent (all zeros) - graceful degradation,
     identical to sentiment_signal so sim/live parity holds with no feed.
     """
     if not history:

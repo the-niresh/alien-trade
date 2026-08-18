@@ -3,7 +3,7 @@ Walk-forward parameter optimizer for the combined strategy.
 Objective: Sortino_train  −  λ * abs(max_drawdown_train)
 Select for a robust plateau, not a fragile peak.
 
-Grid is intentionally small (< 20 combos) — Step 3 principle: fewer knobs.
+Grid is intentionally small (< 20 combos) - Step 3 principle: fewer knobs.
 """
 from __future__ import annotations
 
@@ -23,7 +23,7 @@ PARAM_GRID: dict[str, list] = {
 }
 
 # Signal-weight presets (w_momentum, w_derivatives, w_sentiment). Kept to a tiny
-# set — the optimizer turns S3 (Fear & Greed contrarian) on only if it improves
+# set - the optimizer turns S3 (Fear & Greed contrarian) on only if it improves
 # the OOS objective; otherwise the S3-off preset wins. Anti-overfit: 3 presets,
 # not a free weight sweep. Each sums to ~1.0.
 WEIGHT_PRESETS: list[tuple[float, float, float]] = [
@@ -50,7 +50,7 @@ def optimize(
     Returns the best param dict. Falls back to defaults if all combos fail.
 
     stability_bonus=True adds a small bonus for params whose objective is
-    within 20% of the best across multiple nearby combinations —
+    within 20% of the best across multiple nearby combinations -
     selects the robust plateau, not a fragile spike.
     """
     results: list[tuple[dict, float]] = []
@@ -86,7 +86,7 @@ def optimize(
     best_obj = max(obj for _, obj in results)
 
     if stability_bonus:
-        # Count how many combos are within 20% of best — more neighbours = more robust
+        # Count how many combos are within 20% of best - more neighbours = more robust
         threshold = best_obj * 0.8 if best_obj > 0 else best_obj * 1.2
         stability_counts = {
             i: sum(1 for _, obj in results if obj >= threshold)
@@ -119,7 +119,7 @@ def make_strategy_from_dict(params: dict) -> "StrategyFn":
     Build a StrategyFn from an optimizer output dict.
     Unknown keys are ignored; missing keys fall back to StrategyParams defaults.
     """
-    from backtest.engine import StrategyFn  # noqa: F401 — re-exported for callers
+    from backtest.engine import StrategyFn  # noqa: F401 - re-exported for callers
     known = {f.name for f in StrategyParams.__dataclass_fields__.values()}  # type: ignore[attr-defined]
     filtered = {k: v for k, v in params.items() if k in known}
     return make_strategy(StrategyParams(**filtered))

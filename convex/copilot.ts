@@ -152,7 +152,7 @@ export const updatePartial = mutation({
   },
 });
 
-/** Finalise a streaming message — set full content and clear streaming flag. */
+/** Finalise a streaming message - set full content and clear streaming flag. */
 export const finaliseStream = mutation({
   args: {
     control_token: v.optional(v.string()),
@@ -218,7 +218,7 @@ export const ask = action({
       };
     } catch (e) {
       return {
-        answer: `Co-pilot offline — start the agent server to enable live Q&A. (${e})`,
+        answer: `Co-pilot offline - start the agent server to enable live Q&A. (${e})`,
         grounded: false,
         sources: [],
         action: null,
@@ -241,7 +241,7 @@ export const cleanupStuck = mutation({
     let count = 0;
     for (const m of stuck) {
       if (!m.content && !m.partial_content) {
-        await ctx.db.patch(m._id, { content: "_[response lost — co-pilot timed out]_", is_streaming: false, partial_content: undefined });
+        await ctx.db.patch(m._id, { content: "_[response lost - co-pilot timed out]_", is_streaming: false, partial_content: undefined });
         count++;
       }
     }
@@ -293,4 +293,4 @@ export const getLiveState = internalQuery({
   },
 });
 
-// askStreaming lives in convex/copilotNode.ts ("use node" — needed for HTTPS to api.anthropic.com)
+// askStreaming lives in convex/copilotNode.ts ("use node" - needed for HTTPS to api.anthropic.com)

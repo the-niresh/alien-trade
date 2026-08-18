@@ -59,7 +59,7 @@ export const latest = query({
 });
 
 /**
- * Recent signal snapshots — newest first.
+ * Recent signal snapshots - newest first.
  */
 export const recent = query({
   args: { limit: v.optional(v.number()) },

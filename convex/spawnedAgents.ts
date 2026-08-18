@@ -53,7 +53,7 @@ export const setStatus = mutation({
     control_token: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    // Pause / Resume / Terminate are state-changing — gate them like every other
+    // Pause / Resume / Terminate are state-changing - gate them like every other
     // control mutation (parity with config.ts). Convex deployment URLs are public.
     assertControlToken(args.control_token);
     await ctx.db.patch(args.id, { status: args.status });

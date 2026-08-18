@@ -25,7 +25,7 @@ export function LivePrice({ symbol }: Props) {
   if (!latest) {
     return (
       <Panel label={symbol} tick="cyan">
-        <span className="font-display text-[32px] font-bold text-muted-fg">—</span>
+        <span className="font-display text-[32px] font-bold text-muted-fg">-</span>
       </Panel>
     );
   }

@@ -11,7 +11,7 @@ from __future__ import annotations
 import json
 import re
 
-# Fields that carry the asset/topic of a question — filled even when optional so a
+# Fields that carry the asset/topic of a question - filled even when optional so a
 # discovered skill actually scopes to what the operator asked about.
 _IDENTITY_FIELDS = ("symbol", "slug", "query", "claim", "event", "event_query")
 
@@ -69,7 +69,7 @@ def detect_symbol(question: str, default: str = "BTC") -> str:
 def params_from_schema(schema: dict, question: str, symbol: str) -> dict:
     """Best-effort params for a discovered skill: fill identity/required fields,
     pick enum defaults, and leave everything else to the server's own defaults.
-    Wrong/missing fields just make execute_skill return an error we skip — so this
+    Wrong/missing fields just make execute_skill return an error we skip - so this
     stays deliberately simple rather than trying to be a general schema solver."""
     if not isinstance(schema, dict):
         return {}

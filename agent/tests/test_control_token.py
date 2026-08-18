@@ -1,11 +1,11 @@
 """CSO-1: the control-token guard on state-changing Convex mutations.
 
 Three layers:
-- `test_guard_unit` — pure mirror of convex/control.ts assertControlToken semantics
+- `test_guard_unit` - pure mirror of convex/control.ts assertControlToken semantics
   (documents fail-open-when-unset, fail-closed-when-set).
-- `test_token_injected_*` — the agent bridge attaches control_token to guarded
+- `test_token_injected_*` - the agent bridge attaches control_token to guarded
   mutations only (offline capture; no network).
-- `test_wrong_token_rejected` — live round-trip, skipped without CONVEX_URL.
+- `test_wrong_token_rejected` - live round-trip, skipped without CONVEX_URL.
 """
 import os
 import pytest
@@ -41,7 +41,7 @@ def test_token_not_injected_when_unset():
 
 
 def test_token_not_injected_into_unguarded_mutation():
-    # config:ensure is NOT guarded — injecting a token would make Convex reject the arg
+    # config:ensure is NOT guarded - injecting a token would make Convex reject the arg
     b = ConvexBridge(url="", control_token="tok123")
     b._call("mutation", "config:ensure", {})
     assert "control_token" not in b._offline_log[-1]["args"]

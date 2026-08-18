@@ -1,5 +1,5 @@
 """
-Telegram adapter via Telethon — credential-gated, legit, high-signal for crypto.
+Telegram adapter via Telethon - credential-gated, legit, high-signal for crypto.
 
 Reads public channels (trade-call / news channels). `handle` is the channel
 username (e.g. "whalepool" or "https://t.me/whalepool"). Credential-gated: stays

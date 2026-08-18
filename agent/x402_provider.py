@@ -1,18 +1,18 @@
 """
-TWAK native x402 provider — Alien-Trade as an x402 paywall operator.
+TWAK native x402 provider - Alien-Trade as an x402 paywall operator.
 
 Exposes POST /skill/signal_score as a metered $0.01-per-call endpoint.
 Any agent can call it; callers that include a valid x402 payment header
 (0.01 USDC on Base) receive a structured multi-signal score. Callers
 without payment get an HTTP 402 with machine-readable payment requirements.
 
-This module sits on both sides of x402 — it pays for data and charges for signal:
+This module sits on both sides of x402 - it pays for data and charges for signal:
 
   CONSUME  core/data/cmc_client.py pays $0.01 per CMC live data call.
   PROVIDE  this module charges $0.01 per /skill/signal_score call.
 
 Both use the same asset (USDC on Base eip155:8453), the same facilitator
-(x402.org), and the same x402 library — symmetric, demonstrable, auditable.
+(x402.org), and the same x402 library - symmetric, demonstrable, auditable.
 
 Offline-first: if X402_WALLET_ADDRESS is absent or the x402 library is not
 installed/configured, this module is a no-op and the endpoint stays free.
@@ -37,7 +37,7 @@ log = logging.getLogger(__name__)
 # ── Payment constants ─────────────────────────────────────────────────────────
 
 PRICE        = "$0.01"               # USDC per call
-NETWORK      = "eip155:8453"         # Base mainnet — USDC only, gasless
+NETWORK      = "eip155:8453"         # Base mainnet - USDC only, gasless
 SCHEME       = "exact"               # EIP-3009 exact-amount transfer
 
 DEFAULT_FACILITATOR_URL = "https://x402.org/facilitator"
@@ -80,15 +80,15 @@ def register(app: "FastAPI", wallet_address: Optional[str] = None) -> bool:
     after `app = FastAPI(...)`). FastAPI middleware is immutable after startup.
 
     Returns:
-        True   — middleware attached; POST /skill/signal_score now costs $0.01.
-        False  — nothing attached; endpoint stays free (offline / unconfigured).
+        True   - middleware attached; POST /skill/signal_score now costs $0.01.
+        False  - nothing attached; endpoint stays free (offline / unconfigured).
 
-    Never raises — any failure silently leaves the endpoint free.
+    Never raises - any failure silently leaves the endpoint free.
     """
     addr = wallet_address or _wallet_address()
     if not addr:
         log.info(
-            "[x402-provider] X402_WALLET_ADDRESS not set — "
+            "[x402-provider] X402_WALLET_ADDRESS not set - "
             "/skill/signal_score is free (set the env var to enable metering)"
         )
         return False
@@ -99,7 +99,7 @@ def register(app: "FastAPI", wallet_address: Optional[str] = None) -> bool:
         from x402.http.middleware.fastapi import PaymentMiddlewareASGI  # noqa: PLC0415
         from x402.mechanisms.evm.exact import register_exact_evm_server  # noqa: PLC0415
     except ImportError as exc:
-        log.warning(f"[x402-provider] x402 library not available ({exc}) — endpoint is free")
+        log.warning(f"[x402-provider] x402 library not available ({exc}) - endpoint is free")
         return False
 
     try:
@@ -119,10 +119,10 @@ def register(app: "FastAPI", wallet_address: Optional[str] = None) -> bool:
         )
         return True
 
-    except Exception as exc:  # noqa: BLE001 — never break the server
+    except Exception as exc:  # noqa: BLE001 - never break the server
         log.warning(
             f"[x402-provider] middleware setup failed ({type(exc).__name__}: {exc}) "
-            "— /skill/signal_score is free"
+            "- /skill/signal_score is free"
         )
         return False
 
@@ -160,5 +160,5 @@ def x402_gated_call(
         return None
     try:
         return _get_twak().x402_request(url, max_payment, body=body)
-    except Exception:  # noqa: BLE001 — caller gets None, not a crash
+    except Exception:  # noqa: BLE001 - caller gets None, not a crash
         return None

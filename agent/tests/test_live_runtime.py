@@ -1,10 +1,10 @@
 """
-Step 5 — live runtime: sim/live parity + execution-reliability (chaos) tests.
+Step 5 - live runtime: sim/live parity + execution-reliability (chaos) tests.
 
 The two things that decide whether a live run is trustworthy:
-  1. PARITY  — the paper loop must reproduce the backtest fill-for-fill, else the
+  1. PARITY  - the paper loop must reproduce the backtest fill-for-fill, else the
      sim is a lie and the optimisation was worthless.
-  2. RELIABILITY — kill switch halts within one cycle, idempotency stops double
+  2. RELIABILITY - kill switch halts within one cycle, idempotency stops double
      execution, and every failure mode (bad quote, failed tx, timeout, veto)
      produces a clean report instead of a crash or a double-trade.
 """
@@ -82,7 +82,7 @@ class TestSimLiveParity:
         sim_strat = make_risk_strategy(make_strategy(params), risk, initial_capital=10_000.0)
         sim = run_backtest(bars, sim_strat, initial_capital=10_000.0, cost_model=cost)
 
-        # Live (paper) side — fresh, independent instances, same config
+        # Live (paper) side - fresh, independent instances, same config
         live_strat = make_risk_strategy(make_strategy(params), risk, initial_capital=10_000.0)
         loop = DecisionLoop(
             feed=ReplayFeed(bars), strategy=live_strat,
@@ -484,7 +484,7 @@ class TestCrashRecovery:
 
     @pytest.mark.xfail(
         reason=(
-            "KNOWN FAILING — not yet diagnosed. After recover() marks the pre-crash "
+            "KNOWN FAILING - not yet diagnosed. After recover() marks the pre-crash "
             "cycle_ids seen, a replay of the same bars still produces a second trade. "
             "Two candidates, not yet separated: (a) the restored ledger + RiskEngine "
             "state legitimately signals on a cycle that never executed before, in "
@@ -492,7 +492,7 @@ class TestCrashRecovery:
             "cycle_ids rather than trade counts; (b) recovery is not marking every "
             "executed cycle. Idempotency itself is covered and passing elsewhere "
             "(TestIdempotency); this is specifically the post-restart replay path. "
-            "Left visible rather than deleted — the safety claim it encodes is real."
+            "Left visible rather than deleted - the safety claim it encodes is real."
         ),
         strict=False,
     )
@@ -501,7 +501,7 @@ class TestCrashRecovery:
         _, _, bars, params = self._run_once(bridge)
         trades_before = len(bridge.trades)
 
-        # Restart and REPLAY the exact same bars — recovery must dedupe executed cycles.
+        # Restart and REPLAY the exact same bars - recovery must dedupe executed cycles.
         loop2 = DecisionLoop(
             feed=ReplayFeed(bars),
             strategy=make_risk_strategy(make_strategy(params), RiskConfig(), 10_000.0),
@@ -526,13 +526,13 @@ class TestRehearsal:
     @pytest.mark.timeout(45)
     @pytest.mark.xfail(
         reason=(
-            "KNOWN FAILING — exceeds its time budget instead of asserting. "
+            "KNOWN FAILING - exceeds its time budget instead of asserting. "
             "reconcile() builds a full replay loop over 150 bars and something on that "
             "path blocks for minutes; the twak subprocess seam is already stubbed by "
             "conftest, so the remaining suspect is another per-cycle call that reaches "
             "for the network. Capped at 45s so it cannot dominate a CI run. The parity "
-            "property it checks — the paper loop reproducing the backtest fill for fill "
-            "— is the reason the evaluation numbers can be trusted, so this needs a "
+            "property it checks - the paper loop reproducing the backtest fill for fill "
+            "- is the reason the evaluation numbers can be trusted, so this needs a "
             "real fix, not a deletion."
         ),
         strict=False,
@@ -570,7 +570,7 @@ class TestObservability:
     def test_jlog_is_cp1252_safe(self):
         from agent.observability import jlog
         # LLM/market text can carry non-cp1252 chars; the line must stay encodable.
-        jlog("digest", note="price rose to $595 — watch resistance").encode("cp1252")
+        jlog("digest", note="price rose to $595 - watch resistance").encode("cp1252")
 
 
 # ── 6. LEDGER accounting ──────────────────────────────────────────────────────

@@ -1,4 +1,4 @@
-"""Human-feedback gate — deterministic setup-key + verdict (offline)."""
+"""Human-feedback gate - deterministic setup-key + verdict (offline)."""
 from __future__ import annotations
 
 from risk.feedback import evaluate_feedback, setup_key

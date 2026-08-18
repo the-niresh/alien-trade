@@ -2,7 +2,7 @@
 The swappable source interface + a tiny registry.
 
 Every platform is one adapter implementing `SocialSource`. Adding a channel later
-is: write an adapter, decorate with `@register("name")`, done — nothing else in
+is: write an adapter, decorate with `@register("name")`, done - nothing else in
 the pipeline changes (the "swappable adapter" vision).
 """
 from __future__ import annotations
@@ -15,7 +15,7 @@ from agent.social.schema import SocialPost, SourceSpec
 class NotConfigured(RuntimeError):
     """An adapter whose credentials/deps are not set up was asked to fetch.
 
-    Callers catch this and skip the source (failure-isolation, §9.3) — it is
+    Callers catch this and skip the source (failure-isolation, §9.3) - it is
     never fatal to the ingest run.
     """
 

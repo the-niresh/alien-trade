@@ -48,7 +48,7 @@ export function WatchesPanel() {
       setThreshold(""); setLabel("");
     } catch (e) {
       const msg = String(e);
-      toast.error(`Failed — ${msg.includes("token") ? "pair the cockpit first" : msg.slice(0, 70)}`);
+      toast.error(`Failed - ${msg.includes("token") ? "pair the cockpit first" : msg.slice(0, 70)}`);
     } finally { setBusy(false); }
   }
 
@@ -57,7 +57,7 @@ export function WatchesPanel() {
   return (
     <div className="panel p-4 mt-6 flex flex-col gap-3">
       <div className="flex items-center justify-between">
-        <span className="font-mono text-[10px] text-text uppercase tracking-widest">Watches — deterministic monitor</span>
+        <span className="font-mono text-[10px] text-text uppercase tracking-widest">Watches - deterministic monitor</span>
         <span className="font-mono text-[9px] text-muted-fg/50 uppercase tracking-widest">no LLM until one fires</span>
       </div>
 
@@ -100,7 +100,7 @@ export function WatchesPanel() {
 
       {/* Active watches */}
       {active.length === 0 ? (
-        <p className="font-mono text-[11px] text-muted-fg/50">No active watches. Arm one above — the loop checks it every cycle with zero token cost until it trips.</p>
+        <p className="font-mono text-[11px] text-muted-fg/50">No active watches. Arm one above - the loop checks it every cycle with zero token cost until it trips.</p>
       ) : (
         <div className="flex flex-col gap-1.5">
           {active.map((w) => (

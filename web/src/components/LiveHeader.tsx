@@ -57,7 +57,7 @@ export function LiveHeader({ halted, mode, onKillToggle, selectedSymbol = "ALL",
         </span>
       </div>
 
-      {/* Regime + price — hidden on mobile */}
+      {/* Regime + price - hidden on mobile */}
       <div className="hidden sm:flex items-center gap-3.5 flex-shrink-0">
         <div className="w-px h-7 bg-border" />
         {regime && <RegimeBadge regime={regime} />}
@@ -95,7 +95,7 @@ export function LiveHeader({ halted, mode, onKillToggle, selectedSymbol = "ALL",
         </Badge>
       )}
 
-      {/* Wallet balance — always visible (PWA mobile too), promoted ahead of PnL */}
+      {/* Wallet balance - always visible (PWA mobile too), promoted ahead of PnL */}
       {walletState != null && (
         <div className="flex items-center gap-2 sm:gap-3.5 flex-shrink-0">
           <div className="hidden sm:block w-px h-7 bg-border" />
@@ -108,7 +108,7 @@ export function LiveHeader({ halted, mode, onKillToggle, selectedSymbol = "ALL",
         </div>
       )}
 
-      {/* PnL — hidden on mobile */}
+      {/* PnL - hidden on mobile */}
       {pnl != null && (
         <div className="hidden sm:flex items-center gap-3.5 flex-shrink-0">
           <div className="w-px h-7 bg-border" />
@@ -123,7 +123,7 @@ export function LiveHeader({ halted, mode, onKillToggle, selectedSymbol = "ALL",
 
       <div className="flex-1" />
 
-      {/* Symbol select — hidden on mobile */}
+      {/* Symbol select - hidden on mobile */}
       {onSymbolChange && (
         <div className="hidden sm:block flex-shrink-0">
           <Select value={selectedSymbol} onValueChange={onSymbolChange}>
@@ -155,7 +155,7 @@ export function LiveHeader({ halted, mode, onKillToggle, selectedSymbol = "ALL",
         </button>
       )}
 
-      {/* desktop only — mobile has a FAB in AppShell */}
+      {/* desktop only - mobile has a FAB in AppShell */}
       <div className="hidden sm:flex" data-tour="kill-switch">
         <KillSwitch halted={halted} onToggle={onKillToggle} />
       </div>

@@ -4,15 +4,15 @@ const AGENT_URL = process.env.AGENT_URL ?? "http://localhost:8000";
 
 /**
  * Scheduled decision scan. Hourly cron == the 1h decision cadence in STRATEGY.md.
- * It only POSTs /cycle — all strategy/risk logic stays in /core behind the agent.
+ * It only POSTs /cycle - all strategy/risk logic stays in /core behind the agent.
  *
  * After a sell fill (position_closed) it fires POST /supervisor so the
- * Reflector→Historian chain runs automatically — the agent team is self-driving.
+ * Reflector→Historian chain runs automatically - the agent team is self-driving.
  *
  * Reliability: a non-2xx throws, so Trigger.dev applies exponential backoff and,
  * after 3 attempts, dead-letters the run (alert). The cycle itself is idempotent
  * (cycle_id keyed) so a retry can never double-trade. The supervisor call is
- * fire-and-forget (failure swallowed) — advisory path must never block the trade.
+ * fire-and-forget (failure swallowed) - advisory path must never block the trade.
  */
 export const decisionLoop = schedules.task({
   id: "decision-loop",
@@ -49,7 +49,7 @@ export const decisionLoop = schedules.task({
         const supBody = supRes.ok ? await supRes.json() : { ok: false };
         logger.info("supervisor: position_closed", supBody);
       } catch (err) {
-        // Advisory path — a supervisor failure must never surface as an error here.
+        // Advisory path - a supervisor failure must never surface as an error here.
         logger.warn("supervisor call failed (non-critical)", { err: String(err) });
       }
     }

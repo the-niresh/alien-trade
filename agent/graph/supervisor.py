@@ -1,9 +1,9 @@
 """
-LangGraph supervisor (Orchestrator) — the single chat/command entry to the Tier-1
+LangGraph supervisor (Orchestrator) - the single chat/command entry to the Tier-1
 advisory team. Off the hot path (locked decisions #1/#6): it OBSERVES the
 deterministic loop via Convex and REACTS; it never makes or wraps a trade decision.
 
-This is the 2-node scaffold (AGENT_TEAM_PLAN §8: "start with 2 nodes — Co-pilot +
+This is the 2-node scaffold (AGENT_TEAM_PLAN §8: "start with 2 nodes - Co-pilot +
 Historian, prove graph + channel, then grow"). Routing through the single entry:
 
     user question              -> co_pilot   (history-flavoured -> historian)
@@ -12,7 +12,7 @@ Historian, prove graph + channel, then grow"). Routing through the single entry:
                                                in the grow phase)
 
 Every node emits exactly one AgentEvent to the Activity Channel (the glass cockpit).
-A user "Pause Agents" control short-circuits the Tier-1 nodes here — Tier-0 trading
+A user "Pause Agents" control short-circuits the Tier-1 nodes here - Tier-0 trading
 is a different process and is unaffected (failure-matrix §9.3).
 
 8.10: Each call is budgeted (MAX_HOPS) to prevent runaway token spend. The Researcher
@@ -20,7 +20,7 @@ dedupes within a 90-min window per symbol; the Reflector dedupes per cycle_id so
 Trigger.dev retries can't write duplicate lessons.
 
 8.14: Every node wraps its body in _emit_failure on exception rather than swallowing
-silently — the operator sees failures in the cockpit without having to grep logs.
+silently - the operator sees failures in the cockpit without having to grep logs.
 """
 from __future__ import annotations
 
@@ -51,7 +51,7 @@ _HISTORY_HINTS = (
 _RESEARCH_KINDS = ("research_tick", "schedule")
 _CLOSE_KINDS = ("position_closed", "trade_closed")
 
-# Hard ceiling on hops per supervisor call (8.10 — prevents runaway token spend).
+# Hard ceiling on hops per supervisor call (8.10 - prevents runaway token spend).
 MAX_HOPS: int = 4
 # Research tick dedupe: skip if the same symbol was researched within this window.
 _RESEARCH_DEDUPE_SECS: float = 90 * 60  # 90 minutes
@@ -100,7 +100,7 @@ class Supervisor:
         self.bridge = bridge
         self._copilot = sb.copilot()
         self.graph = self._build()
-        # 8.10 in-memory dedupe state (resets on server restart — acceptable for the
+        # 8.10 in-memory dedupe state (resets on server restart - acceptable for the
         # live window; a fresh research after restart is a feature, not a bug).
         self._last_research_ts: dict = {}      # symbol -> float (epoch seconds)
         self._reflected_cycle_ids: set = set() # cycle_ids already reflected this session
@@ -171,7 +171,7 @@ class Supervisor:
             age_min = round((now - last_ts) / 60, 1)
             evt = self._emit(AgentEvent(
                 agent=RESEARCHER, kind=KIND_CONTROL,
-                headline=(f"Research tick skipped for {symbol} — ran {age_min} min ago "
+                headline=(f"Research tick skipped for {symbol} - ran {age_min} min ago "
                           f"(dedupe window: 90 min)"),
                 cycle_id=state.get("cycle_id"),
                 detail={"symbol": symbol, "last_research_age_min": age_min,
@@ -237,7 +237,7 @@ class Supervisor:
         if cycle_id and cycle_id in self._reflected_cycle_ids:
             evt = self._emit(AgentEvent(
                 agent=REFLECTOR, kind=KIND_CONTROL,
-                headline=(f"Reflection skipped — already reflected for "
+                headline=(f"Reflection skipped - already reflected for "
                           f"cycle {cycle_id[-12:]}"),
                 cycle_id=cycle_id,
                 detail={"cycle_id": cycle_id, "reason": "duplicate cycle_id"},
@@ -333,7 +333,7 @@ class Supervisor:
 
     def _write_forecast(self, symbol: str, confidence: float, history: list) -> None:
         """Write the Researcher's deterministic confidence to forecast_state.
-        Failure is swallowed — Researcher is Tier-1 (failure-matrix §9.3)."""
+        Failure is swallowed - Researcher is Tier-1 (failure-matrix §9.3)."""
         if self.bridge is None:
             return
         try:
@@ -356,10 +356,10 @@ class Supervisor:
         return {"route": agent, "events": [evt], "hops": 1}
 
     def _budget_exceeded(self, agent_name: str, state: SupervisorState) -> dict:
-        """8.10: Hard cap on hops per supervisor call — prevents runaway token spend."""
+        """8.10: Hard cap on hops per supervisor call - prevents runaway token spend."""
         evt = self._emit(AgentEvent(
             agent=agent_name, kind=KIND_CONTROL,
-            headline=f"{agent_name}: budget exceeded ({MAX_HOPS} hops) — skipping",
+            headline=f"{agent_name}: budget exceeded ({MAX_HOPS} hops) - skipping",
             cycle_id=state.get("cycle_id"),
             detail={"hops": state.get("hops", 0), "max_hops": MAX_HOPS},
         ))
@@ -377,7 +377,7 @@ class Supervisor:
         ))
 
     def _emit(self, event: AgentEvent) -> AgentEvent:
-        """Write one trace to the channel. A channel-write failure is swallowed —
+        """Write one trace to the channel. A channel-write failure is swallowed -
         observability must never break a node (failure-matrix)."""
         if self.bridge is not None:
             try:
@@ -405,7 +405,7 @@ def main(argv: Optional[list[str]] = None) -> None:
         pass
     load_dotenv(Path(__file__).resolve().parents[2] / ".env.local")
 
-    ap = argparse.ArgumentParser(description="LangGraph supervisor — one message")
+    ap = argparse.ArgumentParser(description="LangGraph supervisor - one message")
     ap.add_argument("message", nargs="+", help="user question or event text")
     ap.add_argument("--kind", default="user", help="user | position_closed | ...")
     ap.add_argument("--symbol", default="ETH")

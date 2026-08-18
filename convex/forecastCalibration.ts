@@ -30,7 +30,7 @@ export const recent = query({
   },
 });
 
-/** Win-rate by confidence bucket: high (≥0.8), med (0.6–0.8), low (<0.6). */
+/** Win-rate by confidence bucket: high (≥0.8), med (0.6-0.8), low (<0.6). */
 export const getSummary = query({
   args: { symbol: v.optional(v.string()) },
   handler: async (ctx, args) => {

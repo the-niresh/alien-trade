@@ -17,7 +17,7 @@ const verdict = v.union(
 /**
  * Record one decision cycle. cycle_id is the idempotency key: if a decision
  * with the same cycle_id already exists we return it untouched instead of
- * writing a duplicate. This is the audit anchor — one row per cycle, always.
+ * writing a duplicate. This is the audit anchor - one row per cycle, always.
  */
 export const record = mutation({
   args: {

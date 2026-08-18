@@ -44,5 +44,5 @@ def kol_intent(
                          f"bullish KOL score {reading.score:+.2f}")
     if reading.score <= score_close and holds_symbol:
         return KolIntent(sym, "reduce", reading.confidence,
-                         f"bearish KOL score {reading.score:+.2f} — de-risk held long")
+                         f"bearish KOL score {reading.score:+.2f} - de-risk held long")
     return KolIntent(sym, "none", reading.confidence, "no actionable stance")

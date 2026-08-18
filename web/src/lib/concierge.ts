@@ -23,7 +23,7 @@ export type ConciergeDispatchers = {
   onDepositInfo: () => void;
 };
 
-// ── Suggestion card builders (deterministic — no LLM needed) ─────────────────
+// ── Suggestion card builders (deterministic - no LLM needed) ─────────────────
 
 export function suggestionConservative(): ProposedAction {
   return {
@@ -116,7 +116,7 @@ export function parseIntent(text: string): ProposedAction | null {
     return { type: "deposit_info", params: {}, summary: "Show deposit address and on-ramp." };
   }
 
-  return null; // read-only — no proposed action
+  return null; // read-only - no proposed action
 }
 
 // ── Action dispatcher ─────────────────────────────────────────────────────────

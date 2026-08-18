@@ -20,7 +20,7 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 function fmt(n: number | null | undefined, d = 3): string {
-  return n === null || n === undefined ? "—" : n.toFixed(d);
+  return n === null || n === undefined ? "-" : n.toFixed(d);
 }
 
 export default function ThesisLedger() {
@@ -39,7 +39,7 @@ export default function ThesisLedger() {
           ))}
         </div>
       ) : theses.length === 0 ? (
-        <p className="font-mono text-[12px] text-muted-fg">// no theses tested yet — the loop logs every trial here</p>
+        <p className="font-mono text-[12px] text-muted-fg">// no theses tested yet - the loop logs every trial here</p>
       ) : (
         <div className="flex flex-col gap-2">
           {theses.map((t: any) => (

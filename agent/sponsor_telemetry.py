@@ -2,7 +2,7 @@
 Fire-and-forget sponsor-call recorder.
 
 No-op until set_sink() is called. A daemon thread drains the queue and
-forwards calls to the sink. Sink failures are swallowed — telemetry must
+forwards calls to the sink. Sink failures are swallowed - telemetry must
 never impact the trade path.
 """
 from __future__ import annotations

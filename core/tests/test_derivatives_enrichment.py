@@ -1,4 +1,4 @@
-"""Derivatives enrichment — unit tests for funding rate + OI merge (offline, no network)."""
+"""Derivatives enrichment - unit tests for funding rate + OI merge (offline, no network)."""
 from __future__ import annotations
 import polars as pl
 import pytest
@@ -29,7 +29,7 @@ def _df(n: int = 10, start_ms: int = 0, step_ms: int = 3_600_000) -> pl.DataFram
 # ── forward-fill funding rate ─────────────────────────────────────────────────
 
 def test_funding_rate_forward_filled():
-    df = _df(n=9, start_ms=0, step_ms=3_600_000)   # hourly bars 0h–8h
+    df = _df(n=9, start_ms=0, step_ms=3_600_000)   # hourly bars 0h-8h
     # Funding rate settled at t=0 (rate 0.0001) and t=28800000 (8h, rate -0.0002)
     funding = [
         {"fundingTime": 0,          "fundingRate": 0.0001},
@@ -37,7 +37,7 @@ def test_funding_rate_forward_filled():
     ]
     result = _merge_derivatives_fn()(df, funding, [])
     rates = result["funding_rate"].to_list()
-    # Bars 0–7 (t=0h to t=7h) should carry the first settlement rate 0.0001
+    # Bars 0-7 (t=0h to t=7h) should carry the first settlement rate 0.0001
     assert all(abs(r - 0.0001) < 1e-9 for r in rates[:8]), rates[:8]
     # Bar 8 (t=8h = 28800000) gets the second settlement rate
     assert abs(rates[8] - (-0.0002)) < 1e-9, rates[8]
@@ -79,7 +79,7 @@ def test_oi_aligned_to_nearest_hourly():
 def test_oi_skips_stale_snapshot_beyond_1h():
     step = 3_600_000
     df = _df(n=3, start_ms=2 * step, step_ms=step)  # bars at 2h, 3h, 4h
-    # OI snapshot only at t=0h — more than 1h away from bar at t=2h
+    # OI snapshot only at t=0h - more than 1h away from bar at t=2h
     oi = [{"timestamp": 0, "sumOpenInterest": 99_000.0}]
     result = _merge_derivatives_fn()(df, [], oi)
     vals = result["open_interest"].to_list()

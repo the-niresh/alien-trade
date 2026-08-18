@@ -22,7 +22,7 @@ def test_bearish_reduces_only_when_held():
 
 
 def test_ineligible_token_never_trades():
-    # BTC is NOT in the eligible allowlist — must be inert regardless of hype.
+    # BTC is NOT in the eligible allowlist - must be inert regardless of hype.
     assert kol_intent(_reading("BTC", 0.9, 0.9), holds_symbol=False).action == "none"
 
 

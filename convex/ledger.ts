@@ -31,7 +31,7 @@ export const append = mutation({
   },
 });
 
-/** Latest ledger row — the dashboard's PnL + drawdown headline. */
+/** Latest ledger row - the dashboard's PnL + drawdown headline. */
 export const latest = query({
   args: {},
   returns: v.union(

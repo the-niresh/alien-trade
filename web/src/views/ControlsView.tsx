@@ -85,7 +85,7 @@ export function ControlsView() {
         <div className="flex flex-col items-center gap-4 text-center py-2">
           <KillSwitch halted={halted} onToggle={onKillToggle} hero />
           <p className="font-mono text-[12px] text-muted-fg">
-            {halted ? "Agent is HALTED — hold to resume trading." : "Hold for 1.5s to halt all trading."}
+            {halted ? "Agent is HALTED - hold to resume trading." : "Hold for 1.5s to halt all trading."}
           </p>
           <div className="flex gap-2 justify-center">
             <AlertDialog>
@@ -240,8 +240,8 @@ export function ControlsView() {
         <div className="space-y-3">
           <p className="text-[13px] text-muted-fg">
             {floor > 0
-              ? <><strong className="text-text font-mono">Floor {usd(floor)}</strong> — agent halts if equity drops below this.</>
-              : "Disabled — agent trades until manually halted."}
+              ? <><strong className="text-text font-mono">Floor {usd(floor)}</strong> - agent halts if equity drops below this.</>
+              : "Disabled - agent trades until manually halted."}
           </p>
           <div className="flex gap-2">
             <Input
@@ -280,7 +280,7 @@ export function ControlsView() {
               <div key={key} className="flex justify-between items-center gap-2">
                 <span className="text-[13px] text-muted-fg">{label}</span>
                 <Input
-                  type="number" min="0" placeholder="—"
+                  type="number" min="0" placeholder="-"
                   className="w-20 bg-bg border-border text-text font-mono text-[13px] focus-visible:ring-green"
                   defaultValue={(ap as unknown as Record<string, number | undefined>)[key] != null
                     ? (((ap as unknown as Record<string, number | undefined>)[key] as number) * 100).toFixed(1) : ""}
@@ -293,7 +293,7 @@ export function ControlsView() {
             ))}
           </div>
         ) : (
-          <p className="font-mono text-[12px] text-muted-fg">// autopilot disabled — manual exits only</p>
+          <p className="font-mono text-[12px] text-muted-fg">// autopilot disabled - manual exits only</p>
         )}
       </Panel>
 

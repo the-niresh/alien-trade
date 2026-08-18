@@ -30,7 +30,7 @@ export const append = mutation({
 });
 
 /**
- * Latest event per agent — drives the animated agent roster in the glass cockpit.
+ * Latest event per agent - drives the animated agent roster in the glass cockpit.
  * Scans the last 200 events and returns one row per unique agent name.
  */
 export const latestPerAgent = query({

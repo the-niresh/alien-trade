@@ -4,7 +4,7 @@ POST /supervisor endpoint + observe→react wiring.
 Tests that the FastAPI endpoint correctly routes events to the LangGraph
 supervisor, returns safe responses when supervisor is unavailable, and that
 _cycle_to_dict exposes the side/realized_pnl fields Trigger.dev needs.
-All hermetic — no Convex, no LLM, no real loop.
+All hermetic - no Convex, no LLM, no real loop.
 """
 from __future__ import annotations
 

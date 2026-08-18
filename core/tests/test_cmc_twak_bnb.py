@@ -1,6 +1,6 @@
 """
 Integration tests for CMC live feed, TWAK signing, and BNB testnet execution.
-Hit real external APIs — run against live services.
+Hit real external APIs - run against live services.
 """
 from __future__ import annotations
 
@@ -60,7 +60,7 @@ class TestCMCClient:
 
     @pytest.mark.skipif(
         not os.environ.get("CMC_API_KEY"),
-        reason="CMC_API_KEY not set — set in .env.local to run",
+        reason="CMC_API_KEY not set - set in .env.local to run",
     )
     def test_live_quote_bnb(self):
         """Integration: hits real CMC API for BNB quote."""
@@ -92,7 +92,7 @@ class TestCMCClient:
         except Exception as exc:
             if "403" in str(exc) or "RetryError" in type(exc).__name__:
                 pytest.skip(
-                    "CMC OHLCV historical returned 403 — key needs Pro tier or Agent Hub endpoint. "
+                    "CMC OHLCV historical returned 403 - key needs Pro tier or Agent Hub endpoint. "
                     "Live quote works; upgrade key or wire CMC_MCP_ENDPOINT for full history."
                 )
             raise
@@ -251,12 +251,12 @@ class TestBNBExec:
 
     @pytest.mark.skipif(
         not os.environ.get("TW_ACCESS_ID"),
-        reason="TWAK credentials not set — set TW_ACCESS_ID + TW_HMAC_SECRET",
+        reason="TWAK credentials not set - set TW_ACCESS_ID + TW_HMAC_SECRET",
     )
     def test_simulate_swap_dry_run(self):
         """
         Integration: simulate a WBNB→USDT swap on BSC testnet via eth_call.
-        No tx submitted — pure simulation.
+        No tx submitted - pure simulation.
         """
         from dotenv import load_dotenv
         load_dotenv(Path(__file__).parent.parent.parent / ".env.local")
@@ -277,9 +277,9 @@ class TestBNBExec:
         with BNBExec(testnet=True) as bnb:
             sim = bnb.simulate_swap(params, dummy_wallet)
 
-        # Revert is expected from a zero-funded dummy address — the RPC round-trip succeeds.
+        # Revert is expected from a zero-funded dummy address - the RPC round-trip succeeds.
         # A real testnet wallet with WBNB balance + approval would get success=True.
-        print(f"\n  Swap sim — gas estimate: {sim.gas_estimate:,}, success: {sim.success}")
+        print(f"\n  Swap sim - gas estimate: {sim.gas_estimate:,}, success: {sim.success}")
         assert isinstance(sim.gas_estimate, int)
         assert sim.gas_estimate > 0
         assert isinstance(sim.success, bool)  # True with funded wallet, False with dummy

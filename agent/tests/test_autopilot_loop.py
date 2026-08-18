@@ -1,4 +1,4 @@
-"""Autopilot wired into the DecisionLoop — bank/ratchet/block-entry/parity (offline)."""
+"""Autopilot wired into the DecisionLoop - bank/ratchet/block-entry/parity (offline)."""
 from __future__ import annotations
 
 from backtest.costs import BSCCostModel

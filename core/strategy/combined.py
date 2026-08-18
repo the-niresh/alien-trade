@@ -32,9 +32,9 @@ from signals.onchain import flow_signal
 
 REGIME_GATES: dict[Regime, float] = {
     Regime.TREND:    1.0,   # full conviction
-    Regime.CHOP:     0.5,   # half size — chop kills momentum strategies
-    Regime.HIGH_VOL: 0.3,   # size down hard — vol-target principle
-    Regime.CRASH:    0.0,   # sit out — no entry, force exit if in
+    Regime.CHOP:     0.5,   # half size - chop kills momentum strategies
+    Regime.HIGH_VOL: 0.3,   # size down hard - vol-target principle
+    Regime.CRASH:    0.0,   # sit out - no entry, force exit if in
 }
 
 
@@ -56,11 +56,11 @@ class StrategyParams:
     exit_threshold:  float = -0.10
     # Long-term trend filter (cash-default gate): only hold long while price is
     # above this EMA of close. On 1h bars, 100 ≈ ~4 days. NOT swept by the
-    # optimizer — a single principled knob keeps overfit risk low (locked #7).
+    # optimizer - a single principled knob keeps overfit risk low (locked #7).
     trend_filter_period: int = 100
     # Entry quality: require the trend EMA itself to be RISING over this lookback
     # before opening a new long (cuts failed breakouts above a flat/rolling EMA).
-    # Asymmetric — the exit only needs price back below the EMA, so we don't churn
+    # Asymmetric - the exit only needs price back below the EMA, so we don't churn
     # on a momentarily flat slope. 12 bars ≈ half a day on 1h. Not optimizer-swept.
     trend_slope_lookback: int = 12
     # Rebalance band: skip trade if |target - current| < band (cuts churn)
@@ -70,12 +70,12 @@ class StrategyParams:
     # and the generic 0.5 gate directly fights its edge.
     chop_gate: float | None = None
     # When True, skip the rising-EMA trend filter on entry. Contrarian buys fear in
-    # flat/down markets — requiring a rising EMA would block every entry it is meant
+    # flat/down markets - requiring a rising EMA would block every entry it is meant
     # to make.  Momentum/balanced leave this False (trend filter protects their edge).
     bypass_trend_filter: bool = False
     # Position sizing
     position_size_usd: float = 1_000.0
-    # Traded symbol — must be in risk.guardrails.TOKEN_ALLOWLIST (the tested set).
+    # Traded symbol - must be in risk.guardrails.TOKEN_ALLOWLIST (the tested set).
     # BNB/BTC/BTCB are never traded; ETH is the liquid default.
     symbol: str = "ETH"
 
@@ -87,7 +87,7 @@ def make_strategy(params: StrategyParams) -> StrategyFn:
     Returns a stateful StrategyFn closure for use with run_backtest / run_walk_forward.
     Each call to make_strategy() produces an independent instance with fresh state.
     """
-    in_position: list[bool] = [False]   # mutable cell — survives bar-by-bar calls
+    in_position: list[bool] = [False]   # mutable cell - survives bar-by-bar calls
 
     def strategy(history: list[Bar]) -> Optional[Order]:
         # Need enough history for the slow EMA, the long trend filter, and the EMA
@@ -107,7 +107,7 @@ def make_strategy(params: StrategyParams) -> StrategyFn:
 
         # ── Trend-filter regime gate (cash is the default) ────────────────────
         # Only hold long while price is above the long EMA. Below it, capital sits
-        # in USDT — which contributes zero drawdown. This is the core of the
+        # in USDT - which contributes zero drawdown. This is the core of the
         # drawdown-first redesign: a long-only book that refuses to fight a
         # downtrend, rather than buying every dip and getting chopped.
         ema_long = ema_value(history, params.trend_filter_period)
@@ -153,7 +153,7 @@ def make_strategy(params: StrategyParams) -> StrategyFn:
         # ── Rebalance band ────────────────────────────────────────────────────
         current = 1.0 if in_position[0] else 0.0
         if abs(target - current) < params.rebalance_band:
-            return None   # within band — don't trade
+            return None   # within band - don't trade
 
         # ── Entry / exit ──────────────────────────────────────────────────────
         if not in_position[0] and target > params.entry_threshold:

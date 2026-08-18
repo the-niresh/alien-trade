@@ -67,7 +67,7 @@ export function IntelligenceView() {
   const tradeRows    = useQuery(api.trades.recent,       { limit: 200 }) ?? [];
   const reflections  = useQuery(api.reflections.recent,  { limit: 1  }) ?? [];
 
-  // CMC call count — filter by agent/headline containing CMC or price signal
+  // CMC call count - filter by agent/headline containing CMC or price signal
   const cmcCallCount = agentEvents.filter(
     (e) =>
       e.agent?.toLowerCase().includes("cmc") ||
@@ -76,7 +76,7 @@ export function IntelligenceView() {
       (typeof e.headline === "string" && e.headline.toLowerCase().includes("price feed")),
   ).length;
 
-  // TWAK swap count — audit rows with event_type containing "swap"
+  // TWAK swap count - audit rows with event_type containing "swap"
   const swapCount = auditRows.filter((r) =>
     r.event_type?.toLowerCase().includes("swap"),
   ).length;
@@ -88,7 +88,7 @@ export function IntelligenceView() {
   const lastReflection = reflections[0];
   const hermesOn = reflections.length > 0;
 
-  // AutoResearch — agentEvents from a research agent
+  // AutoResearch - agentEvents from a research agent
   const researchEvents = agentEvents.filter(
     (e) =>
       e.agent?.toLowerCase().includes("research") ||
@@ -131,8 +131,8 @@ export function IntelligenceView() {
           <p className="font-mono text-[12px] text-muted-fg mt-0.5 leading-relaxed">
             Decisions are deterministic Python in{" "}
             <span className="text-text font-bold">/core</span>. The LLM learns{" "}
-            <em>around</em> the trade — regime narrative, post-trade reflection, market
-            research — all async, zero latency impact.
+            <em>around</em> the trade - regime narrative, post-trade reflection, market
+            research - all async, zero latency impact.
           </p>
         </div>
       </div>
@@ -162,7 +162,7 @@ export function IntelligenceView() {
           <SponsorCard
             sponsor="TWAK"
             name="Trust Wallet Agent Kit"
-            tagline="Self-custody signing — keys never in code"
+            tagline="Self-custody signing - keys never in code"
             integrations={[
               "ALL swap signing via `twak swap` (zero raw keys)",
               "Rug-check gate before every swap",
@@ -204,7 +204,7 @@ export function IntelligenceView() {
             sub="Signal engine (Python/core)"
             status="ON"
             iconColor="text-green"
-            detail="Always on — every buy/sell decision"
+            detail="Always on - every buy/sell decision"
           />
           <FlowArrow />
 
@@ -216,7 +216,7 @@ export function IntelligenceView() {
             iconColor={hermesOn ? "text-cyan" : "text-muted-fg"}
             detail={
               lastReflection
-                ? `Last: ${lastReflection.lesson?.slice(0, 48) ?? "—"}…`
+                ? `Last: ${lastReflection.lesson?.slice(0, 48) ?? "-"}…`
                 : "No reflections yet"
             }
           />
@@ -244,7 +244,7 @@ export function IntelligenceView() {
             sub="Upstash Vector memory"
             status="ARMED"
             iconColor="text-yellow"
-            detail="Armed — activates post-trade"
+            detail="Armed - activates post-trade"
           />
           <FlowArrow />
 

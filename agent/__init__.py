@@ -1,8 +1,8 @@
 """
-agent — Alien-Trade live runtime.
+agent - Alien-Trade live runtime.
 
 Runs the SAME `/core` strategy as the backtest, on a live (or replayed) feed.
-Zero duplicate strategy logic lives here — this package only orchestrates:
+Zero duplicate strategy logic lives here - this package only orchestrates:
 feed → core strategy (risk-wrapped) → executor → Convex state bus.
 
 Importing this package puts `core/` on sys.path so the top-level core modules

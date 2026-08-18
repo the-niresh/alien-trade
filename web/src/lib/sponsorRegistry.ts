@@ -16,11 +16,11 @@ export interface SponsorControl {
 }
 
 export const SPONSOR_CONTROLS: SponsorControl[] = [
-  // ── Autonomous (Scored) — policy transport ───────────────────────────────
+  // ── Autonomous (Scored) - policy transport ───────────────────────────────
   {
     id: "kill_switch",
     label: "Kill Switch",
-    description: "Immediately halts all autonomous trading. The agent stops executing swaps and waits for manual resume. This is the Tier-0 emergency stop — fastest path to flat. Uses the Convex config.halted flag read every cycle.",
+    description: "Immediately halts all autonomous trading. The agent stops executing swaps and waits for manual resume. This is the Tier-0 emergency stop - fastest path to flat. Uses the Convex config.halted flag read every cycle.",
     sponsor: "agent",
     transport: "policy",
     scoringImpact: "scored",
@@ -38,7 +38,7 @@ export const SPONSOR_CONTROLS: SponsorControl[] = [
   {
     id: "strategy",
     label: "Strategy Selector",
-    description: "Chooses the active /core strategy (momentum | contrarian | balanced | defensive). Each strategy has different signal weights and regime filters. The change takes effect at the next decision cycle — no restart needed.",
+    description: "Chooses the active /core strategy (momentum | contrarian | balanced | defensive). Each strategy has different signal weights and regime filters. The change takes effect at the next decision cycle - no restart needed.",
     sponsor: "agent",
     transport: "policy",
     scoringImpact: "scored",
@@ -85,7 +85,7 @@ export const SPONSOR_CONTROLS: SponsorControl[] = [
   {
     id: "portfolio_refresh",
     label: "Portfolio Refresh",
-    description: "Fetches full multi-chain portfolio from the TWAK wallet (BNB, ETH, BSC tokens, SOL, TRON). Returns native balances, token holdings, and total USD. Read-only — no signing. Cached in Convex wallet_state for the Portfolio view.",
+    description: "Fetches full multi-chain portfolio from the TWAK wallet (BNB, ETH, BSC tokens, SOL, TRON). Returns native balances, token holdings, and total USD. Read-only - no signing. Cached in Convex wallet_state for the Portfolio view.",
     sponsor: "TWAK",
     transport: "read",
     scoringImpact: "neutral",
@@ -94,7 +94,7 @@ export const SPONSOR_CONTROLS: SponsorControl[] = [
   {
     id: "risk_check",
     label: "Risk Check",
-    description: "On-demand TWAK rug-risk scan for any token. Returns isRug, riskScore (0–100), and flags (honeypot, blacklist, sell-tax, LP-lock status). Same data the rug-check gate uses pre-swap. Reference: Trust Wallet Agent SDK risk endpoint.",
+    description: "On-demand TWAK rug-risk scan for any token. Returns isRug, riskScore (0-100), and flags (honeypot, blacklist, sell-tax, LP-lock status). Same data the rug-check gate uses pre-swap. Reference: Trust Wallet Agent SDK risk endpoint.",
     sponsor: "TWAK",
     transport: "read",
     scoringImpact: "neutral",
@@ -122,7 +122,7 @@ export const SPONSOR_CONTROLS: SponsorControl[] = [
   {
     id: "dca_setup",
     label: "Setup DCA",
-    description: "Create a recurring USDT→token swap on a fixed interval (hourly, daily, weekly). Runs as a TWAK automate job — the wallet signs each execution locally via EIP-3009 gasless transfer. Each execution is audited in the Convex audit log with tx hash.",
+    description: "Create a recurring USDT→token swap on a fixed interval (hourly, daily, weekly). Runs as a TWAK automate job - the wallet signs each execution locally via EIP-3009 gasless transfer. Each execution is audited in the Convex audit log with tx hash.",
     sponsor: "TWAK",
     transport: "imperative",
     scoringImpact: "operator",
@@ -162,7 +162,7 @@ export const SPONSOR_CONTROLS: SponsorControl[] = [
   {
     id: "erc20_approve",
     label: "ERC-20 Approve",
-    description: "Grant a spender contract allowance to use a specific ERC-20 token from the agent wallet. Required before some DeFi interactions. TWAK signs the approval transaction locally — amount is capped to reduce over-approval risk.",
+    description: "Grant a spender contract allowance to use a specific ERC-20 token from the agent wallet. Required before some DeFi interactions. TWAK signs the approval transaction locally - amount is capped to reduce over-approval risk.",
     sponsor: "TWAK",
     transport: "imperative",
     scoringImpact: "operator",
@@ -182,7 +182,7 @@ export const SPONSOR_CONTROLS: SponsorControl[] = [
   {
     id: "x402_request",
     label: "x402 Pay-per-Call",
-    description: "Pay for a premium CMC data endpoint using the TWAK x402 protocol (EIP-3009 gasless micropayment). The wallet signs an on-chain payment authorization — no gas required. The CMC server validates the payment proof and returns the data. Demonstrates CMC x402 + TWAK signing depth together.",
+    description: "Pay for a premium CMC data endpoint using the TWAK x402 protocol (EIP-3009 gasless micropayment). The wallet signs an on-chain payment authorization - no gas required. The CMC server validates the payment proof and returns the data. Demonstrates CMC x402 + TWAK signing depth together.",
     sponsor: "CMC",
     transport: "imperative",
     scoringImpact: "operator",

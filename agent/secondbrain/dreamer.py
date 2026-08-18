@@ -1,18 +1,18 @@
 """
-Dreamer — nightly consolidation of the Second Brain.
+Dreamer - nightly consolidation of the Second Brain.
 
 Fired at 02:00 UTC by jobs/src/dreamer.ts → POST /dreamer on the agent server.
 Never raises: if any phase errors, it logs, skips that phase, and continues.
 Returns a summary dict so the server endpoint can echo it back to Trigger.dev.
 
 Phases:
-  1. Dedupe reflections  — cosine ≥ 0.92 pairs → keep highest-confidence,
+  1. Dedupe reflections  - cosine ≥ 0.92 pairs → keep highest-confidence,
                            soft-delete dups in both Vector + Convex.
-  2. Forecast calibration scoring — bucket win-rates (high/med/low) logged to
+  2. Forecast calibration scoring - bucket win-rates (high/med/low) logged to
                            Convex via ConvexBridge.
-  3. Age out stale research — re-upsert research docs > 48h old with stale=True
+  3. Age out stale research - re-upsert research docs > 48h old with stale=True
                            so co-pilot + avoidance skip them.
-  4. Nightly digest       — one ResearchDigest summarising top lessons +
+  4. Nightly digest       - one ResearchDigest summarising top lessons +
                            forecast score + memory counts stored in Second Brain.
 """
 from __future__ import annotations
@@ -196,7 +196,7 @@ class Dreamer:
     def _top_lessons(self) -> str:
         try:
             rows = self.bridge.recent_reflections(limit=20)
-            # Skip stale; sort by |PnL| descending — most impactful first
+            # Skip stale; sort by |PnL| descending - most impactful first
             active = [r for r in rows if not r.get("stale") and r.get("lesson")]
             active.sort(key=lambda r: abs(r.get("outcome_pnl_usd", 0)), reverse=True)
             lines = [f"- [{r['outcome_label']}] {r['lesson']}" for r in active[:5]]

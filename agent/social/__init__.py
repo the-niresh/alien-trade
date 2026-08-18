@@ -1,10 +1,10 @@
 """
-Social ingestion layer — "bring your own KOL list, the agent watches them."
+Social ingestion layer - "bring your own KOL list, the agent watches them."
 
 A user-curated watchlist of traders/channels across multiple platforms is
 ingested through swappable source adapters, normalised to one `SocialPost`
 shape, and reduced (OFF the trade hot path) to a bounded, timestamped
-`SentimentReading` — the deterministic feature that feeds signal S3. Raw posts
+`SentimentReading` - the deterministic feature that feeds signal S3. Raw posts
 also fuel the Second Brain researcher + co-pilot.
 
 Design rules (inherited from AGENT_TEAM_PLAN.md):

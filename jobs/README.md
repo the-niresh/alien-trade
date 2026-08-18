@@ -1,12 +1,12 @@
-# jobs — Trigger.dev Tasks ✅ (Step 5)
+# jobs - Trigger.dev Tasks ✅ (Step 5)
 
 Scheduled background jobs with built-in retries, backoff, dead-letter, alerting.
-Each job only talks to the agent's FastAPI runtime — no strategy logic here.
+Each job only talks to the agent's FastAPI runtime - no strategy logic here.
 
 | Job | File | Schedule | Purpose |
 |-----|------|----------|---------|
-| `decision-loop` | `src/decisionLoop.ts` | hourly (`0 * * * *`) | POST `/cycle` — fetch → signal → decide → execute |
-| `trade-monitor` | `src/tradeMonitor.ts` | every minute | GET `/status` — watchdog; alerts on circuit-breaker / halt |
+| `decision-loop` | `src/decisionLoop.ts` | hourly (`0 * * * *`) | POST `/cycle` - fetch → signal → decide → execute |
+| `trade-monitor` | `src/tradeMonitor.ts` | every minute | GET `/status` - watchdog; alerts on circuit-breaker / halt |
 | `reflection` | `src/reflection.ts` | after each trade | Hermes reflection seam → Upstash Vector (wired in Step 6) |
 
 ## Reliability

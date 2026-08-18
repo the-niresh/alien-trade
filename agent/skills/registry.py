@@ -1,11 +1,11 @@
 """
-Curated skill registry — the static map from "what we need" to a pinned CMC skill
+Curated skill registry - the static map from "what we need" to a pinned CMC skill
 (unique_name + a param-builder that matches that skill's input_schema exactly).
 
 This is Tier 1 of the two-tier loader (the other tier is dynamic `find_skill`):
 for the handful of skills that map to our signals we skip discovery entirely and
 call `execute_skill` directly with correct params. Every skill here is RESEARCH
-context only — locked decision #1 keeps them off the deterministic trade path;
+context only - locked decision #1 keeps them off the deterministic trade path;
 they feed the AutoResearch digest, regime narrative, co-pilot, and at most the
 shrink-only Option-B forecast.
 
@@ -118,7 +118,7 @@ CURATED: dict[str, CuratedSkill] = {
 
 def manifest() -> str:
     """A compact, injectable description of the curated skills (key · signal · use)
-    — what a research/co-pilot agent reads to pick a curated skill without a
+    - what a research/co-pilot agent reads to pick a curated skill without a
     find_skill round-trip."""
     return "\n".join(
         f"- {s.key} [{s.signal}]: {s.when_to_use}" for s in CURATED.values()

@@ -1,14 +1,14 @@
 """
-Hermes — the READ half of the self-learning loop.
+Hermes - the READ half of the self-learning loop.
 
 Before the executor runs, the loop asks: "have we lost on this exact setup
 before?" This implements `agent.brain.MistakeAvoidance` with a pure Upstash
-Vector lookup — NO LLM on the cycle path (locked decision #1). It recomputes the
+Vector lookup - NO LLM on the cycle path (locked decision #1). It recomputes the
 same deterministic signal breakdown the strategy used, builds the *setup key*,
 and queries past reflections stored under that key.
 
 Verdict is deterministic and fail-open: if the memory is empty, offline, or
-erroring, it returns "allow" — it can only ever *tighten* a trade the /core risk
+erroring, it returns "allow" - it can only ever *tighten* a trade the /core risk
 engine already approved, never loosen the risk floor. Evidence thresholds:
 
     loss_rate ≥ 0.75 on ≥ MIN_SAMPLES similar setups, net negative  → block
@@ -59,15 +59,15 @@ class VectorMistakeAvoidance:
                 return AvoidanceVerdict(
                     block=True,
                     reason=(f"lost on this setup {len(losses)}/{len(similar)} times "
-                            f"(net ${net:.0f}) — blocking"),
+                            f"(net ${net:.0f}) - blocking"),
                 )
             if loss_rate >= PENALTY_LOSS_RATE and net < 0:
                 return AvoidanceVerdict(
                     block=False, size_penalty=SIZE_PENALTY,
                     reason=(f"mixed history {len(losses)}/{len(similar)} losses "
-                            f"(net ${net:.0f}) — halving size"),
+                            f"(net ${net:.0f}) - halving size"),
                 )
             return AvoidanceVerdict(block=False, reason="prior setups net non-negative")
-        except Exception as e:  # noqa: BLE001 — read must never crash a cycle
+        except Exception as e:  # noqa: BLE001 - read must never crash a cycle
             print(f"[hermes] avoidance check failed: {e}")
-            return AvoidanceVerdict(block=False, reason="avoidance error — fail-open")
+            return AvoidanceVerdict(block=False, reason="avoidance error - fail-open")

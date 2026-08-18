@@ -1,5 +1,5 @@
 """
-Honest evaluation — one command, one table, no cherry-picking.
+Honest evaluation - one command, one table, no cherry-picking.
 
     cd core && .venv/bin/python -m evaluate                 # writes docs/results/
     cd core && .venv/bin/python -m evaluate --stdout        # print only
@@ -13,7 +13,7 @@ What this does and why it is built this way:
   * Uses hourly bars, because that is the cadence the live agent decides on
     (AgentConfig.bar_interval = "1h"). Running the same strategy on daily bars
     makes it trade roughly once a year, so short test windows show zero trades and
-    every metric prints as 0.00% — which reads as "harmless" and is not.
+    every metric prints as 0.00% - which reads as "harmless" and is not.
   * Full BSC cost model on every fill: gas, slippage and swap fees. A backtest
     without costs would show a different, and false, answer here.
   * Prints buy-and-hold over the identical window, because a strategy that loses
@@ -103,7 +103,7 @@ def evaluate(symbols: list[str], presets: list[str]) -> dict:
         "window_end_utc": datetime.fromtimestamp(last / 1000, timezone.utc).isoformat(),
         "initial_capital_usd": CAPITAL,
         "cost_model": "BSCCostModel (gas + slippage + swap fees)",
-        "parameter_search": "none — fixed presets from strategy/registry.py",
+        "parameter_search": "none - fixed presets from strategy/registry.py",
         "buy_and_hold": benchmark,
         "runs": rows,
     }
@@ -132,7 +132,7 @@ def render_markdown(data: dict) -> str:
     a("## Benchmarks over the same window")
     a("")
     a("Two things to beat. Buy-and-hold is the obvious one. **Cash is the one that")
-    a("matters here** — this is a long-only strategy that holds USDT by default, so")
+    a("matters here** - this is a long-only strategy that holds USDT by default, so")
     a("switching it off is a real, available alternative that returns exactly 0%.")
     a("")
     a("| Benchmark | Return | Max drawdown |")
@@ -144,7 +144,7 @@ def render_markdown(data: dict) -> str:
 
     for risk_on in (False, True):
         label = "risk engine ON" if risk_on else "risk engine OFF (strategy alone)"
-        a(f"## Strategy — {label}")
+        a(f"## Strategy - {label}")
         a("")
         a("| Preset | Token | Trades | Return | Sharpe | Sortino | Max DD | Win rate |")
         a("|---|---|---|---|---|---|---|---|")
@@ -172,7 +172,7 @@ def render_markdown(data: dict) -> str:
     a("")
     if not wins:
         a("No preset is profitable on any token on the allowlist. This is not a tuning")
-        a("problem — the sign is wrong across every combination tested, so there is no")
+        a("problem - the sign is wrong across every combination tested, so there is no")
         a("parameter set in this family worth searching for. The signals as combined here")
         a("do not carry an edge that survives trading costs.")
         a("")
@@ -182,20 +182,20 @@ def render_markdown(data: dict) -> str:
         a("cash, and it loses to cash everywhere.")
         a("")
         a("The risk engine is the part that works. It cuts the worst case from a total")
-        a("wipeout to a few percent — it cannot manufacture an edge, only limit the damage")
+        a("wipeout to a few percent - it cannot manufacture an edge, only limit the damage")
         a("of not having one.")
     a("")
     a("### Accounting integrity")
     a("")
     if dirty:
-        a(f"{len(dirty)} of {len(runs)} runs asked the engine for something impossible — "
+        a(f"{len(dirty)} of {len(runs)} runs asked the engine for something impossible - "
           "selling more than held, or buying")
         a("with cash that was not there. The engine refused and sized each fill to what was")
         a("actually available, so nothing above is inflated by it. Before that clamp existed")
         a("these same requests created $46,814 of cash out of nothing on a single token.")
         a("")
         a("The cause is a gap in the strategy interface, not a rounding error. `StrategyFn`")
-        a("receives only bars — it is never told the position or the cash. So a strategy has")
+        a("receives only bars - it is never told the position or the cash. So a strategy has")
         a("no way to size an exit against what it actually holds, and every strategy ends up")
         a("either shadowing the account itself or guessing. The risk engine shadows it, which")
         a("is why its counts are small (slippage drift between its copy and the engine's); a")
@@ -206,7 +206,7 @@ def render_markdown(data: dict) -> str:
         worst = max(dirty, key=lambda r: r["oversized_sell_usd"] + r["underfunded_buy_usd"])
         a("")
         a(f"Largest single offender: `{worst['preset']}`/{worst['symbol']} "
-          f"(risk engine {'on' if worst['risk_engine'] else 'off'}) — "
+          f"(risk engine {'on' if worst['risk_engine'] else 'off'}) - "
           f"{worst['oversized_sells']} oversized sells, "
           f"{worst['underfunded_buys']} underfunded buys.")
     else:

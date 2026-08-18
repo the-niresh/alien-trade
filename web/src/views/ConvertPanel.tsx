@@ -215,7 +215,7 @@ export function ConvertPanel() {
             <p className="font-mono text-[11px] text-text leading-relaxed">
               Converting <span className="font-bold text-yellow">{amtNum} {from}</span>
               {" "}(~${usdValue.toFixed(2)}) into <span className="font-bold text-yellow">{to}</span>
-              {gaining > 0 && <> — expected ~{gaining.toFixed(6)} {to}</>}.
+              {gaining > 0 && <> - expected ~{gaining.toFixed(6)} {to}</>}.
             </p>
           </div>
           <p className="font-mono text-[10px] text-muted-fg">
@@ -223,7 +223,7 @@ export function ConvertPanel() {
           </p>
           {rateAge > 60 && (
             <p className="font-mono text-[10px] text-yellow">
-              Rate fetched {Math.floor(rateAge / 60)}m {rateAge % 60}s ago — price may have shifted.
+              Rate fetched {Math.floor(rateAge / 60)}m {rateAge % 60}s ago - price may have shifted.
             </p>
           )}
           {error && <p className="font-mono text-[11px] text-red">{error}</p>}
@@ -273,7 +273,7 @@ export function ConvertPanel() {
             <TokenPill value={from} onChange={pickFrom} tokens={tokens} />
           </div>
           <p className="font-mono text-[11px] text-muted-fg">
-            {fromPrice > 0 ? `($${usdValue.toFixed(2)})` : "(—)"}
+            {fromPrice > 0 ? `($${usdValue.toFixed(2)})` : "(-)"}
           </p>
         </div>
 

@@ -1,4 +1,4 @@
-"""Web Push (VAPID) — replaces Telegram as the away-from-app ping.
+"""Web Push (VAPID) - replaces Telegram as the away-from-app ping.
 send_push never raises on a dead subscription; the caller prunes on False."""
 from __future__ import annotations
 

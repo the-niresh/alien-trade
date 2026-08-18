@@ -1,5 +1,5 @@
 """
-Pure stop-loss math — no I/O, no state. Used by RiskEngine to enforce a hard ATR
+Pure stop-loss math - no I/O, no state. Used by RiskEngine to enforce a hard ATR
 stop and an ATR trailing stop. Sim and live both run RiskEngine, so these run
 identically in backtest and production (parity invariant, locked decision #2).
 """

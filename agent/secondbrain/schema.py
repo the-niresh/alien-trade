@@ -4,7 +4,7 @@ Shared dataclasses for the Second Brain layer.
 A *setup key* is the deterministic English fingerprint of a trade context
 (regime + which signal dominates + side). The same function builds it on the
 write path (reflection) and the read path (mistake-avoidance), so a stored
-lesson and a new lookup land in the same neighbourhood of vector space — that is
+lesson and a new lookup land in the same neighbourhood of vector space - that is
 what makes "have we lost on this exact setup before?" actually retrieve.
 """
 from __future__ import annotations

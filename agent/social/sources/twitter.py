@@ -1,8 +1,8 @@
 """
-X / Twitter adapter via twscrape — the swappable, credential-gated source.
+X / Twitter adapter via twscrape - the swappable, credential-gated source.
 
 NOTE (see docs/SOCIAL_LAYER.md): twscrape scrapes X. It violates X's ToS, needs a
-logged-in (use a BURNER) X account, and is ban-prone — so it is one adapter, not
+logged-in (use a BURNER) X account, and is ban-prone - so it is one adapter, not
 the foundation. It stays dormant until configured; nothing depends on it.
 
 Setup (operator, once):

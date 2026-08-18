@@ -1,7 +1,7 @@
 """
 Step 2 exit criterion tests.
 Covers: cost model, data loader, regime detector, walk-forward harness.
-All tests use synthetic data — no network calls.
+All tests use synthetic data - no network calls.
 """
 from __future__ import annotations
 
@@ -34,7 +34,7 @@ def _bars(n: int = 100, start_price: float = 300.0, trend: float = 1.002) -> lis
 
 
 def _choppy_bars(n: int = 100, start_price: float = 300.0) -> list[Bar]:
-    """Alternating up/down — no persistent trend."""
+    """Alternating up/down - no persistent trend."""
     bars, price = [], start_price
     for i in range(n):
         price *= (1.01 if i % 2 == 0 else 0.99)
@@ -85,7 +85,7 @@ def _do_nothing(history: list[Bar]) -> Order | None:
     return None
 
 
-# ── Step 0 harness — must still pass ─────────────────────────────────────────
+# ── Step 0 harness - must still pass ─────────────────────────────────────────
 
 class TestHarnessBackcompat:
     def test_empty_strategy_returns_initial_capital(self):
@@ -145,7 +145,7 @@ class TestBSCCostModel:
         assert s_large > s_small
 
     def test_slippage_sqrt_relationship(self):
-        """Impact ∝ sqrt(size/liquidity) — 4x size → ~2x impact rate."""
+        """Impact ∝ sqrt(size/liquidity) - 4x size → ~2x impact rate."""
         s1 = amm_slippage(1_000.0)
         s4 = amm_slippage(4_000.0)
         ratio = (s4 / 4_000.0) / (s1 / 1_000.0)

@@ -150,7 +150,7 @@ class TestS3Sentiment:
         assert -1.0 <= score <= 1.0
 
     def test_rising_attention_positive(self):
-        # roc=0.02 (2%/bar) — steady growth that doesn't trigger blow-off detection
+        # roc=0.02 (2%/bar) - steady growth that doesn't trigger blow-off detection
         bars = _bars_with_social(20, score=50.0, roc=0.02)
         assert sentiment_signal(bars) > 0.0
 
@@ -256,7 +256,7 @@ class TestCombinedStrategy:
         s2 = make_strategy(StrategyParams())
         for i in range(1, 61):
             s1(bars[:i])
-        # s2 starts fresh — should still consider entry on bar 1
+        # s2 starts fresh - should still consider entry on bar 1
         result = s2(bars[:26])
         # no crash or shared-state corruption = pass
         assert True
@@ -298,7 +298,7 @@ class TestWalkForwardOnRealData:
         """
         Run the full walk-forward on real BNB history.
         Exit criterion: produces OOS windows + prints honest metrics.
-        We only assert structural correctness — we cannot cherry-pick OOS returns.
+        We only assert structural correctness - we cannot cherry-pick OOS returns.
         """
         from backtest.data_loader import load_bars
         from backtest.walk_forward import run_walk_forward, print_oos_report
@@ -319,7 +319,7 @@ class TestWalkForwardOnRealData:
         assert "oos_sortino" in result.oos_metrics
         assert "oos_max_drawdown" in result.oos_metrics
 
-        print_oos_report(result)   # stdout — visible in pytest -s
+        print_oos_report(result)   # stdout - visible in pytest -s
 
     def test_params_vary_across_windows(self):
         """Walk-forward must select different params per window (not always same)."""
@@ -341,5 +341,5 @@ class TestWalkForwardOnRealData:
                 (p["ema_fast"], p["ema_slow"], p["entry_threshold"])
                 for p in result.window_params
             )
-            # At least 1 unique combo found — optimizer is searching
+            # At least 1 unique combo found - optimizer is searching
             assert len(combos) >= 1

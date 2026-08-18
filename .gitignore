@@ -1,4 +1,4 @@
-# Secrets — never commit
+# Secrets - never commit
 .env.local
 .env.*.local
 *.pem
@@ -19,7 +19,7 @@ dist/
 htmlcov/
 .coverage
 
-# Data — large files stay local
+# Data - large files stay local
 core/data/raw/
 core/data/parquet/
 *.parquet
@@ -47,7 +47,7 @@ Thumbs.db
 .claude/
 /memory/
 
-# bun init boilerplate — not part of this project
+# bun init boilerplate - not part of this project
 index.ts
 
 # TS incremental build cache
@@ -68,7 +68,7 @@ core/test_supervisor.py.skip
 docs/superpowers/
 docs/plans/
 
-# Agent-harness files — kept on disk, out of the repo
+# Agent-harness files - kept on disk, out of the repo
 CLAUDE.md
 AGENTS.md
 RALPH.md
@@ -81,7 +81,7 @@ skills-lock.json
 agent/skills/convex/
 agent/skills/convex-*/
 
-# Autonomous-loop tooling from the contest build — kept on disk, out of the repo
+# Autonomous-loop tooling from the contest build - kept on disk, out of the repo
 scripts/
 docs/AUTONOMY.md
 convex/_generated/ai/ai-files.state.json

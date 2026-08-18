@@ -37,7 +37,7 @@ class WelcomeScreen(Screen):
             with Vertical(id="welcome-box"):
                 yield Static(ALIEN_ART, id="alien")
                 yield Static("👽  ALIEN-TRADE", id="brand")
-                yield Static("Autonomous BSC trading agent — onboarding")
+                yield Static("Autonomous BSC trading agent - onboarding")
                 yield Static("")
                 yield Static("Press [b]Enter[/] (or click Start) to begin.")
                 yield Button("Start", variant="primary", id="start")
@@ -67,7 +67,7 @@ class DepCheckScreen(Screen):
 class KeysScreen(Screen):
     def compose(self) -> ComposeResult:
         with VerticalScroll():
-            yield Static("[b]API keys[/] — fill what you have, then Test")
+            yield Static("[b]API keys[/] - fill what you have, then Test")
             yield Input(placeholder="CONVEX_URL", id="convex_url")
             yield Input(placeholder="ANTHROPIC_API_KEY", password=True, id="anthropic")
             yield Static("", id="keys_status")
@@ -162,7 +162,7 @@ class PairingScreen(Screen):
         pwa = resolve_url(self.app.cfg.get("PWA_URL", ""))
         link = f"{pwa}/#t={token}"
         with VerticalScroll():
-            yield Static("[b]Pair your phone[/] — scan to open the cockpit, already paired")
+            yield Static("[b]Pair your phone[/] - scan to open the cockpit, already paired")
             yield Static(qr_string(link), id="qr")
             yield Static(f"[dim]{link}[/]")
             yield Button("Next", variant="primary", id="next")

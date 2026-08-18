@@ -12,7 +12,7 @@ export function eventSeverity(e: {
   if (h.includes("floor hit") || h.includes("kill switch") || h.includes("halt")) {
     return "critical";
   }
-  // Failures must never fall through to the green "trade" tier below — an
+  // Failures must never fall through to the green "trade" tier below - an
   // errored action (e.g. "TWAK call failed") is a warning, not a success.
   if (
     h.includes("fail") || h.includes("error") ||

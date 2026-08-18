@@ -4,11 +4,11 @@ FastAPI front for the live runtime.
 Trigger.dev (scheduled jobs) and the PWA poke these routes; the heavy lifting is
 still the /core strategy inside DecisionLoop. Endpoints:
 
-    GET  /health   — liveness
-    POST /cycle    — run exactly one decision cycle (Trigger.dev calls this)
-    GET  /status   — ledger + risk snapshot
-    POST /halt     — kill switch on  (also flips Convex config.halted)
-    POST /resume   — kill switch off
+    GET  /health   - liveness
+    POST /cycle    - run exactly one decision cycle (Trigger.dev calls this)
+    GET  /status   - ledger + risk snapshot
+    POST /halt     - kill switch on  (also flips Convex config.halted)
+    POST /resume   - kill switch off
 
 The loop is a process singleton built once from AgentConfig. /cycle is safe to
 call repeatedly: idempotency keys (cycle_id) stop any double execution.
@@ -50,7 +50,7 @@ def _require_api_token(request: Request) -> None:
 
 
 _loop: DecisionLoop | None = None
-_supervisor = None   # agent.graph.supervisor.Supervisor — built lazily after loop warms
+_supervisor = None   # agent.graph.supervisor.Supervisor - built lazily after loop warms
 
 
 _ACTION_VERBS = {
@@ -92,7 +92,7 @@ def get_supervisor():
     try:
         from agent.graph.supervisor import Supervisor
         _supervisor = Supervisor(sb, bridge=loop.bridge)
-    except Exception:  # noqa: BLE001 — advisory layer; never break the trading server
+    except Exception:  # noqa: BLE001 - advisory layer; never break the trading server
         return None
     return _supervisor
 
@@ -115,7 +115,7 @@ _PUBLIC_PATHS = frozenset({"/health", "/skill/manifest", "/skill/manifests", "/d
 @app.middleware("http")
 async def _api_token_guard(request: Request, call_next):
     """Enforce AGENT_API_TOKEN on every non-public route when a token is configured.
-    No-op when the token is unset (local/paper dev) — in that mode the localhost
+    No-op when the token is unset (local/paper dev) - in that mode the localhost
     bind is what keeps these endpoints off the public internet."""
     token = os.environ.get("AGENT_API_TOKEN", "")
     if token and request.url.path not in _PUBLIC_PATHS:
@@ -125,7 +125,7 @@ async def _api_token_guard(request: Request, call_next):
     return await call_next(request)
 
 # TWAK native x402 provider: meters POST /skill/signal_score at $0.01/call.
-# No-op when X402_WALLET_ADDRESS is absent — endpoint stays free.
+# No-op when X402_WALLET_ADDRESS is absent - endpoint stays free.
 from agent.x402_provider import register as _x402_register  # noqa: E402
 _x402_register(app)
 
@@ -160,7 +160,7 @@ def health() -> dict:
 @app.post("/social/ingest")
 def social_ingest() -> dict:
     """Run one social ingest pass: fetch posts → score sentiment → write Convex.
-    Off the hot path — returns ok:false on any error without raising."""
+    Off the hot path - returns ok:false on any error without raising."""
     try:
         from pathlib import Path
         from agent.social.ingest import ingest, load_watchlist
@@ -224,7 +224,7 @@ def resume(request: Request) -> dict:
     return {"halted": False}
 
 
-# ── Second Brain (Step 6) — all off the trade hot path ──────────────────────────
+# ── Second Brain (Step 6) - all off the trade hot path ──────────────────────────
 
 def _second_brain():
     return getattr(get_loop(), "second_brain", None)
@@ -241,23 +241,23 @@ def _copilot_fallback(question: str) -> str:
         if led.units > 0 else "flat (no open position)"
     )
     system = (
-        "You are the Alien-Trade Co-Pilot — an intelligent assistant embedded inside an autonomous BSC trading agent.\n\n"
+        "You are the Alien-Trade Co-Pilot - an intelligent assistant embedded inside an autonomous BSC trading agent.\n\n"
         "## About Alien-Trade\n"
         "Alien-Trade is a fully autonomous, self-custody BSC trading agent.\n"
-        "- Token allowlist: ETH, CAKE, UNI, LINK, AAVE — traded on PancakeSwap spot via Trust Wallet Agent Kit (TWAK).\n"
+        "- Token allowlist: ETH, CAKE, UNI, LINK, AAVE - traded on PancakeSwap spot via Trust Wallet Agent Kit (TWAK).\n"
         "  The allowlist is a risk control: these are the only tokens the strategy was tested on.\n"
         "- Self-custody: all signing goes through TWAK; private keys never touch the code or logs\n"
-        "- Strategy engine: deterministic Python makes all buy/sell decisions on a 1-hour cycle — LLM is advisory only\n"
+        "- Strategy engine: deterministic Python makes all buy/sell decisions on a 1-hour cycle - LLM is advisory only\n"
         "- Strategy: contrarian approach using Fear & Greed index, momentum (S1), derivatives/funding rate (S2), sentiment (S3), on-chain flow (S4)\n"
-        "- Optimization target: Sortino ratio + low drawdown — risk-adjusted performance, not raw returns\n"
-        "- Live on BSC mainnet — the agent evaluates regime and risk gates each hour, then acts or holds\n\n"
+        "- Optimization target: Sortino ratio + low drawdown - risk-adjusted performance, not raw returns\n"
+        "- Live on BSC mainnet - the agent evaluates regime and risk gates each hour, then acts or holds\n\n"
         "## How to Handle Trade Requests\n"
         "When asked to place a trade, buy, or sell: lead with how the autonomous system works. "
         "The strategy engine decides each cycle when conditions align. "
         "Operators can halt/resume via cockpit controls. Offer to share current market context instead.\n\n"
         "## Strict Response Rules\n"
         "1. Never start a response with 'No', 'I can't', 'I'm unable', 'Unfortunately', or any negative opener\n"
-        "2. Lead with context or what IS possible — state any limitation only after the explanation\n"
+        "2. Lead with context or what IS possible - state any limitation only after the explanation\n"
         "3. Only surface PnL, drawdown, or equity data when the user explicitly asks about performance or results\n"
         "4. Answer concisely in markdown\n\n"
         f"## Live Agent State\n"
@@ -339,7 +339,7 @@ def supervisor_event(body: dict) -> dict:
     Trigger.dev calls this on schedule ticks (kind=research_tick) and after
     sell fills (kind=position_closed). The supervisor routes to the right
     advisory node and emits AgentEvents to the Activity Channel. Always
-    returns — a failed advisory run must never surface as a 5xx to Trigger.dev
+    returns - a failed advisory run must never surface as a 5xx to Trigger.dev
     (which would dead-letter and alert on a non-critical path).
     """
     sup = get_supervisor()
@@ -360,7 +360,7 @@ def supervisor_event(body: dict) -> dict:
             "route": out.get("route"),
             "events_emitted": len(out.get("events", [])),
         }
-    except Exception as exc:  # noqa: BLE001 — advisory path; never raise to Trigger.dev
+    except Exception as exc:  # noqa: BLE001 - advisory path; never raise to Trigger.dev
         # 8.14: surface the failure in the cockpit channel so the operator can see it
         try:
             from agent.graph.contracts import AgentEvent, KIND_CONTROL
@@ -395,7 +395,7 @@ def dreamer() -> dict:
             "nightly_digest_id": res.nightly_digest_id,
             "errors": res.errors,
         }
-    except Exception as e:  # noqa: BLE001 — dreamer must never break the server
+    except Exception as e:  # noqa: BLE001 - dreamer must never break the server
         return {"ok": False, "reason": str(e)}
 
 
@@ -412,7 +412,7 @@ def telemetry() -> dict:
 
 @app.post("/skill/signal_score")
 def skill_signal_score(body: dict) -> dict:
-    """Track-2 CMC Skill — multi-signal score for a BSC-eligible token.
+    """Track-2 CMC Skill - multi-signal score for a BSC-eligible token.
 
     POST {"symbol": "ETH", "lookback_bars": 60}
     Returns structured score: regime, momentum/derivatives/sentiment/flow scores,
@@ -430,7 +430,7 @@ def skill_signal_score(body: dict) -> dict:
 
 @app.post("/skill/thesis_check")
 def skill_thesis_check(body: dict) -> dict:
-    """CMC Skill — falsification-as-a-service over the thesis ledger.
+    """CMC Skill - falsification-as-a-service over the thesis ledger.
 
     POST {"idea_text": "momentum works in uptrends"}
     Returns {status, verdict, oos_objective, deflated_sharpe, source, matched_claim}.

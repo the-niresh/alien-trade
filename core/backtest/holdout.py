@@ -1,6 +1,6 @@
 """Final untouched holdout (AWAKE_SPRINT §4.4).
 
-Reserve the most-recent ~45–60 days, used EXACTLY ONCE at the very end on survivors,
+Reserve the most-recent ~45-60 days, used EXACTLY ONCE at the very end on survivors,
 never tuned against. `use_once()` raises on a second call so the discipline is
 mechanical, not a promise.
 """
@@ -20,7 +20,7 @@ class HoldoutSplit:
     def use_once(self) -> pd.DataFrame:
         if self._used:
             raise RuntimeError(
-                "holdout already used once — re-using it defeats the anti-snooping guard"
+                "holdout already used once - re-using it defeats the anti-snooping guard"
             )
         self._used = True
         return self.holdout

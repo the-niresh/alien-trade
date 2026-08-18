@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Alien-Trade — one-command onboarding wizard
+# Alien-Trade - one-command onboarding wizard
 #
 # Usage (hosted):   curl -fsSL https://<host>/install.sh | bash
 # Local:            bash install.sh
@@ -42,7 +42,7 @@ cat <<'EOF'
    ██║  ██║███████╗██║███████╗██║ ╚████║         ██║   ██║  ██║██║  ██║██████╔╝███████╗
    ╚═╝  ╚═╝╚══════╝╚═╝╚══════╝╚═╝  ╚═══╝         ╚═╝   ╚═╝  ╚═╝╚═╝  ╚═╝╚═════╝ ╚══════╝
 EOF
-echo -e "${NC}${BOLD}  Autonomous BSC Trading Agent — Onboarding Wizard${NC}"
+echo -e "${NC}${BOLD}  Autonomous BSC Trading Agent - Onboarding Wizard${NC}"
 echo -e "  Autonomous BSC trading agent · self-custody · Convex real-time bus\n"
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -85,7 +85,7 @@ _prompt_secret() {
 }
 
 # ── Step 1: Dependency checks ─────────────────────────────────────────────────
-hdr "Step 1 — Checking dependencies"
+hdr "Step 1 - Checking dependencies"
 
 # Python ≥ 3.11
 PYTHON_CMD=""
@@ -111,7 +111,7 @@ fi
 if command -v uv >/dev/null 2>&1; then
   ok "uv $(uv --version 2>&1 | head -1)"
 else
-  warn "uv not found — installing..."
+  warn "uv not found - installing..."
   curl -LsSf https://astral.sh/uv/install.sh | sh
   export PATH="$HOME/.cargo/bin:$PATH"
   ok "uv installed"
@@ -121,13 +121,13 @@ fi
 if command -v bun >/dev/null 2>&1; then
   ok "bun $(bun --version 2>&1)"
 else
-  warn "bun not found — installing..."
+  warn "bun not found - installing..."
   curl -fsSL https://bun.sh/install | bash
   export PATH="$HOME/.bun/bin:$PATH"
   ok "bun installed"
 fi
 
-# twak CLI (optional — required only for mainnet)
+# twak CLI (optional - required only for mainnet)
 if command -v twak >/dev/null 2>&1; then
   ok "twak CLI found"
 else
@@ -136,18 +136,18 @@ else
 fi
 
 # ── Step 2: Gather secrets ────────────────────────────────────────────────────
-hdr "Step 2 — Configuration"
+hdr "Step 2 - Configuration"
 echo "  Leave blank to skip optional values (press Enter to accept defaults)"
 
 # Load existing .env.local as defaults if present
 if [ -f "$REPO_ROOT/.env.local" ]; then
-  warn "Existing .env.local found — using as defaults (press Enter to keep each value)"
+  warn "Existing .env.local found - using as defaults (press Enter to keep each value)"
   # shellcheck disable=SC1090
   set -o allexport; source "$REPO_ROOT/.env.local" 2>/dev/null || true; set +o allexport
 fi
 
 echo ""
-echo -e "  ${BOLD}Required — data + infrastructure${NC}"
+echo -e "  ${BOLD}Required - data + infrastructure${NC}"
 CMC_API_KEY=$(_prompt_secret   "CMC_API_KEY (CoinMarketCap)"              "${CMC_API_KEY:-}")
 CONVEX_URL=$(_prompt           "CONVEX_URL (your Convex deployment)"       "${CONVEX_URL:-}")
 UPSTASH_REDIS_REST_URL=$(_prompt_secret "UPSTASH_REDIS_REST_URL"          "${UPSTASH_REDIS_REST_URL:-}")
@@ -155,10 +155,10 @@ UPSTASH_REDIS_REST_TOKEN=$(_prompt_secret "UPSTASH_REDIS_REST_TOKEN"      "${UPS
 UPSTASH_VECTOR_REST_URL=$(_prompt_secret  "UPSTASH_VECTOR_REST_URL"       "${UPSTASH_VECTOR_REST_URL:-}")
 UPSTASH_VECTOR_REST_TOKEN=$(_prompt_secret "UPSTASH_VECTOR_REST_TOKEN"    "${UPSTASH_VECTOR_REST_TOKEN:-}")
 ANTHROPIC_API_KEY=$(_prompt_secret "ANTHROPIC_API_KEY"                    "${ANTHROPIC_API_KEY:-}")
-OPENAI_API_KEY=$(_prompt_secret "OPENAI_API_KEY (optional — LLM fallback if Claude is down)" "${OPENAI_API_KEY:-}")
+OPENAI_API_KEY=$(_prompt_secret "OPENAI_API_KEY (optional - LLM fallback if Claude is down)" "${OPENAI_API_KEY:-}")
 
 echo ""
-echo -e "  ${BOLD}Required — TWAK self-custody signing${NC}"
+echo -e "  ${BOLD}Required - TWAK self-custody signing${NC}"
 TW_ACCESS_ID=$(_prompt_secret  "TW_ACCESS_ID (Trust Wallet Agent Kit)"    "${TW_ACCESS_ID:-}")
 TW_HMAC_SECRET=$(_prompt_secret "TW_HMAC_SECRET"                          "${TW_HMAC_SECRET:-}")
 
@@ -169,24 +169,24 @@ DAILY_LOSS_CAP_PCT=$(_prompt   "DAILY_LOSS_CAP_PCT (0-1, e.g. 0.05)"     "${DAIL
 MAX_OPEN_EXPOSURE_PCT=$(_prompt "MAX_OPEN_EXPOSURE_PCT (0-1, e.g. 0.30)" "${MAX_OPEN_EXPOSURE_PCT:-0.30}")
 
 echo ""
-echo -e "  ${BOLD}Optional — Telegram alerts${NC}"
+echo -e "  ${BOLD}Optional - Telegram alerts${NC}"
 TELEGRAM_BOT_TOKEN=$(_prompt_secret "TELEGRAM_BOT_TOKEN (@BotFather → /newbot)" "${TELEGRAM_BOT_TOKEN:-}")
 TELEGRAM_CHAT_ID=$(_prompt     "TELEGRAM_CHAT_ID (from @userinfobot)"    "${TELEGRAM_CHAT_ID:-}")
 
 echo ""
-echo -e "  ${BOLD}Optional — CMC x402 micropayments (USDC on Base)${NC}"
+echo -e "  ${BOLD}Optional - CMC x402 micropayments (USDC on Base)${NC}"
 X402_PRIVATE_KEY=$(_prompt_secret "X402_PRIVATE_KEY (dedicated burner, fund 15 USDC)" "${X402_PRIVATE_KEY:-}")
 
 echo ""
-echo -e "  ${BOLD}Optional — hosted PWA URL (after vercel deploy)${NC}"
+echo -e "  ${BOLD}Optional - hosted PWA URL (after vercel deploy)${NC}"
 PWA_URL=$(_prompt              "PWA_URL (e.g. https://alien-trade.vercel.app)" "${PWA_URL:-}")
 AGENT_URL=$(_prompt            "AGENT_URL (public agent endpoint for Convex)" "${AGENT_URL:-http://localhost:8000}")
 
 # ── Step 3: Write .env.local ──────────────────────────────────────────────────
-hdr "Step 3 — Writing .env.local"
+hdr "Step 3 - Writing .env.local"
 
 cat > "$REPO_ROOT/.env.local" <<ENVEOF
-# Generated by install.sh — $(date -u '+%Y-%m-%d %H:%M UTC')
+# Generated by install.sh - $(date -u '+%Y-%m-%d %H:%M UTC')
 
 # ── Data ──────────────────────────────────────────────────────────────────────
 CMC_API_KEY=${CMC_API_KEY}
@@ -203,7 +203,7 @@ UPSTASH_VECTOR_REST_TOKEN=${UPSTASH_VECTOR_REST_TOKEN}
 
 # ── LLM ───────────────────────────────────────────────────────────────────────
 ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
-# Optional OpenAI fallback — used ONLY when the Anthropic API is unreachable.
+# Optional OpenAI fallback - used ONLY when the Anthropic API is unreachable.
 OPENAI_API_KEY=${OPENAI_API_KEY}
 
 # ── TWAK (Trust Wallet Agent Kit) ─────────────────────────────────────────────
@@ -240,10 +240,10 @@ ENVEOF
 ok ".env.local written"
 
 # ── Step 4: Install Python deps ────────────────────────────────────────────────
-hdr "Step 4 — Installing Python dependencies"
+hdr "Step 4 - Installing Python dependencies"
 cd "$REPO_ROOT/core"
 if [ -d ".venv" ]; then
-  ok "venv already exists — syncing"
+  ok "venv already exists - syncing"
 else
   uv venv .venv --python "$PYTHON_CMD"
   ok "venv created"
@@ -253,14 +253,14 @@ ok "Python deps installed (core/)"
 cd "$REPO_ROOT"
 
 # ── Step 5: Install JS deps ────────────────────────────────────────────────────
-hdr "Step 5 — Installing JS dependencies"
+hdr "Step 5 - Installing JS dependencies"
 bun install --cwd "$REPO_ROOT" --frozen-lockfile 2>/dev/null || bun install --cwd "$REPO_ROOT"
 ok "JS deps installed"
 
 # ── Step 6: Convex health check ────────────────────────────────────────────────
-hdr "Step 6 — Convex health check"
+hdr "Step 6 - Convex health check"
 if [ -z "$CONVEX_URL" ]; then
-  warn "CONVEX_URL not set — skipping Convex health check"
+  warn "CONVEX_URL not set - skipping Convex health check"
   echo "  Run 'bunx convex dev' from the repo root to deploy your Convex functions."
 else
   # Probe the Convex URL
@@ -279,7 +279,7 @@ fi
 # Dependencies are installed; the Textual TUI now drives keys, trading mode, risk
 # caps, Telegram, the pairing token + QR, and writes .env.local. `exec` replaces
 # this shell so the wizard owns the terminal.
-hdr "Step 7 — Launching onboarding wizard"
+hdr "Step 7 - Launching onboarding wizard"
 
 ONBOARD_PY="$REPO_ROOT/core/.venv/bin/python"
 [ -x "$ONBOARD_PY" ] || ONBOARD_PY="$REPO_ROOT/core/.venv/Scripts/python.exe"  # Windows
@@ -288,6 +288,6 @@ if [ -x "$ONBOARD_PY" ]; then
   cd "$REPO_ROOT"
   exec "$ONBOARD_PY" -m onboard
 else
-  warn "venv python not found — run the wizard manually:"
+  warn "venv python not found - run the wizard manually:"
   echo -e "  ${CYAN}core/.venv/bin/python -m onboard${NC}"
 fi

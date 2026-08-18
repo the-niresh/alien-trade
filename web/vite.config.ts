@@ -16,7 +16,7 @@ export default defineConfig({
       manifest: {
         name: "Alien-Trade",
         short_name: "Alien-Trade",
-        description: "Autonomous BSC trading agent — PnL, drawdown, kill switch",
+        description: "Autonomous BSC trading agent - PnL, drawdown, kill switch",
         theme_color: "#0b0f17",
         background_color: "#0b0f17",
         display: "standalone",

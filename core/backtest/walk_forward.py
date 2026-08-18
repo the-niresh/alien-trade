@@ -6,7 +6,7 @@ Flow per window:
   test bars   →  strategy_factory(best_params)  →  BacktestResult  (OOS only)
 
 Roll by `test_bars` each iteration. Aggregate all OOS windows into one metric dict.
-Never return or expose in-sample metrics — only oos_* keys are published.
+Never return or expose in-sample metrics - only oos_* keys are published.
 """
 from __future__ import annotations
 
@@ -32,7 +32,7 @@ class WalkForwardConfig:
     test_bars: int = 90      # ~3 months per OOS window
     min_train_bars: int = 60 # skip window if train set too short
     # OOS fills at the NEXT bar's open (realistic 1-bar execution latency) rather than
-    # at the signal bar's close. Defaults True so out-of-sample numbers are honest —
+    # at the signal bar's close. Defaults True so out-of-sample numbers are honest -
     # filling at the same close that triggered the signal overstates performance.
     realistic_fill: bool = True
 
@@ -80,7 +80,7 @@ def run_walk_forward(
         if not test:
             break
 
-        # Optimize on train — results intentionally thrown away after extracting params
+        # Optimize on train - results intentionally thrown away after extracting params
         best_params = optimize_fn(train)
         result.window_params.append(best_params)
 
@@ -183,7 +183,7 @@ def _aggregate_regime_metrics(
         # We don't have exact bar slices per window stored, so approximate
         # by detecting regimes for each equity point using available bars
         all_equity.extend(w.equity_curve)
-        all_bars.extend(bars[:n])  # best-effort — Step 3 wires this properly
+        all_bars.extend(bars[:n])  # best-effort - Step 3 wires this properly
 
     if not all_equity:
         return {}

@@ -7,7 +7,7 @@ import { ArrowRight, Bot, Eye, ShieldCheck } from "lucide-react";
  * It used to lead with "Track-1: live 7-day risk-adjusted PnL · TWAK self-custody ·
  * CMC x402 · BNB AI Agent SDK" and then a grid of twenty-odd control cards. Every
  * word of that is meaningful only if you already know the project, and the one action
- * a visitor could actually take — look around without a token — was a small underlined
+ * a visitor could actually take - look around without a token - was a small underlined
  * link at the bottom.
  *
  * So: say what it is in one sentence, say what happened including the part that did
@@ -56,7 +56,7 @@ export function LandingView({
         </h1>
 
         <p className="text-[17px] max-sm:text-[15px] text-text/90 max-w-xl leading-relaxed mb-4">
-          A crypto trading bot that runs itself — and the dashboard its operator watches
+          A crypto trading bot that runs itself - and the dashboard its operator watches
           it through.
         </p>
 
@@ -68,7 +68,7 @@ export function LandingView({
           <p className="text-[13px] text-text/85 leading-relaxed">
             The engineering works. <span className="text-text font-semibold">The trading
             strategy does not.</span> Tested across 40 setups on 540 days of real prices,
-            every one lost money — holding cash beat all of them. It traded real funds for
+            every one lost money - holding cash beat all of them. It traded real funds for
             a few days and lost 44 cents, almost all of it network fees.
           </p>
           <p className="text-[13px] text-muted-fg leading-relaxed mt-2">
@@ -96,7 +96,7 @@ export function LandingView({
         </div>
         <p className="font-mono text-[11px] text-muted-fg mt-3 max-w-sm leading-relaxed">
           Looking around needs nothing. The token is only for running your own copy, and
-          it is yours alone — there is no shared demo token.
+          it is yours alone - there is no shared demo token.
         </p>
       </div>
 

@@ -1,4 +1,4 @@
-# Alien-Trade agent — containerised for demo deployments.
+# Alien-Trade agent - containerised for demo deployments.
 # Default EXECUTION_BACKEND=paper (no real capital in demo mode).
 #
 # Build:  docker build -t alien-trade .

@@ -15,7 +15,7 @@ function Stat({ label, value, tone }: { label: string; value: string; tone?: "gr
 }
 
 function timeAgo(ms?: number): string {
-  if (!ms) return "—";
+  if (!ms) return "-";
   const s = Math.floor((Date.now() - ms) / 1000);
   if (s < 60) return `${s}s ago`;
   const m = Math.floor(s / 60);
@@ -31,10 +31,10 @@ export function DashboardSection({ agent }: { agent: DetailAgent }) {
 }
 
 /**
- * Trade lifecycle — the missing middle of the cycle: entry → live unrealized PnL +
+ * Trade lifecycle - the missing middle of the cycle: entry → live unrealized PnL +
  * the agent's *intended* exit → (realized lands on the chart below). When flat it
  * states the capital-preservation thesis explicitly: HOLD is a decision, not idle
- * time. Numbers are read straight from live state — nothing inflated.
+ * time. Numbers are read straight from live state - nothing inflated.
  */
 function TradeLifecycle() {
   const positions = useQuery(api.positions.open) ?? [];
@@ -62,10 +62,10 @@ function TradeLifecycle() {
       <div className="panel p-4 flex flex-col gap-2.5">
         <div className="flex items-center gap-2">
           <span className="w-2 h-2 rounded-full bg-yellow-400/70 flex-shrink-0" />
-          <span className="font-mono text-[10px] text-muted-fg uppercase tracking-widest">Trade lifecycle — flat, capital preserved</span>
+          <span className="font-mono text-[10px] text-muted-fg uppercase tracking-widest">Trade lifecycle - flat, capital preserved</span>
         </div>
         <p className="font-mono text-[12px] text-text leading-relaxed">
-          Holding USDT. <span className="text-yellow-400">HOLD is a decision</span>, not idle time —
+          Holding USDT. <span className="text-yellow-400">HOLD is a decision</span>, not idle time -
           trading without a validated, cost-net edge bleeds to fees and slippage. The agent waits for a
           setup that beats sitting in cash.
         </p>
@@ -76,7 +76,7 @@ function TradeLifecycle() {
 
   return (
     <div className="panel p-4 flex flex-col gap-3">
-      <span className="font-mono text-[10px] text-muted-fg uppercase tracking-widest">Trade lifecycle — open</span>
+      <span className="font-mono text-[10px] text-muted-fg uppercase tracking-widest">Trade lifecycle - open</span>
       <div className="grid grid-cols-2 gap-3 max-sm:grid-cols-1">
         {positions.map((p) => {
           const target = ap?.enabled ? (ap.profit_target_pct ?? 0) : 0;
@@ -120,18 +120,18 @@ function PrimaryDashboard() {
   return (
     <div className="flex flex-col gap-4">
       <div className="grid grid-cols-3 gap-3 max-sm:grid-cols-2">
-        <Stat label="Realized PnL" value={pnl == null ? "—" : `${pnl >= 0 ? "+" : ""}$${pnl.toFixed(2)}`} tone={pnl == null ? "muted" : pnl >= 0 ? "green" : "red"} />
-        <Stat label="Win Rate" value={sc?.win_rate == null ? "—" : `${(sc.win_rate * 100).toFixed(0)}%`} />
-        <Stat label="Trades" value={sc?.n_trades?.toString() ?? "—"} />
-        <Stat label="Max Drawdown" value={dd == null ? "—" : `${(dd * 100).toFixed(1)}%`} tone={dd ? "red" : "muted"} />
-        <Stat label="Sortino" value={sc?.sortino?.toFixed(2) ?? "—"} />
-        <Stat label="Profit Factor" value={sc?.profit_factor?.toFixed(2) ?? "—"} />
+        <Stat label="Realized PnL" value={pnl == null ? "-" : `${pnl >= 0 ? "+" : ""}$${pnl.toFixed(2)}`} tone={pnl == null ? "muted" : pnl >= 0 ? "green" : "red"} />
+        <Stat label="Win Rate" value={sc?.win_rate == null ? "-" : `${(sc.win_rate * 100).toFixed(0)}%`} />
+        <Stat label="Trades" value={sc?.n_trades?.toString() ?? "-"} />
+        <Stat label="Max Drawdown" value={dd == null ? "-" : `${(dd * 100).toFixed(1)}%`} tone={dd ? "red" : "muted"} />
+        <Stat label="Sortino" value={sc?.sortino?.toFixed(2) ?? "-"} />
+        <Stat label="Profit Factor" value={sc?.profit_factor?.toFixed(2) ?? "-"} />
       </div>
 
       <TradeLifecycle />
 
       <div className="panel p-4">
-        <div className="font-mono text-[10px] text-muted-fg uppercase tracking-widest mb-2">Performance — realized PnL</div>
+        <div className="font-mono text-[10px] text-muted-fg uppercase tracking-widest mb-2">Performance - realized PnL</div>
         <RealizedPnlChart period="max" />
       </div>
 
@@ -159,7 +159,7 @@ function SpawnedDashboard({ agent }: { agent: DetailAgent }) {
   const lastRun = runs[0];
   const okCount = runs.filter((r) => r.ok).length;
   const avgTools = runs.length ? (runs.reduce((s, r) => s + r.tool_calls.length, 0) / runs.length) : 0;
-  const cadence = agent.trigger?.spec ?? "—";
+  const cadence = agent.trigger?.spec ?? "-";
   const trace: string[] = lastRun?.tool_calls?.map((t: { tool: string }) => t.tool) ?? [];
 
   // oldest → newest left-to-right for the run-history strip
@@ -181,7 +181,7 @@ function SpawnedDashboard({ agent }: { agent: DetailAgent }) {
           <span className="font-mono text-[9px] text-muted-fg/50 uppercase tracking-widest">cadence {cadence} · {agent.mode ?? "paper"}</span>
         </div>
         {history.length === 0 ? (
-          <p className="font-mono text-[11px] text-muted-fg/50">No runs yet — first run fires on the next {cadence} cycle.</p>
+          <p className="font-mono text-[11px] text-muted-fg/50">No runs yet - first run fires on the next {cadence} cycle.</p>
         ) : (
           <div className="flex items-end gap-1 h-12">
             {history.map((r, i) => (
@@ -198,11 +198,11 @@ function SpawnedDashboard({ agent }: { agent: DetailAgent }) {
 
       <div className="panel p-4 flex flex-col gap-1.5">
         <div className="font-mono text-[10px] text-muted-fg uppercase tracking-widest">Mandate</div>
-        <p className="font-mono text-[12px] text-text leading-relaxed">{agent.goal ?? "—"}</p>
+        <p className="font-mono text-[12px] text-text leading-relaxed">{agent.goal ?? "-"}</p>
       </div>
 
       <div className="panel p-4 flex flex-col gap-2">
-        <div className="font-mono text-[10px] text-muted-fg uppercase tracking-widest">Last run — AI insight</div>
+        <div className="font-mono text-[10px] text-muted-fg uppercase tracking-widest">Last run - AI insight</div>
         {lastRun ? (
           <>
             <p className="font-mono text-[12px] text-text leading-relaxed">
@@ -222,7 +222,7 @@ function SpawnedDashboard({ agent }: { agent: DetailAgent }) {
             )}
           </>
         ) : (
-          <p className="font-mono text-[11px] text-muted-fg/50">No insight yet — runs report here once the agent executes.</p>
+          <p className="font-mono text-[11px] text-muted-fg/50">No insight yet - runs report here once the agent executes.</p>
         )}
       </div>
     </div>

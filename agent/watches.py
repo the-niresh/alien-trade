@@ -1,5 +1,5 @@
 """
-Deterministic market/trade watches — token-efficient monitoring.
+Deterministic market/trade watches - token-efficient monitoring.
 
 A watch is a row {kind, target, op, threshold, last_state}. A cheap pure
 predicate evaluates it each loop tick against a point-in-time snapshot the
@@ -7,11 +7,11 @@ loop already has (price / regime / drawdown / equity). NO LLM runs here.
 
 Edge-trigger only: a watch fires on the cycle its condition becomes newly
 true, then arms 'fired' so it never re-fires until the condition clears and
-re-arms. Steady-state cost is zero — the one short LLM "why it matters"
+re-arms. Steady-state cost is zero - the one short LLM "why it matters"
 explain call happens in the loop's fire callback, only on an actual fire.
 
 Governed by locked decision #1 (LLM off the hot path) and #6 (a watch failing
-must never crash the cycle — the loop wraps the call defensively).
+must never crash the cycle - the loop wraps the call defensively).
 """
 from __future__ import annotations
 
@@ -110,8 +110,8 @@ def evaluate(watch: dict, snapshot: dict) -> Optional[dict]:
         NEW trigger,
       - a re-arm dict {watch_id, fired=False, new_state='clear'} when a fired watch's
         condition clears,
-      - None when nothing changed (the common case — zero side effects).
-    Never raises on a malformed watch — unknown kind/op degrades to None."""
+      - None when nothing changed (the common case - zero side effects).
+    Never raises on a malformed watch - unknown kind/op degrades to None."""
     try:
         kind = watch.get("kind")
         cur = _current(kind, watch.get("target", ""), snapshot)
@@ -125,7 +125,7 @@ def evaluate(watch: dict, snapshot: dict) -> Optional[dict]:
         if not is_true and last == FIRED:
             return {"watch_id": watch.get("_id"), "fired": False, "new_state": CLEAR}
         return None
-    except Exception:  # noqa: BLE001 — a checker bug must never crash the cycle
+    except Exception:  # noqa: BLE001 - a checker bug must never crash the cycle
         return None
 
 

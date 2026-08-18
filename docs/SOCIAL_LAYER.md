@@ -1,9 +1,9 @@
-# Social Ingestion Layer — "bring your own KOL list"
+# Social Ingestion Layer - "bring your own KOL list"
 
 The user curates a watchlist of traders/channels; the agent watches them so the
 user doesn't have to ("makes them lazy"). Posts across multiple platforms are
-ingested through swappable adapters, normalised, and reduced — **off the trade
-hot path** — into a bounded, deterministic sentiment feature that feeds signal
+ingested through swappable adapters, normalised, and reduced - **off the trade
+hot path** - into a bounded, deterministic sentiment feature that feeds signal
 **S3** (which was stubbed at 0.0). Raw posts also fuel the Second Brain
 researcher + co-pilot.
 
@@ -25,10 +25,10 @@ agent/social/
   watchlist.example.json
   sources/
     base.py            SocialSource protocol + registry (@register)
-    rss.py             RSS/Atom  — NO creds (works today)
-    farcaster.py       Warpcast public API — NO creds (works today)
-    telegram.py        Telethon — credential-gated
-    twitter.py         twscrape — credential-gated, ToS-risk, BURNER account
+    rss.py             RSS/Atom  - NO creds (works today)
+    farcaster.py       Warpcast public API - NO creds (works today)
+    telegram.py        Telethon - credential-gated
+    twitter.py         twscrape - credential-gated, ToS-risk, BURNER account
 ```
 
 ## Data flow (mirrors the Option-B forecast bridge)
@@ -43,11 +43,11 @@ user watchlist (Convex social_sources, user-writable)
        \- Second Brain (raw posts -> researcher digests + co-pilot citations)
 ```
 
-**Locked-decision compliance:** the LLM is *not* in this path — scoring is a
+**Locked-decision compliance:** the LLM is *not* in this path - scoring is a
 deterministic lexicon (reproducible, sim/live-parity safe). Any LLM enrichment is
 async and never produces the number that crosses into the decision. The sentiment
 reading can only inform sizing *within* risk caps (shrink-or-confirm), like the
-forecast bridge — never enlarge a position.
+forecast bridge - never enlarge a position.
 
 ## Adapters & status
 
@@ -82,7 +82,7 @@ telethon`; generate a `StringSession` once; set `TELEGRAM_API_ID`,
 
 **X/Twitter** (ToS-risk, use a BURNER): `uv pip install --python … twscrape`; add
 + login a burner X account into twscrape's db; set `X_ACCOUNTS_READY=1`. Treated
-as one swappable adapter on purpose — it can break/ban without affecting the rest.
+as one swappable adapter on purpose - it can break/ban without affecting the rest.
 
 ## Next steps (not yet wired)
 
@@ -92,6 +92,6 @@ as one swappable adapter on purpose — it can break/ban without affecting the r
 3. Bridge `sentiment_state` -> core signal S3 with point-in-time discipline
    (same care as the forecast bridge; covered by a parity test).
 4. Optional LLM enrichment (claim extraction, manipulation/pump detection) via
-   the Second Brain — async, never on the number that reaches the core.
+   the Second Brain - async, never on the number that reaches the core.
 
 See `AGENT_TEAM_PLAN.md` (§9 patterns, failure matrix) and `STRATEGY.md` (S3).

@@ -1,5 +1,5 @@
 """
-Accounting integrity — the backtest may never invent money.
+Accounting integrity - the backtest may never invent money.
 
 These pin a bug that made every "risk engine ON" number in this repo wrong, in the
 flattering direction, for months.
@@ -8,7 +8,7 @@ What happened: `RiskEngine` ran sell orders through the volatility-targeted *ent
 sizer, so an exit was sized from equity and volatility instead of from the position
 actually held. The resulting sell was almost always larger than the position. The
 backtest engine then credited the full requested proceeds to cash while flooring the
-position at zero — so each oversized exit minted the difference. On 540 days of hourly
+position at zero - so each oversized exit minted the difference. On 540 days of hourly
 ETH data that added $46,814 of imaginary cash and turned a −16% strategy into a
 reported +452% with a 0.45% max drawdown.
 
@@ -32,7 +32,7 @@ _HOUR_MS = 3_600_000
 
 
 def _bars(n: int, start: float = 100.0, step: float = 0.5) -> list[Bar]:
-    """Gently rising bars — enough for ATR and EMA windows to warm up."""
+    """Gently rising bars - enough for ATR and EMA windows to warm up."""
     out = []
     for i in range(n):
         close = start + i * step
@@ -77,7 +77,7 @@ def test_buy_cannot_spend_cash_the_account_does_not_have():
     Spot, long only, unlevered: a buy is bounded by settled cash.
 
     Without this the engine let cash go negative, so an over-trading strategy reported
-    losses past 100%. The `contrarian` preset came out at −470% on real ETH history —
+    losses past 100%. The `contrarian` preset came out at −470% on real ETH history -
     not a bad result, an impossible one. Any number below −100% on a long-only account
     is a bug report, and the engine should be the thing that refuses it.
     """
@@ -93,7 +93,7 @@ def test_buy_cannot_spend_cash_the_account_does_not_have():
     # Long-only on a rising series: equity can grow, but it can never go negative and a
     # loss can never exceed the capital put in.
     assert min(res.equity_curve) >= 0.0, (
-        f"equity went negative (min {min(res.equity_curve):.2f}) — the account borrowed"
+        f"equity went negative (min {min(res.equity_curve):.2f}) - the account borrowed"
     )
     assert res.metrics["total_return"] > -1.0, (
         f"reported {res.metrics['total_return'] * 100:.1f}% on a long-only account"
@@ -144,8 +144,8 @@ def test_risk_engine_sizes_exits_from_the_position_not_the_vol_target():
     """
     The regression that started all this.
 
-    Pre-fix, `RiskEngine` ran sell orders through `compute_position_size` — the
-    volatility-targeted *entry* sizer — and emitted that number as the exit size. The
+    Pre-fix, `RiskEngine` ran sell orders through `compute_position_size` - the
+    volatility-targeted *entry* sizer - and emitted that number as the exit size. The
     result had no relationship to the position held. On 540 days of hourly ETH it made
     180 of 180 sells oversized and $46,814 of requested-but-unheld notional.
 
@@ -177,9 +177,9 @@ def test_risk_engine_sizes_exits_from_the_position_not_the_vol_target():
 
     # A single long entry can be closed exactly once. Pre-fix the exit size came from
     # the entry sizer, which never consults the position, so the engine happily emitted
-    # a full-size sell on every remaining bar — selling a position it no longer had.
+    # a full-size sell on every remaining bar - selling a position it no longer had.
     assert len(sells) == 1, (
-        f"{len(sells)} exits emitted for one entry — the engine is selling while flat "
+        f"{len(sells)} exits emitted for one entry - the engine is selling while flat "
         f"because exit size comes from the entry sizer, not the position"
     )
 
@@ -206,7 +206,7 @@ def test_risk_engine_does_not_veto_an_exit():
         if calls["n"] == 20:
             return Order(side="buy", size_usd=200.0, symbol="ETH", timestamp=bar.timestamp)
         if calls["n"] >= 30:
-            # A tiny exit — below the $10 minimum that gates entries.
+            # A tiny exit - below the $10 minimum that gates entries.
             return Order(side="sell", size_usd=1.0, symbol="ETH", timestamp=bar.timestamp)
         return None
 
@@ -214,5 +214,5 @@ def test_risk_engine_does_not_veto_an_exit():
     emitted = [o for i in range(len(bars)) if (o := engine(bars[: i + 1])) is not None]
 
     assert any(o.side == "sell" for o in emitted), (
-        "a small exit was vetoed — the entry minimum is gating sells"
+        "a small exit was vetoed - the entry minimum is gating sells"
     )

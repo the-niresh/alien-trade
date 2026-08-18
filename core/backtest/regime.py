@@ -1,12 +1,12 @@
 """
 Deterministic regime detector: TREND / CHOP / HIGH_VOL / CRASH.
-Uses only data visible at the current bar — no look-ahead.
+Uses only data visible at the current bar - no look-ahead.
 
 Decision tree (evaluated in priority order):
-  1. CRASH   — price > 15% below rolling peak in the lookback window
-  2. HIGH_VOL — ATR/price > 4% (daily ATR is large relative to price level)
-  3. TREND   — linear regression slope > 0.3%/bar AND ATR/price < 3%
-  4. CHOP    — everything else
+  1. CRASH   - price > 15% below rolling peak in the lookback window
+  2. HIGH_VOL - ATR/price > 4% (daily ATR is large relative to price level)
+  3. TREND   - linear regression slope > 0.3%/bar AND ATR/price < 3%
+  4. CHOP    - everything else
 """
 from __future__ import annotations
 

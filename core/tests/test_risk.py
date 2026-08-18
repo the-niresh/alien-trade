@@ -34,7 +34,7 @@ def _volatile_bars(n, start=300.0):
     rng = np.random.default_rng(7)
     bars, price = [], start
     for i in range(n):
-        price *= 1 + rng.normal(0, 0.05)   # 5% daily vol — very high
+        price *= 1 + rng.normal(0, 0.05)   # 5% daily vol - very high
         price = max(price, 1.0)
         bars.append(Bar(
             timestamp=1_700_000_000_000 + i * 86_400_000,
@@ -200,10 +200,10 @@ class TestRiskEngine:
 
 class TestMaxExposureInvariant:
     """The cumulative open-exposure cap must hold at emission time across ANY buy
-    sequence — a stack of individually-legal buys can never pile past the cap.
+    sequence - a stack of individually-legal buys can never pile past the cap.
     (Appreciation of an already-held position may drift current exposure above
     the cap; that's mark-to-market, not a new exposure decision, so it's allowed
-    — the invariant is on the *emitted order*, not the instantaneous mark.)"""
+    - the invariant is on the *emitted order*, not the instantaneous mark.)"""
 
     def test_check_max_exposure_pure(self):
         cfg = RiskConfig(max_open_exposure_pct=0.30)

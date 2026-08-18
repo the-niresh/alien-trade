@@ -24,8 +24,8 @@ def derivatives_signal(
 ) -> float:
     """
     Combined derivatives score in [-1, 1].
-    Component 1 (60%): funding rate — contrarian on extremes.
-    Component 2 (40%): OI trend vs price trend — confirmatory / divergence flag.
+    Component 1 (60%): funding rate - contrarian on extremes.
+    Component 2 (40%): OI trend vs price trend - confirmatory / divergence flag.
     Returns 0.0 when funding_rate and open_interest are all zero (data not yet available).
     """
     if len(history) < lookback + 1:

@@ -15,7 +15,7 @@ _GAS_UNITS_SWAP = 150_000          # PancakeSwap V3 exactInputSingle gas units
 _GAS_PRICE_GWEI = 5.0              # typical BSC gas price (gwei)
 _GWEI = 1e-9
 
-_PANCAKE_V3_FEE = 0.0025           # 25 bps — BNB/USDT 0.25% pool tier
+_PANCAKE_V3_FEE = 0.0025           # 25 bps - BNB/USDT 0.25% pool tier
 _POOL_LIQUIDITY_USD = 8_000_000.0  # ~$8M TVL in BNB/USDT V3 pool (conservative)
 _BNB_PRICE_FALLBACK = 572.0        # used if bar doesn't carry price context
 
@@ -37,7 +37,7 @@ class BSCCostModel:
     def __call__(self, order: Order, bar: Bar) -> tuple[float, float, float]:
         fee = order.size_usd * self.swap_fee_rate
         gas_bnb = self.gas_units * self.gas_price_gwei * _GWEI
-        # Gas on BSC is ALWAYS paid in BNB — price it in BNB regardless of the traded
+        # Gas on BSC is ALWAYS paid in BNB - price it in BNB regardless of the traded
         # symbol. The previous max(bar.close, bnb_price) used the ETH price (~$3000) as
         # if it were the BNB price, overstating gas ~5x on ETH trades.
         gas_usd = gas_bnb * self.bnb_price_usd

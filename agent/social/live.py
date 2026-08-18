@@ -7,7 +7,7 @@ row per ELIGIBLE symbol so the loop's _inject_sentiment (S3) and _apply_kol_sign
 overlay can read it. Eligible-only: an ineligible token can never reach execution,
 so we don't even persist its reading into the trade path.
 
-Failure-isolated (§9.3): never raises — social is advisory/off the hot path.
+Failure-isolated (§9.3): never raises - social is advisory/off the hot path.
 """
 from __future__ import annotations
 
@@ -62,7 +62,7 @@ def run_live_ingest(
 
     Args:
         bridge: ConvexBridge instance (read social_sources + write sentiment_state).
-        watchlist_path: Optional path to watchlist JSON — skips Convex when set.
+        watchlist_path: Optional path to watchlist JSON - skips Convex when set.
         limit: Max posts per source (passed to ingest()).
 
     Returns:
@@ -85,7 +85,7 @@ def run_live_ingest(
         if not symbols:
             return {}
         result = ingest(symbols, specs, limit=limit)
-    except Exception:  # noqa: BLE001 — ingest must never crash the caller
+    except Exception:  # noqa: BLE001 - ingest must never crash the caller
         return {}
 
     for sym, reading in result.readings.items():
@@ -93,6 +93,6 @@ def run_live_ingest(
             continue
         try:
             bridge.set_sentiment_state(reading)
-        except Exception:  # noqa: BLE001 — a bad write must not sink the pass
+        except Exception:  # noqa: BLE001 - a bad write must not sink the pass
             pass
     return result.readings

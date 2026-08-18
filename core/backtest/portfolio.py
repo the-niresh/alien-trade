@@ -36,7 +36,7 @@ class RotationParams:
     trend_slope_lookback: int = 12
     entry_threshold: float = 0.30
     # Only switch leaders when the challenger beats the incumbent's score by this
-    # margin — kills churn between near-tied assets.
+    # margin - kills churn between near-tied assets.
     switch_margin: float = 0.10
     # Rebalance cadence: only *enter from cash* or *switch leaders* every N bars
     # (24 ≈ daily on 1h). Exit-to-cash on loss of eligibility is allowed every bar
@@ -117,7 +117,7 @@ def run_rotation_backtest(
 
         # Decide the target. Ride the winner: stay in the held asset as long as it
         # remains eligible, and only rotate when ITS OWN trend filter forces an exit
-        # to cash. We never switch peer-to-peer on a momentum edge — that flip-flop
+        # to cash. We never switch peer-to-peer on a momentum edge - that flip-flop
         # is what churned the book to death. Re-entry from cash is cadence-gated.
         if held is not None:
             target = held if scores.get(held) is not None else None  # exit only on trend break

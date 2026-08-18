@@ -1,13 +1,13 @@
 """
 Structured logging for the live runtime (Step 7 observability).
 
-One JSON line per event on stdout, keyed by `trace` = cycle_id — the correlation
+One JSON line per event on stdout, keyed by `trace` = cycle_id - the correlation
 id that also ties together the Convex decision / trade / audit rows. Machine-
 parseable so a testnet shadow-run can be streamed/grepped for the exceptions the
 code didn't anticipate, then tuned. `json.dumps` defaults to ensure_ascii=True,
 so every line is cp1252-safe on a Windows console.
 
-Deliberately tiny and dependency-free — the Convex audit log is still the
+Deliberately tiny and dependency-free - the Convex audit log is still the
 durable event store; this is the live stdout tap for ops + exception harvesting.
 """
 from __future__ import annotations

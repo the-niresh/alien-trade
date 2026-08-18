@@ -2,15 +2,15 @@
 Crash-state recovery (AgentForge Lesson 11: persistence + recovery).
 
 Convex is the durable event log (append-only trades/decisions/ledger). On a
-restart the in-memory state is gone — this module rebuilds it from Convex so a
+restart the in-memory state is gone - this module rebuilds it from Convex so a
 restart mid-position is safe:
 
-  1. Idempotency  — re-seed the executor's seen-set from already-executed cycles,
+  1. Idempotency  - re-seed the executor's seen-set from already-executed cycles,
                     so replaying a cycle after a crash returns DUPLICATE, never a
                     second broadcast. (This is the critical no-double-trade guard.)
-  2. Ledger       — replay closed trades through a fresh LedgerState to restore
+  2. Ledger       - replay closed trades through a fresh LedgerState to restore
                     cash/units/peak-equity/drawdown/cumulative-costs/loss-streak.
-  3. Risk engine  — replay the same trades through the RiskEngine's internal
+  3. Risk engine  - replay the same trades through the RiskEngine's internal
                     tracker so sizing, daily-loss, and the circuit breaker resume.
 
 On-chain balance is the ultimate truth; `expected_units` is returned so the
@@ -41,7 +41,7 @@ def recover(loop) -> RecoveryReport:
     """Rebuild `loop` state from its Convex bridge. No-op when offline/empty."""
     bridge = loop.bridge
     if not getattr(bridge, "enabled", False):
-        return RecoveryReport(False, 0, 0, 0.0, 0.0, 0.0, "convex offline — nothing to recover")
+        return RecoveryReport(False, 0, 0, 0.0, 0.0, 0.0, "convex offline - nothing to recover")
 
     trades_desc = bridge.recent_trades(limit=500)
     decisions = bridge.recent_decisions(limit=500)

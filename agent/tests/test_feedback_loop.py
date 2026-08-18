@@ -1,4 +1,4 @@
-"""Human-feedback gate wired into the loop — bad marks block, parity offline."""
+"""Human-feedback gate wired into the loop - bad marks block, parity offline."""
 from __future__ import annotations
 
 from backtest.costs import BSCCostModel

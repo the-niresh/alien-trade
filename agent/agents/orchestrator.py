@@ -1,13 +1,13 @@
 """
 Level-1 tool handoff chains + Level-2 Agent→Agent delegation.
 
-Level-1 — chain programs: the orchestrator drives the LangGraph supervisor
+Level-1 - chain programs: the orchestrator drives the LangGraph supervisor
 through a named sequence of nodes (Researcher → Historian → CoPilot), threading
 each node's output as the next node's input. Every hop emits one AgentEvent;
-the combined trace becomes agent_runs.tool_calls[] in Convex — the Neural Mesh
+the combined trace becomes agent_runs.tool_calls[] in Convex - the Neural Mesh
 "who-called-whom" graph.
 
-Level-2 — Agent→Agent delegation: a spawned Agent may include other agent IDs
+Level-2 - Agent→Agent delegation: a spawned Agent may include other agent IDs
 (format "agent:<_id>") in its allowed_tools. The orchestrator resolves the ID,
 checks the delegation path for cycles, enforces MAX_DELEGATION_DEPTH, and runs
 the sub-agent via the standard runner. Each delegation is one bounded hop.
@@ -21,7 +21,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Optional
 
-# Level-2 delegation depth cap — keeps fan-out from exploding token spend.
+# Level-2 delegation depth cap - keeps fan-out from exploding token spend.
 MAX_DELEGATION_DEPTH: int = 2
 
 # ── Level-1 chain definitions ─────────────────────────────────────────────────
@@ -42,16 +42,16 @@ _OUTPUT_KEYS: dict[str, str] = {
     "copilot":    "answer",
 }
 
-# Named chains — two canonical patterns from the spec (§5.1).
+# Named chains - two canonical patterns from the spec (§5.1).
 CHAINS: dict[str, list[ChainStep]] = {
-    # "Is this a setup we should take?" — Researcher gathers data, Historian
+    # "Is this a setup we should take?" - Researcher gathers data, Historian
     # checks for past losses, CoPilot synthesises a one-paragraph call.
     "setup_scorer": [
         ChainStep("researcher", "schedule"),
         ChainStep("historian",  "user"),
         ChainStep("copilot",    "user"),
     ],
-    # "Learn from what just happened" — Reflector extracts a lesson,
+    # "Learn from what just happened" - Reflector extracts a lesson,
     # Historian stores + confirms it reached long-term memory.
     "learn_from_trade": [
         ChainStep("reflector", "position_closed"),
@@ -74,7 +74,7 @@ def run_chain(
         {ok, chain, tool_calls[], events[], combined{}, summary}
 
     A failing step degrades (that step's output = empty string) but the chain
-    continues — failure-matrix §9.3: Tier-1 never halts trading.
+    continues - failure-matrix §9.3: Tier-1 never halts trading.
     """
     steps = CHAINS.get(chain_name)
     if not steps:
@@ -112,10 +112,10 @@ def run_chain(
             # Thread this step's output as input to the next step.
             if step_summary:
                 text = step_summary
-        except Exception as exc:  # noqa: BLE001 — degrade, never raise
+        except Exception as exc:  # noqa: BLE001 - degrade, never raise
             err_msg = f"{type(exc).__name__}: {exc}"[:200]
             tool_calls.append({"tool": step.tool_name, "error": err_msg})
-            # text stays unchanged — next step uses the previous good output.
+            # text stays unchanged - next step uses the previous good output.
 
     combined_summary = " → ".join(v for v in combined.values() if v)
     return {
@@ -153,7 +153,7 @@ def delegate(
 
     On success, runs the sub-agent via runner.run_agent() and returns its dict
     result (ok, summary, tool_calls). On rejection, returns ok=False with a
-    descriptive error — never raises.
+    descriptive error - never raises.
     """
     path = list(delegation_path or [from_agent_id])
 
@@ -189,7 +189,7 @@ def delegate(
             "tool_calls": [],
         }
 
-    from agent.agents.runner import run_agent  # local import — avoids circular
+    from agent.agents.runner import run_agent  # local import - avoids circular
 
     run_kwargs: dict = {"twak": twak, "skills": skills, "bridge": bridge, "client": client}
     if loop_fn is not None:

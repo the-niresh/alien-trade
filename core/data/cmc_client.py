@@ -1,5 +1,5 @@
 """
-CMC data client — historical + live feed.
+CMC data client - historical + live feed.
 All output fields match the backtest Bar exactly (parity from day 1).
 Extended fields (funding_rate, OI, social, flow) are stubbed at 0.0 until
 the CMC Agent Hub endpoints are confirmed; the schema is already wired.
@@ -67,7 +67,7 @@ if TYPE_CHECKING:                      # import cycle at runtime; annotation onl
 class _X402HttpxClient:
     """
     Thin wrapper: makes a GET, auto-retries with payment headers on HTTP 402.
-    Falls back gracefully — if x402 signing fails, raises the original error.
+    Falls back gracefully - if x402 signing fails, raises the original error.
     """
 
     def __init__(self, http: httpx.Client, x402: "x402HTTPClientSync") -> None:
@@ -200,7 +200,7 @@ class CMCClient:
             "volume_24h": float(q.get("volume_24h") or 0),
             "percent_change_1h": float(q.get("percent_change_1h") or 0),
             "percent_change_24h": float(q.get("percent_change_24h") or 0),
-            # Extended signal fields — CMC Agent Hub wires these in Phase 6
+            # Extended signal fields - CMC Agent Hub wires these in Phase 6
             "funding_rate": 0.0,
             "open_interest": 0.0,
             "social_score": 0.0,

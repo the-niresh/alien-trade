@@ -1,5 +1,5 @@
 """
-SkillHub — the two-tier CMC skill loader the research + co-pilot agents use.
+SkillHub - the two-tier CMC skill loader the research + co-pilot agents use.
 
   Tier 1 (curated):  run_curated(key, ctx) → pinned unique_name + correct params
                      → execute_skill. No discovery hop; deterministic; cheap.
@@ -9,7 +9,7 @@ SkillHub — the two-tier CMC skill loader the research + co-pilot agents use.
 Off the hot path by construction (locked decision #1): the deterministic /core
 decision never imports this. Offline-first: with no CMC_MCP_API_KEY the hub is
 `enabled = False` and returns explicit offline markers, so the agents/tests/demo
-run with zero network — exactly like ClaudeClient and CMCClient.
+run with zero network - exactly like ClaudeClient and CMCClient.
 
 Each execute_skill is a paid platform call → a real x402 usage point in the
 research loop (CMC/TWAK special-prize surface).

@@ -62,7 +62,7 @@ function ArcGauge({ score100, zone }: { score100: number; zone: Zone }) {
       viewBox={`0 0 ${W} ${H}`}
       className="w-full"
       style={{ overflow: "visible" }}
-      aria-label={`Fear & Greed Index: ${score100} — ${zone.label}`}
+      aria-label={`Fear & Greed Index: ${score100} - ${zone.label}`}
     >
       {/* Background track */}
       <path
@@ -153,7 +153,7 @@ export function FearGreedGauge() {
     return (
       <Panel label="Fear & Greed" tick="yellow">
         <div className="flex flex-col items-center justify-center gap-3 py-2">
-          {/* Full radar — fills the panel like a real instrument */}
+          {/* Full radar - fills the panel like a real instrument */}
           <svg width="120" height="120" viewBox="0 0 120 120" aria-label="Scanning for sentiment data">
             <defs>
               <radialGradient id="fgRadarGrad2" cx="50%" cy="50%" r="50%">

@@ -1,8 +1,8 @@
-"""alien_trade_thesis_check — falsification-as-a-service over the thesis ledger.
+"""alien_trade_thesis_check - falsification-as-a-service over the thesis ledger.
 
 A second CMC Skills Marketplace skill (AWAKE_SPRINT §3.5, L1 depth). Given a free-text
 trading idea, it finds the nearest card in our thesis ledger and reports whether the
-idea was VALIDATED or FALSIFIED in honest walk-forward + holdout testing — with its OOS
+idea was VALIDATED or FALSIFIED in honest walk-forward + holdout testing - with its OOS
 objective, deflated Sharpe, and source citation. The honest-research story as an API.
 
 Reuses the Track-2 skill endpoint pattern (agent/skills/track2.py).

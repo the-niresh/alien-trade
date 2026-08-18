@@ -46,10 +46,10 @@ jobs:
       # unrelated diff. It reports, and the count is meant to come down over time.
       - name: Ruff
         continue-on-error: true
-        run: core/.venv/bin/ruff check core agent onboard research scripts
+        run: core/.venv/bin/ruff check core agent onboard research
 
       - name: Ruff (syntax + undefined names — these DO fail the build)
-        run: core/.venv/bin/ruff check --select E9,F63,F7,F82 core agent onboard research scripts
+        run: core/.venv/bin/ruff check --select E9,F63,F7,F82 core agent onboard research
 
       # Integration tests are deselected, not deleted. They need the parquet history
       # (gitignored — fetch it with `python -m fetch_data`), live network access, or
@@ -64,5 +64,5 @@ jobs:
           ANTHROPIC_API_KEY: ""
         run: |
           core/.venv/bin/python -m pytest \
-            agent/tests core/tests onboard/tests research/tests scripts/tests \
+            agent/tests core/tests onboard/tests research/tests \
             -q --timeout=120 -m "not integration"

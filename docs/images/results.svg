@@ -44,11 +44,11 @@
 
   <!-- buy and hold reference band -->
   <rect x="291.8" y="112" width="146.1" height="284" class="band"/>
-  <text class="ref" x="364.8" y="106" text-anchor="middle">buy &amp; hold — −57 to −84%</text>
+  <text class="ref" x="364.8" y="106" text-anchor="middle">buy &amp; hold - −57 to −84%</text>
 
   <!-- cash reference -->
   <line class="cash" x1="740" y1="112" x2="740" y2="396"/>
-  <text class="ref" x="736" y="106" text-anchor="end">cash — agent switched off — 0%</text>
+  <text class="ref" x="736" y="106" text-anchor="end">cash - agent switched off - 0%</text>
 
   <!-- vertical grid -->
   <line class="grid" x1="207" y1="112" x2="207" y2="396"/>
@@ -91,7 +91,7 @@
   <text class="val"  x="792" y="216">−2.9 to −12%</text>
   <text class="lane" x="762" y="238">off</text>
   <text class="val"  x="792" y="238">−100%</text>
-  <text class="note" x="220" y="238">all five tokens — the whole account</text>
+  <text class="note" x="220" y="238">all five tokens - the whole account</text>
 
   <line class="grid" x1="180" y1="260" x2="890" y2="260"/>
 
@@ -143,6 +143,6 @@
   <text class="tick" x="606.8" y="414" text-anchor="middle">−25%</text>
   <text class="tick" x="740" y="414" text-anchor="middle">0%</text>
 
-  <text class="note" x="24" y="444">The risk engine cannot invent an edge. It only limits the cost of not having one — which is why the live loss was 44 cents.</text>
+  <text class="note" x="24" y="444">The risk engine cannot invent an edge. It only limits the cost of not having one - which is why the live loss was 44 cents.</text>
   <text class="note" x="24" y="461">Full 40-row table with Sharpe, Sortino and drawdown: docs/results/EVALUATION.md</text>
 </svg>

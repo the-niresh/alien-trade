@@ -45,7 +45,7 @@
 
   <!-- ================= MODEL LAYER ================= -->
   <rect class="band-model" x="60" y="76" width="776" height="104" rx="4"/>
-  <text class="band-title" x="76" y="99">Model layer — LangGraph supervisor</text>
+  <text class="band-title" x="76" y="99">Model layer - LangGraph supervisor</text>
   <text class="band-note" x="320" y="99">advisory only · never returns a buy or a sell · trading continues without it</text>
 
   <rect class="box" x="76" y="112" width="180" height="54" rx="3"/>
@@ -76,11 +76,11 @@
   <!-- Historian feedback, round the right margin into the risk engine -->
   <path class="flow-dash" d="M 812 166 L 812 204 L 856 204 L 856 380 L 829 380"/>
   <polygon class="head-dash" points="820,380 829,376 829,384"/>
-  <text class="edge-label" x="800" y="196" text-anchor="end">optional input to sizing — falls back if down</text>
+  <text class="edge-label" x="800" y="196" text-anchor="end">optional input to sizing - falls back if down</text>
 
   <!-- ================= CORE ================= -->
   <rect class="band-core" x="60" y="210" width="776" height="250" rx="4"/>
-  <text class="band-title" x="76" y="233">/core — deterministic Python</text>
+  <text class="band-title" x="76" y="233">/core - deterministic Python</text>
   <text class="band-note" x="272" y="233">the same code in backtest and in live trading · same input, same answer, every time</text>
 
   <rect class="box-core" x="76" y="246" width="180" height="42" rx="3"/>
@@ -131,7 +131,7 @@
   <polygon class="head" points="456,476 452,467 460,467"/>
 
   <rect class="box" x="60" y="476" width="776" height="48" rx="4"/>
-  <text class="box-title" x="76" y="498">TwakSwapExecutor — simulate → sign → send</text>
+  <text class="box-title" x="76" y="498">TwakSwapExecutor - simulate → sign → send</text>
   <text class="box-sub" x="76" y="514">Trust Wallet Agent Kit. No private key in the code, the logs, or the environment of any process that talks to the network.</text>
 
   <path class="flow" d="M 180 524 L 180 537"/>
@@ -146,7 +146,7 @@
   <polygon class="head" points="328,570 319,566 319,574"/>
 
   <rect class="box" x="328" y="544" width="240" height="52" rx="3"/>
-  <text class="box-title" x="340" y="566">Convex — real-time state</text>
+  <text class="box-title" x="340" y="566">Convex - real-time state</text>
   <text class="box-sub" x="340" y="582">trades · decisions · ledger · audit</text>
 
   <path class="flow" d="M 568 570 L 589 570"/>
@@ -156,5 +156,5 @@
   <text class="box-title" x="608" y="566">Glass Cockpit</text>
   <text class="box-sub" x="608" y="582">React + Vite PWA</text>
 
-  <text class="sub" x="24" y="622">Put a model on the solid path and the same input stops giving the same answer — at which point nothing above can be backtested.</text>
+  <text class="sub" x="24" y="622">Put a model on the solid path and the same input stops giving the same answer - at which point nothing above can be backtested.</text>
 </svg>

@@ -45,7 +45,7 @@
   <!-- ============ BEFORE ============ -->
   <rect class="panel" x="24" y="82" width="414" height="274" rx="4"/>
   <rect class="bar-before" x="40" y="96" width="4" height="14"/>
-  <text class="panel-head" x="52" y="108">before — the bug</text>
+  <text class="panel-head" x="52" y="108">before - the bug</text>
 
   <rect class="box" x="40" y="120" width="186" height="38" rx="3"/>
   <text class="box-text mono" x="52" y="144">holds 3 ETH</text>
@@ -62,8 +62,8 @@
   <polygon class="head" points="231,226 227,217 235,217"/>
 
   <rect class="strip-before" x="40" y="226" width="382" height="72" rx="3"/>
-  <text class="line" x="52" y="247">position clamped to 0 — correct</text>
-  <text class="line-key" x="52" y="266">cash credited for the full 10 ETH — not correct</text>
+  <text class="line" x="52" y="247">position clamped to 0 - correct</text>
+  <text class="line-key" x="52" y="266">cash credited for the full 10 ETH - not correct</text>
   <text class="line" x="52" y="285">the 7 ETH it never held became cash out of nothing</text>
 
   <text class="headline" x="40" y="322">reported +452%, max drawdown 0.45%</text>
@@ -72,7 +72,7 @@
   <!-- ============ AFTER ============ -->
   <rect class="panel" x="462" y="82" width="414" height="274" rx="4"/>
   <rect class="bar-after" x="478" y="96" width="4" height="14"/>
-  <text class="panel-head" x="490" y="108">after — the fix</text>
+  <text class="panel-head" x="490" y="108">after - the fix</text>
 
   <rect class="box" x="478" y="120" width="186" height="38" rx="3"/>
   <text class="box-text mono" x="490" y="144">holds 3 ETH</text>
@@ -89,12 +89,12 @@
   <polygon class="head" points="669,226 665,217 673,217"/>
 
   <rect class="strip-after" x="478" y="226" width="382" height="72" rx="3"/>
-  <text class="line-key" x="490" y="247">the fill is refused — it cannot sell what it does not hold</text>
+  <text class="line-key" x="490" y="247">the fill is refused - it cannot sell what it does not hold</text>
   <text class="line" x="490" y="266">the refusal is counted on BacktestResult</text>
   <text class="line" x="490" y="285">the count is printed in every evaluation run</text>
 
   <text class="headline" x="478" y="322">actual −16%</text>
   <text class="line" x="478" y="341">180 of 180 sells had been asking for more than it held</text>
 
-  <text class="foot" x="24" y="380">core/tests/test_accounting_integrity.py pins all three. I checked that it fails on the old code — that is the only thing that makes writing a regression test worth anything.</text>
+  <text class="foot" x="24" y="380">core/tests/test_accounting_integrity.py pins all three. I checked that it fails on the old code - that is the only thing that makes writing a regression test worth anything.</text>
 </svg>

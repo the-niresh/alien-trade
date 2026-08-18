@@ -28,12 +28,7 @@ slippage, swap fees. No parameter tuning: these are the settings exactly as comm
 
 **0 of 40 made money.**
 
-| Setting | Risk engine off | Risk engine on |
-|---|---|---|
-| momentum | −24% to −32% | −0.9% to −4.3% |
-| contrarian | **−100%** (whole account, all five tokens) | −2.9% to −12% |
-| balanced | −12% to −22% | −2.3% to −3.0% |
-| defensive | −4.3% to −13% | −2.1% to −3.0% |
+![Every one of the 40 configurations finished below zero. With the risk engine off they run from −4% to −100%; with it on they compress to between −0.9% and −12%. None of them beat holding cash.](docs/images/results.svg)
 
 Two benchmarks over the same window:
 
@@ -93,6 +88,8 @@ contrarian setting reported **−470%** — which is not a bad result, it is an 
 You cannot lose 470% of your own money with no leverage. Any long-only number past −100%
 is a bug report.
 
+![Before the fix the engine clamped the position to zero but credited cash for the whole requested sell, inventing money and reporting +452%. After the fix it refuses the impossible fill, counts the refusal, and the same strategy reports −16%.](docs/images/backtest-bug.svg)
+
 A +452% equity curve with almost no drawdown is the kind of chart people put in a README.
 It was an accounting error. The lesson I actually took from this project is that a
 measurement tool needs its own tests more urgently than the thing it measures — because
@@ -137,34 +134,7 @@ configuration nobody runs is worse than no test.
 The trading idea failed. The system around it is the real work, and it is independent of
 whether the strategy made money.
 
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│                       LangGraph Supervisor                          │
-│  Researcher ──► Strategist ──► Reflector ──► Historian (Co-pilot)   │
-└───────────────────────┬─────────────────────────────────────────────┘
-                        │  advisory only — never on the trade path
-                        ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│                  /core — Deterministic Python                       │
-│  S1 Momentum  S2 Derivatives  S3 Sentiment  S4 On-chain Flow        │
-│  RegimeDetector ──► SignalCombiner ──► RiskEngine ──► Order         │
-└───────────────────────┬─────────────────────────────────────────────┘
-                        │
-          ┌─────────────▼──────────────┐
-          │   TwakSwapExecutor (TWAK)  │  ← self-custody, zero raw keys
-          │   simulate → sign → send   │
-          └─────────────┬──────────────┘
-                        │ on-chain receipt
-          ┌─────────────▼──────────────┐
-          │      Convex (real-time)    │  ← trades, decisions, ledger,
-          │      state bus + UI bridge │     risk_state, config, audit
-          └─────────────┬──────────────┘
-                        │
-          ┌─────────────▼──────────────┐
-          │    Glass Cockpit (PWA)     │  ← React + Vite, installs on
-          │                            │     home screen via service worker
-          └────────────────────────────┘
-```
+![The trade path and everything sitting beside it: a LangGraph model layer marked advisory only, the deterministic Python core running signals into the regime detector, signal combiner and risk engine, then the executor, BSC mainnet, Convex and the cockpit.](docs/images/architecture.svg)
 
 ### The language model never makes the trade decision
 

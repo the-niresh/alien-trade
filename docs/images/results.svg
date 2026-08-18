@@ -1,0 +1,148 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 470" width="900" height="470" role="img" aria-label="Dot plot of 40 backtest configurations. Every configuration finished below zero. With the risk engine off, returns run from minus 4 percent to minus 100 percent. With it on, they compress to between minus 0.9 and minus 12 percent. None beat holding cash at zero percent.">
+  <title>40 configurations, none beat cash</title>
+  <style>
+    text { font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+    .bg { fill: #fcfcfb; }
+    .title { font-size: 19px; font-weight: 600; fill: #0b0b0b; }
+    .sub { font-size: 13px; fill: #52514e; }
+    .legend { font-size: 12px; fill: #0b0b0b; }
+    .row-label { font-size: 13px; font-weight: 550; fill: #0b0b0b; }
+    .tick { font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace; font-size: 11px; fill: #52514e; }
+    .val { font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace; font-size: 11.5px; fill: #52514e; }
+    .lane { font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace; font-size: 11.5px; fill: #52514e; }
+    .ref { font-size: 11.5px; fill: #52514e; }
+    .note { font-size: 11.5px; fill: #52514e; }
+    .band { fill: #ebeae6; }
+    .grid { stroke: #e2e1dd; stroke-width: 1; }
+    .laneline { stroke: #e2e1dd; stroke-width: 1; }
+    .cash { stroke: #0b0b0b; stroke-width: 1.5; stroke-dasharray: 4 3; }
+    .dot-on { fill: #2a78d6; stroke: #fcfcfb; stroke-width: 2; }
+    .dot-off { fill: #eb6834; stroke: #fcfcfb; stroke-width: 2; }
+
+    @media (prefers-color-scheme: dark) {
+      .bg { fill: #1a1a19; }
+      .title, .legend, .row-label { fill: #ffffff; }
+      .sub, .tick, .val, .lane, .ref, .note { fill: #c3c2b7; }
+      .band { fill: #2a2a27; }
+      .grid, .laneline { stroke: #33332f; }
+      .cash { stroke: #ffffff; }
+      .dot-on { fill: #3987e5; stroke: #1a1a19; }
+      .dot-off { fill: #d95926; stroke: #1a1a19; }
+    }
+  </style>
+
+  <rect class="bg" x="0" y="0" width="900" height="470"/>
+
+  <text class="title" x="24" y="34">40 configurations. None of them beat cash.</text>
+  <text class="sub" x="24" y="56">Total return over 540 days of hourly bars, gas and slippage and fees charged on every fill. One dot per token.</text>
+
+  <!-- legend -->
+  <circle class="dot-on" cx="30" cy="82" r="6"/>
+  <text class="legend" x="42" y="86">risk engine on</text>
+  <circle class="dot-off" cx="152" cy="82" r="6"/>
+  <text class="legend" x="164" y="86">risk engine off</text>
+
+  <!-- buy and hold reference band -->
+  <rect x="291.8" y="112" width="146.1" height="284" class="band"/>
+  <text class="ref" x="364.8" y="106" text-anchor="middle">buy &amp; hold — −57 to −84%</text>
+
+  <!-- cash reference -->
+  <line class="cash" x1="740" y1="112" x2="740" y2="396"/>
+  <text class="ref" x="736" y="106" text-anchor="end">cash — agent switched off — 0%</text>
+
+  <!-- vertical grid -->
+  <line class="grid" x1="207" y1="112" x2="207" y2="396"/>
+  <line class="grid" x1="340" y1="112" x2="340" y2="396"/>
+  <line class="grid" x1="473.5" y1="112" x2="473.5" y2="396"/>
+  <line class="grid" x1="606.8" y1="112" x2="606.8" y2="396"/>
+
+  <!-- ===== momentum ===== -->
+  <text class="row-label" x="166" y="154" text-anchor="end">momentum</text>
+  <line class="laneline" x1="180" y1="138" x2="740" y2="138"/>
+  <line class="laneline" x1="180" y1="160" x2="740" y2="160"/>
+  <circle class="dot-on" cx="717.1" cy="138" r="6"/>
+  <circle class="dot-on" cx="727.6" cy="138" r="6"/>
+  <circle class="dot-on" cx="729.1" cy="138" r="6"/>
+  <circle class="dot-on" cx="735.0" cy="138" r="6"/>
+  <circle class="dot-on" cx="735.1" cy="138" r="6"/>
+  <circle class="dot-off" cx="567.3" cy="160" r="6"/>
+  <circle class="dot-off" cx="597.4" cy="160" r="6"/>
+  <circle class="dot-off" cx="598.9" cy="160" r="6"/>
+  <circle class="dot-off" cx="603.2" cy="160" r="6"/>
+  <circle class="dot-off" cx="610.0" cy="160" r="6"/>
+  <text class="lane" x="762" y="142">on</text>
+  <text class="val"  x="792" y="142">−0.9 to −4.3%</text>
+  <text class="lane" x="762" y="164">off</text>
+  <text class="val"  x="792" y="164">−24 to −32%</text>
+
+  <line class="grid" x1="180" y1="186" x2="890" y2="186"/>
+
+  <!-- ===== contrarian ===== -->
+  <text class="row-label" x="166" y="228" text-anchor="end">contrarian</text>
+  <line class="laneline" x1="180" y1="212" x2="740" y2="212"/>
+  <line class="laneline" x1="180" y1="234" x2="740" y2="234"/>
+  <circle class="dot-on" cx="676.3" cy="212" r="6"/>
+  <circle class="dot-on" cx="689.2" cy="212" r="6"/>
+  <circle class="dot-on" cx="699.2" cy="212" r="6"/>
+  <circle class="dot-on" cx="708.9" cy="212" r="6"/>
+  <circle class="dot-on" cx="724.5" cy="212" r="6"/>
+  <circle class="dot-off" cx="206.7" cy="234" r="6"/>
+  <text class="lane" x="762" y="216">on</text>
+  <text class="val"  x="792" y="216">−2.9 to −12%</text>
+  <text class="lane" x="762" y="238">off</text>
+  <text class="val"  x="792" y="238">−100%</text>
+  <text class="note" x="220" y="238">all five tokens — the whole account</text>
+
+  <line class="grid" x1="180" y1="260" x2="890" y2="260"/>
+
+  <!-- ===== balanced ===== -->
+  <text class="row-label" x="166" y="302" text-anchor="end">balanced</text>
+  <line class="laneline" x1="180" y1="286" x2="740" y2="286"/>
+  <line class="laneline" x1="180" y1="308" x2="740" y2="308"/>
+  <circle class="dot-on" cx="723.8" cy="286" r="6"/>
+  <circle class="dot-on" cx="724.3" cy="286" r="6"/>
+  <circle class="dot-on" cx="725.1" cy="286" r="6"/>
+  <circle class="dot-on" cx="727.3" cy="286" r="6"/>
+  <circle class="dot-on" cx="727.8" cy="286" r="6"/>
+  <circle class="dot-off" cx="625.0" cy="308" r="6"/>
+  <circle class="dot-off" cx="636.6" cy="308" r="6"/>
+  <circle class="dot-off" cx="641.4" cy="308" r="6"/>
+  <circle class="dot-off" cx="648.9" cy="308" r="6"/>
+  <circle class="dot-off" cx="674.9" cy="308" r="6"/>
+  <text class="lane" x="762" y="290">on</text>
+  <text class="val"  x="792" y="290">−2.3 to −3.0%</text>
+  <text class="lane" x="762" y="312">off</text>
+  <text class="val"  x="792" y="312">−12 to −22%</text>
+
+  <line class="grid" x1="180" y1="334" x2="890" y2="334"/>
+
+  <!-- ===== defensive ===== -->
+  <text class="row-label" x="166" y="376" text-anchor="end">defensive</text>
+  <line class="laneline" x1="180" y1="360" x2="740" y2="360"/>
+  <line class="laneline" x1="180" y1="382" x2="740" y2="382"/>
+  <circle class="dot-on" cx="724.3" cy="360" r="6"/>
+  <circle class="dot-on" cx="725.8" cy="360" r="6"/>
+  <circle class="dot-on" cx="727.3" cy="360" r="6"/>
+  <circle class="dot-on" cx="729.0" cy="360" r="6"/>
+  <circle class="dot-on" cx="729.1" cy="360" r="6"/>
+  <circle class="dot-off" cx="671.0" cy="382" r="6"/>
+  <circle class="dot-off" cx="672.4" cy="382" r="6"/>
+  <circle class="dot-off" cx="677.5" cy="382" r="6"/>
+  <circle class="dot-off" cx="682.3" cy="382" r="6"/>
+  <circle class="dot-off" cx="717.2" cy="382" r="6"/>
+  <text class="lane" x="762" y="364">on</text>
+  <text class="val"  x="792" y="364">−2.1 to −3.0%</text>
+  <text class="lane" x="762" y="386">off</text>
+  <text class="val"  x="792" y="386">−4.3 to −13%</text>
+
+  <!-- axis -->
+  <line class="grid" x1="180" y1="396" x2="740" y2="396"/>
+  <text class="tick" x="207" y="414" text-anchor="middle">−100%</text>
+  <text class="tick" x="340" y="414" text-anchor="middle">−75%</text>
+  <text class="tick" x="473.5" y="414" text-anchor="middle">−50%</text>
+  <text class="tick" x="606.8" y="414" text-anchor="middle">−25%</text>
+  <text class="tick" x="740" y="414" text-anchor="middle">0%</text>
+
+  <text class="note" x="24" y="444">The risk engine cannot invent an edge. It only limits the cost of not having one — which is why the live loss was 44 cents.</text>
+  <text class="note" x="24" y="461">Full 40-row table with Sharpe, Sortino and drawdown: docs/results/EVALUATION.md</text>
+</svg>
